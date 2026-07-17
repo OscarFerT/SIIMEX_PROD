@@ -1,0 +1,287 @@
+<section class="change-password-container">
+  <div class="card border-borgona reset-card shadow-lg">
+    <div class="card-header bg-light">
+      <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+        <h1 class="h4 mb-0 text-borgona">
+          <i class="fas fa-key me-2"></i>Recuperación de contraseña
+        </h1>
+        <span id="securityAnnounce" class="badge bg-borgona text-white">
+          <i class="fas fa-shield-alt me-1"></i>Tus datos viajan cifrados
+        </span>
+      </div>
+    </div>
+
+    <div class="card-body p-4 p-md-5">
+      <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+        <i class="fas fa-info-circle me-2 fs-5"></i>
+        <div>
+          <strong>Importante:</strong> Proporciona <strong>al menos dos</strong> de los siguientes identificadores para verificar tu identidad. 
+          Luego establece una nueva contraseña segura.
+        </div>
+      </div>
+
+      <form id="resetForm" novalidate class="needs-validation change-password-form" aria-describedby="formStatus" aria-live="polite">
+        
+        <!-- Sección: Identificadores -->
+        <div class="form-section mb-4">
+          <h5 class="section-title mb-3">
+            <i class="fas fa-id-card text-borgona me-2"></i>Identificadores
+          </h5>
+          
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="email" class="form-label fw-semibold">
+                Correo electrónico
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-envelope"></i>
+                  </span>
+                  <input 
+                    id="email" 
+                    type="email" 
+                    class="form-control input-custom" 
+                    placeholder="correo@dominio.com"
+                    autocomplete="email"
+                  />
+                </div>
+                <div class="form-text muted-small mt-1">
+                  <i class="fas fa-info-circle me-1"></i>Se usará para localizar tu cuenta.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="contactEmail" class="form-label fw-semibold">
+                Confirmar correo electrónico <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-envelope"></i>
+                  </span>
+                  <input 
+                    type="email" 
+                    id="contactEmail" 
+                    name="email" 
+                    class="form-control input-custom"
+                    placeholder="correo@dominio.com" 
+                    required 
+                    aria-required="true"
+                    autocomplete="email"
+                  />
+                  <span class="validation-icon" id="emailValidation"></span>
+                </div>
+                <div class="invalid-feedback">Introduce un correo válido.</div>
+              </div>
+            </div>
+            
+            <div class="col-12 col-md-6">
+              <label for="curp" class="form-label fw-semibold">
+                CURP
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-id-badge"></i>
+                  </span>
+                  <input 
+                    id="curp" 
+                    type="text" 
+                    class="form-control input-custom" 
+                    placeholder="AAAA000000HAAAAA00"
+                    inputmode="latin" 
+                    maxlength="18"
+                    style="text-transform: uppercase;"
+                  />
+                  <span class="validation-icon" id="curpValidation"></span>
+                </div>
+                <div class="form-text muted-small mt-1">
+                  <i class="fas fa-info-circle me-1"></i>Formato: 18 caracteres. Si no aplica, deja vacío.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="rfc" class="form-label fw-semibold">
+                RFC
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-file-invoice"></i>
+                  </span>
+                  <input 
+                    id="rfc" 
+                    type="text" 
+                    class="form-control input-custom" 
+                    placeholder="AAAA000000XXX"
+                    inputmode="latin" 
+                    maxlength="13"
+                    style="text-transform: uppercase;"
+                  />
+                  <span class="validation-icon" id="rfcValidation"></span>
+                </div>
+                <div class="form-text muted-small mt-1">
+                  <i class="fas fa-info-circle me-1"></i>RFC con homoclave. Si no aplica, deja vacío.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="id-hint alert alert-warning d-flex align-items-center" id="idHint" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <span>Proporciona al menos dos identificadores válidos.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección: Nueva contraseña -->
+        <div class="form-section mb-4">
+          <h5 class="section-title mb-3">
+            <i class="fas fa-lock text-borgona me-2"></i>Nueva contraseña
+          </h5>
+          
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="pw" class="form-label fw-semibold">
+                Nueva contraseña <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="pw-wrapper input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-lock"></i>
+                  </span>
+                  <input 
+                    id="pw" 
+                    type="password" 
+                    class="form-control input-custom" 
+                    aria-describedby="pwHelp" 
+                    required
+                    placeholder="Mínimo 8 caracteres"
+                    autocomplete="new-password"
+                  />
+                  <button 
+                    type="button" 
+                    class="pw-toggle btn btn-outline-secondary" 
+                    id="pwToggle" 
+                    aria-label="Mostrar u ocultar contraseña"
+                    title="Mostrar/ocultar">
+                    <i class="fas fa-eye" id="pwToggleIcon"></i>
+                  </button>
+                  <span class="validation-icon" id="pwValidation"></span>
+                </div>
+                <div id="pwHelp" class="form-text muted-small mt-2">
+                  <i class="fas fa-info-circle me-1"></i>Mínimo 8 caracteres y combina mayúsculas, minúsculas, números y símbolos.
+                </div>
+
+                <!-- Medidor de seguridad -->
+                <div class="pw-meter mt-3" aria-hidden="true">
+                  <div id="pwBar" class="pw-bar"></div>
+                </div>
+
+                <!-- Checklist de requisitos -->
+                <ul class="pw-req mt-3" id="pwRequirements">
+                  <li id="rLen" class="requirement-item">
+                    <span class="dot"></span>
+                    <i class="fas fa-check-circle check-icon d-none"></i>
+                    <span>8+ caracteres</span>
+                  </li>
+                  <li id="rUpper" class="requirement-item">
+                    <span class="dot"></span>
+                    <i class="fas fa-check-circle check-icon d-none"></i>
+                    <span>Mayúscula</span>
+                  </li>
+                  <li id="rLower" class="requirement-item">
+                    <span class="dot"></span>
+                    <i class="fas fa-check-circle check-icon d-none"></i>
+                    <span>Minúscula</span>
+                  </li>
+                  <li id="rNum" class="requirement-item">
+                    <span class="dot"></span>
+                    <i class="fas fa-check-circle check-icon d-none"></i>
+                    <span>Número</span>
+                  </li>
+                  <li id="rSym" class="requirement-item">
+                    <span class="dot"></span>
+                    <i class="fas fa-check-circle check-icon d-none"></i>
+                    <span>Símbolo</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label for="pw2" class="form-label fw-semibold">
+                Confirmar contraseña <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-lock"></i>
+                  </span>
+                  <input 
+                    id="pw2" 
+                    type="password" 
+                    class="form-control input-custom" 
+                    required
+                    placeholder="Confirma tu contraseña"
+                    autocomplete="new-password"
+                  />
+                  <button 
+                    type="button" 
+                    class="pw-toggle btn btn-outline-secondary" 
+                    id="pw2Toggle" 
+                    aria-label="Mostrar u ocultar contraseña"
+                    title="Mostrar/ocultar">
+                    <i class="fas fa-eye" id="pw2ToggleIcon"></i>
+                  </button>
+                  <span class="validation-icon" id="pw2Validation"></span>
+                </div>
+                <div class="invalid-feedback">Las contraseñas no coinciden.</div>
+                <div class="valid-feedback d-none">Las contraseñas coinciden.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-4">
+          <a routerLink="/login" class="btn btn-outline-secondary">
+            <i class="fas fa-times me-2"></i>Cancelar
+          </a>
+          <button type="reset" class="btn btn-outline-secondary">
+            <i class="fas fa-redo me-2"></i>Limpiar
+          </button>
+          <button type="button" class="btn btn-borgona btn-lg" id="submitBtn" [disabled]="submitting() || !isFormValid()">
+            <span *ngIf="!submitting()">
+              <i class="fas fa-key me-2"></i>Cambiar contraseña
+            </span>
+            <span *ngIf="submitting()">
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Procesando...
+            </span>
+          </button>
+        </div>
+
+        <!-- Estado del formulario -->
+        <div id="formStatus" class="mt-3" aria-live="polite"></div>
+      </form>
+    </div>
+
+    <div class="card-footer bg-light">
+      <div class="d-flex align-items-start">
+        <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+        <div>
+          <strong>Mejora sugerida:</strong> activación con verificación multifactor o código por correo cuando el API esté disponible.
+          Mientras tanto, esta interfaz garantiza controles de formato y fuerza de contraseña.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+

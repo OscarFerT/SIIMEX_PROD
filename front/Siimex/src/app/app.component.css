@@ -1,0 +1,10 @@
+:host {
+  display: flex;
+  min-height: 100dvh; /* 100% alto viewport dinámico */
+  flex-direction: column;
+}
+
+.app-main {
+  display: block;
+  flex: 1 1 auto; /* empuja el footer hacia abajo */
+}

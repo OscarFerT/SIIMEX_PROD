@@ -1,0 +1,59 @@
+<div class="admin-folios">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-1 text-borgona">
+        <i class="fas fa-hashtag me-2"></i>Folios de registro
+      </h1>
+      <p class="text-muted small mb-0">
+        Configura el prefijo para personas investigadoras, personas innovadoras y perfil mixto.
+      </p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a routerLink="/admin/convocatorias" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i>Gestión modular
+      </a>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="aplicarDefaults()">
+        <i class="fas fa-rotate-left me-1"></i>Restaurar sugeridos
+      </button>
+      <button type="button" class="btn btn-borgona btn-sm" (click)="guardar()" [disabled]="saving || loading">
+        <i class="fas fa-save me-1"></i>{{ saving ? 'Guardando...' : 'Guardar cambios' }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="text-muted mt-2 mb-0">Cargando configuración de folios...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error" class="card shadow-sm border-0">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <label class="form-label small fw-semibold mb-1">Prefijo investigador</label>
+          <input type="text" class="form-control" [(ngModel)]="investigador" maxlength="40" placeholder="SIIMEX-INV" />
+          <div class="form-text">Ejemplo: {{ investigador || 'SIIMEX-INV' }}-001</div>
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label small fw-semibold mb-1">Prefijo innovador</label>
+          <input type="text" class="form-control" [(ngModel)]="innovador" maxlength="40" placeholder="SIIMEX-IND" />
+          <div class="form-text">Ejemplo: {{ innovador || 'SIIMEX-IND' }}-001</div>
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label small fw-semibold mb-1">Prefijo híbrido</label>
+          <input type="text" class="form-control" [(ngModel)]="hibrido" maxlength="40" placeholder="SIIMEX-HIB" />
+          <div class="form-text">Ejemplo: {{ hibrido || 'SIIMEX-HIB' }}-001</div>
+        </div>
+      </div>
+
+      <div class="alert alert-light border mt-3 mb-0 small">
+        <i class="fas fa-circle-info me-1 text-borgona"></i>
+        Solo se permiten letras, números y guiones. El número secuencial se agrega automáticamente al registrar.
+      </div>
+    </div>
+  </div>
+</div>

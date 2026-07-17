@@ -1,0 +1,76 @@
+<main class="folios-page">
+  <section class="folios-header">
+    <div class="container">
+      <div>
+        <p class="folios-kicker">SIIMEX</p>
+        <h1>Folios aprobados</h1>
+        <p class="folios-subtitle">Consulta el listado público de solicitudes aprobadas por convocatoria.</p>
+        <p class="folios-meta" *ngIf="fechaCorte">Fecha de corte: {{ formatearFecha(fechaCorte) }}</p>
+      </div>
+      <a class="btn btn-outline-light" routerLink="/landing">
+        <i class="fas fa-arrow-left me-2"></i>Volver
+      </a>
+    </div>
+  </section>
+
+  <section class="container folios-content">
+    <div class="folios-toolbar">
+      <select class="form-select" [(ngModel)]="convocatoriaId" (change)="buscar()" aria-label="Filtrar por convocatoria">
+        <option value="">Todas las convocatorias</option>
+        <option *ngFor="let c of convocatorias" [value]="c.id">
+          {{ c.titulo }} ({{ c.totalAprobados }})
+        </option>
+      </select>
+      <div class="input-group">
+        <span class="input-group-text"><i class="fas fa-search"></i></span>
+        <input class="form-control" [(ngModel)]="q" (keyup.enter)="buscar()" placeholder="Buscar por folio o convocatoria" />
+      </div>
+      <button class="btn btn-borgona" (click)="buscar()">Buscar</button>
+      <button class="btn btn-outline-secondary" (click)="limpiar()">Limpiar</button>
+      <button class="btn btn-outline-secondary" (click)="imprimir()" [disabled]="items.length === 0">
+        <i class="fas fa-print me-1"></i>Imprimir
+      </button>
+    </div>
+
+    <div *ngIf="loading" class="folios-state">
+      <div class="spinner-border text-borgona" role="status"></div>
+      <p>Consultando folios...</p>
+    </div>
+
+    <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+    <div *ngIf="!loading && !error" class="folios-summary">
+      <strong>{{ total }}</strong> folio(s) aprobado(s)
+      <span *ngIf="convocatoriaId">en la convocatoria seleccionada</span>
+    </div>
+
+    <div *ngIf="!loading && !error" class="folios-table-wrap">
+      <table class="table folios-table mb-0">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Convocatoria</th>
+            <th>Área</th>
+            <th>Fecha de aprobación</th>
+            <th>Estatus</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of items">
+            <td class="fw-bold text-borgona">{{ item.folio }}</td>
+            <td>
+              <div class="fw-semibold">{{ item.convocatoriaTitulo || '-' }}</div>
+              <small class="text-muted">{{ item.folioConvocatoria || '' }}</small>
+            </td>
+            <td>{{ item.area || '-' }}</td>
+            <td>{{ formatearFecha(item.fechaAprobacion) }}</td>
+            <td><span class="folios-badge">{{ item.estatus }}</span></td>
+          </tr>
+          <tr *ngIf="items.length === 0">
+            <td colspan="5" class="text-center text-muted py-5">No hay folios aprobados con los filtros seleccionados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>

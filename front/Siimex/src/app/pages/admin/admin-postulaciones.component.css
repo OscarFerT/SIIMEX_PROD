@@ -1,0 +1,175 @@
+.admin-postulaciones {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.admin-postulaciones .text-borgona {
+  color: #6a0032;
+}
+
+.admin-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #eee;
+  overflow: hidden;
+}
+
+.admin-card-header {
+  padding: 1rem 1.25rem;
+  background: #fafafa;
+  border-bottom: 1px solid #eee;
+}
+
+.admin-card-body .table thead th {
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #555;
+  padding: 1rem 0.75rem;
+}
+
+.admin-card-body .table tbody td {
+  padding: 0.85rem 0.75rem;
+  vertical-align: middle;
+}
+
+.admin-card-body .btn-sm {
+  white-space: nowrap;
+}
+
+.postulaciones-actions-bar {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.selected-post-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #d4af37;
+  background: #fff9e8;
+  color: #5a3a10;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+
+.selected-post-chip.empty {
+  border-color: #d5dce7;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.admin-card-body .table tbody tr.is-selected {
+  background: rgba(106, 0, 50, 0.08);
+  box-shadow: inset 3px 0 0 #6a0032;
+}
+
+/* Avatar postulante */
+.post-avatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(145deg, #6a0032 0%, #8b1a4b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.post-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-avatar-inicial {
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Barra compatibilidad */
+.post-compat-wrap {
+  min-width: 100px;
+}
+
+.post-compat-bar {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+
+.post-compat-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.post-compat-fill-high {
+  background: linear-gradient(90deg, #198754 0%, #20c997 100%);
+}
+
+.post-compat-fill-medium {
+  background: linear-gradient(90deg, #fd7e14 0%, #ffc107 100%);
+}
+
+.post-compat-fill-low {
+  background: linear-gradient(90deg, #6c757d 0%, #adb5bd 100%);
+}
+
+.post-compat-valor {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 768px) {
+  .admin-postulaciones {
+    max-width: 100%;
+  }
+
+  .admin-card-header {
+    padding: 0.85rem 1rem;
+  }
+
+  .admin-card-body .table thead th {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  .admin-card-body .table tbody td {
+    padding: 0.65rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .post-avatar {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .post-avatar-inicial {
+    font-size: 0.85rem;
+  }
+
+  .post-compat-wrap {
+    min-width: 80px;
+  }
+}
+
+@media (max-width: 576px) {
+  .admin-card-body .table thead th,
+  .admin-card-body .table tbody td {
+    padding: 0.5rem 0.35rem;
+  }
+}

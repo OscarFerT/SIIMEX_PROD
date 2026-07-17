@@ -1,0 +1,92 @@
+<div class="notif-page">
+  <!-- Header -->
+  <div class="notif-page-header">
+    <div class="notif-page-title-row">
+      <h2 class="notif-page-title">
+        <i class="fa-solid fa-bell"></i>
+        Notificaciones
+      </h2>
+      <span class="notif-page-count" *ngIf="countNoLeidas > 0">
+        {{ countNoLeidas }} sin leer
+      </span>
+    </div>
+    <p class="notif-page-subtitle">Revisa tus alertas, actualizaciones y avisos del sistema.</p>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="notif-toolbar">
+    <div class="notif-filters">
+      <button class="notif-filter-btn" [class.active]="filtroActivo === 'todas'" (click)="setFiltro('todas')">
+        Todas <span class="notif-filter-count">{{ notificaciones.length }}</span>
+      </button>
+      <button class="notif-filter-btn" [class.active]="filtroActivo === 'no-leidas'" (click)="setFiltro('no-leidas')">
+        Sin leer <span class="notif-filter-count">{{ countNoLeidas }}</span>
+      </button>
+      <button class="notif-filter-btn" [class.active]="filtroActivo === 'leidas'" (click)="setFiltro('leidas')">
+        Leídas
+      </button>
+    </div>
+      <button class="notif-mark-all-btn" (click)="marcarTodasLeidas()" *ngIf="countNoLeidas > 0">
+      <i class="fa-solid fa-check-double me-1"></i>
+      Marcar todas como leídas
+    </button>
+    <button class="notif-refresh-btn" (click)="cargarSilencioso()" [disabled]="refreshing">
+      <i class="fa-solid fa-rotate-right me-1" [class.fa-spin]="refreshing"></i>
+      {{ refreshing ? 'Actualizando...' : 'Actualizar' }}
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="notif-loading" *ngIf="loading">
+    <div class="spinner-border text-borgona" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div class="notif-empty-state" *ngIf="!loading && filtradas.length === 0">
+    <div class="notif-empty-icon">
+      <i class="fa-regular fa-bell-slash"></i>
+    </div>
+    <h4 *ngIf="filtroActivo === 'todas'">No tienes notificaciones</h4>
+    <h4 *ngIf="filtroActivo === 'no-leidas'">No tienes notificaciones sin leer</h4>
+    <h4 *ngIf="filtroActivo === 'leidas'">No tienes notificaciones leídas</h4>
+    <p class="text-muted">Las nuevas notificaciones aparecerán aquí.</p>
+  </div>
+
+  <!-- Notification list -->
+  <div class="notif-list" *ngIf="!loading && filtradas.length > 0">
+    <div class="notif-card"
+         *ngFor="let n of filtradas"
+         [class.notif-card--unread]="!n.leida"
+         [class.notif-card--clickable]="!!n.rutaLink || !n.leida"
+         (click)="marcarLeida(n)">
+
+      <div class="notif-card-icon" [style.background]="getIconColor(n.tipo) + '14'" [style.color]="getIconColor(n.tipo)">
+        <i class="fa-solid" [ngClass]="getIcon(n.tipo)"></i>
+      </div>
+
+      <div class="notif-card-body">
+        <div class="notif-card-top">
+          <span class="notif-card-title">{{ n.titulo }}</span>
+          <span class="notif-card-badge" [style.background]="getIconColor(n.tipo) + '18'" [style.color]="getIconColor(n.tipo)">
+            {{ getTipoLabel(n.tipo) }}
+          </span>
+        </div>
+        <p class="notif-card-msg">{{ n.mensaje }}</p>
+        <div class="notif-card-meta">
+          <span class="notif-card-time">
+            <i class="fa-regular fa-clock me-1"></i>
+            {{ tiempoRelativo(n.fechaCreacion) }}
+          </span>
+          <span class="notif-card-date">{{ n.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+      </div>
+
+      <div class="notif-card-status">
+        <span class="notif-card-dot" *ngIf="!n.leida" title="Sin leer"></span>
+        <i class="fa-solid fa-chevron-right notif-card-arrow" *ngIf="n.rutaLink"></i>
+      </div>
+    </div>
+  </div>
+</div>

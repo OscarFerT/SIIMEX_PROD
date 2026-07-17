@@ -1,0 +1,46 @@
+<header class="app-header">
+  
+    <div class="user-menu" *ngIf="auth.user$ | async as u">
+      <button class="user-btn" (click)="toggleMenu()">
+        <span>{{ u.nombre }} {{ u.apellidoPaterno }}</span>
+        <svg width="12" height="12" viewBox="0 0 20 20"><path d="M5 7l5 5 5-5z" fill="white"/></svg>
+      </button>
+      <div class="dropdown" *ngIf="menuOpen">
+        <a (click)="goToPerfil()">Mi cuenta</a>
+        <a (click)="logout()">Cerrar sesión</a>
+      </div>
+    </div>
+  </header>
+  
+  <div class="app-body">
+    <aside class="sidebar">
+      <nav>
+        <div class="group">General</div>
+        <a routerLink="/landing" routerLinkActive="active">Inicio</a>
+  
+        <div class="group">Seguridad</div>
+        <a routerLink="/app/seguridad/cambiar-contrasena" routerLinkActive="active">
+          Cambiar contraseña
+        </a>
+  
+        <div class="group">Becas y Apoyos</div>
+        <a routerLink="/app/becas" routerLinkActive="active">Solicitudes</a>
+  
+        <div class="group">Acerca de</div>
+        <a routerLink="/app/acerca-de/perfil" routerLinkActive="active">Perfil</a>
+        <a routerLink="/app/acerca-de/variables-socioeconomicas" routerLinkActive="active">
+          Variables socioeconómicas
+        </a>
+  
+        <div class="group">Educación</div>
+        <a routerLink="/app/acerca-de/educacion/trayectoria-academica" routerLinkActive="active">
+          Perfil académico
+        </a>
+      </nav>
+    </aside>
+  
+    <main class="content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+  

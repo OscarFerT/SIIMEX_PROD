@@ -1,0 +1,11 @@
+.admin-folios .card {
+  border-radius: 14px;
+}
+
+.admin-folios .form-control {
+  border-radius: 10px;
+}
+
+.admin-folios .form-text {
+  font-size: 0.78rem;
+}

@@ -1,0 +1,839 @@
+<div class="register-container">
+  <div class="card form-card shadow-lg">
+    <div class="card-header text-center py-4">
+      <h2 class="text-borgona mb-2">
+        <i class="fas fa-user-plus me-2"></i>Registro en SIIMEX
+      </h2>
+      <p class="text-muted mb-0">
+        Crea tu cuenta en menos de 2 minutos. Campos marcados con <span class="text-danger">*</span> son obligatorios.
+      </p>
+    </div>
+
+    <div class="card-body p-4 p-md-5">
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate aria-describedby="formHelp" class="register-form">
+        
+        <!-- Sección: Información personal -->
+        <div class="form-section mb-4">
+          <h5 class="section-title mb-3 d-flex align-items-center flex-wrap gap-2">
+            <i class="fas fa-user text-borgona me-2"></i>Información personal
+            <button type="button" class="section-help-btn ms-auto" (click)="toggleSectionHelp('personal')" [attr.aria-expanded]="openSectionHelp() === 'personal'" aria-label="Ver ayuda de esta sección" title="¿Qué debo llenar aquí?">
+              <i class="fas fa-circle-question text-borgona"></i>
+            </button>
+          </h5>
+          <div class="section-help-content" *ngIf="openSectionHelp() === 'personal'">
+            <i class="fas fa-info-circle me-2 text-borgona" aria-hidden="true"></i>
+            <span class="section-help-text">{{ sectionHelpTexts['personal'] }}</span>
+          </div>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="nombre" class="form-label fw-semibold">
+                Nombre <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-user"></i>
+                  </span>
+                  <input
+                    data-control="nombre"
+                    id="nombre"
+                    type="text"
+                    class="form-control"
+                    [class.is-invalid]="f['nombre'].touched && f['nombre'].invalid"
+                    [class.is-valid]="f['nombre'].touched && f['nombre'].valid"
+                    formControlName="nombre"
+                    autocomplete="given-name"
+                    placeholder="Tu nombre"
+                  />
+                  <span class="validation-icon" *ngIf="f['nombre'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['nombre'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['nombre'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['nombre'].touched && f['nombre'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu nombre.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="apPat" class="form-label fw-semibold">
+                Apellido paterno <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-user"></i>
+                  </span>
+                  <input
+                    data-control="apellidoPaterno"
+                    id="apPat"
+                    type="text"
+                    class="form-control"
+                    [class.is-invalid]="f['apellidoPaterno'].touched && f['apellidoPaterno'].invalid"
+                    [class.is-valid]="f['apellidoPaterno'].touched && f['apellidoPaterno'].valid"
+                    formControlName="apellidoPaterno"
+                    autocomplete="additional-name"
+                    placeholder="Tu apellido paterno"
+                  />
+                  <span class="validation-icon" *ngIf="f['apellidoPaterno'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['apellidoPaterno'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['apellidoPaterno'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['apellidoPaterno'].touched && f['apellidoPaterno'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu apellido paterno.
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-12 col-md-6">
+              <label for="apMat" class="form-label fw-semibold">
+                Apellido materno <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-user"></i>
+                  </span>
+                  <input
+                    data-control="apellidoMaterno"
+                    id="apMat"
+                    type="text"
+                    class="form-control"
+                    [class.is-invalid]="f['apellidoMaterno'].touched && f['apellidoMaterno'].invalid"
+                    [class.is-valid]="f['apellidoMaterno'].touched && f['apellidoMaterno'].valid"
+                    formControlName="apellidoMaterno"
+                    placeholder="Tu apellido materno"
+                  />
+                  <span class="validation-icon" *ngIf="f['apellidoMaterno'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['apellidoMaterno'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['apellidoMaterno'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['apellidoMaterno'].touched && f['apellidoMaterno'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu apellido materno.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="fecha" class="form-label fw-semibold">
+                Fecha de nacimiento <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-calendar-alt"></i>
+                  </span>
+                  <input
+                    data-control="fechaNacimiento"
+                    id="fecha"
+                    type="date"
+                    class="form-control"
+                    [class.is-invalid]="f['fechaNacimiento'].touched && f['fechaNacimiento'].invalid"
+                    [class.is-valid]="f['fechaNacimiento'].touched && f['fechaNacimiento'].valid"
+                    formControlName="fechaNacimiento"
+                    [attr.min]="minDate"
+                    [attr.max]="today"
+                  />
+                  <span class="validation-icon" *ngIf="f['fechaNacimiento'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['fechaNacimiento'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['fechaNacimiento'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['fechaNacimiento'].touched && f['fechaNacimiento'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Selecciona tu fecha de nacimiento.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="gen" class="form-label fw-semibold">
+                Sexo <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-venus-mars"></i>
+                  </span>
+                  <select 
+                    data-control="genero" 
+                    id="gen" 
+                    class="form-select"
+                    [class.is-invalid]="f['genero'].touched && f['genero'].invalid"
+                    [class.is-valid]="f['genero'].touched && f['genero'].valid"
+                    formControlName="genero">
+                    <option value="">Selecciona</option>
+                    <option value="FEMENINO">Mujer</option>
+                    <option value="MASCULINO">Hombre</option>
+                  </select>
+                  <span class="validation-icon" *ngIf="f['genero'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['genero'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['genero'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['genero'].touched && f['genero'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Selecciona una opción.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="estadoCivil" class="form-label fw-semibold">
+                Estado civil <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-heart"></i>
+                  </span>
+                  <select
+                    id="estadoCivil"
+                    data-control="estadoCivil"
+                    class="form-select"
+                    [class.is-invalid]="f['estadoCivil'].touched && f['estadoCivil'].invalid"
+                    [class.is-valid]="f['estadoCivil'].touched && f['estadoCivil'].valid"
+                    formControlName="estadoCivil">
+                    <option value="">Selecciona</option>
+                    <option value="SOLTERO">Soltero(a)</option>
+                    <option value="CASADO">Casado(a)</option>
+                    <option value="DIVORCIADO">Divorciado(a)</option>
+                    <option value="VIUDO">Viudo(a)</option>
+                    <option value="UNION_LIBRE">Unión libre</option>
+                  </select>
+                  <span class="validation-icon" *ngIf="f['estadoCivil'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['estadoCivil'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['estadoCivil'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['estadoCivil'].touched && f['estadoCivil'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Selecciona una opción.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección: Tipo de perfil (Personas investigadoras / innovadoras) -->
+        <div class="form-section mb-4">
+          <h5 class="section-title mb-3 d-flex align-items-center flex-wrap gap-2">
+            <i class="fas fa-user-tag text-borgona me-2"></i>Tipo de perfil
+            <button type="button" class="section-help-btn ms-auto" (click)="toggleSectionHelp('tipoPerfil')" [attr.aria-expanded]="openSectionHelp() === 'tipoPerfil'" aria-label="Ver ayuda de esta sección" title="¿Qué debo llenar aquí?">
+              <i class="fas fa-circle-question text-borgona"></i>
+            </button>
+          </h5>
+          <div class="section-help-content" *ngIf="openSectionHelp() === 'tipoPerfil'">
+            <i class="fas fa-info-circle me-2 text-borgona" aria-hidden="true"></i>
+            <span class="section-help-text">{{ sectionHelpTexts['tipoPerfil'] }}</span>
+          </div>
+          <p class="text-muted small mb-3">Indica si te registras como personas investigadoras, personas innovadoras o como perfil mixto.</p>
+          <div class="input-wrapper">
+            <div class="row g-3">
+              <div class="col-12 col-md-4">
+                <div class="form-check form-check-card p-3 rounded border h-100"
+                     [class.border-borgona]="f['tipoPerfil'].value === 'INVESTIGADOR'"
+                     [class.bg-light]="f['tipoPerfil'].value === 'INVESTIGADOR'">
+                  <input
+                    data-control="tipoPerfil"
+                    type="radio"
+                    id="tipoInvestigador"
+                    class="form-check-input"
+                    formControlName="tipoPerfil"
+                    value="INVESTIGADOR"
+                  />
+                  <label class="form-check-label w-100 cursor-pointer d-flex align-items-center" for="tipoInvestigador">
+                    <i class="fas fa-microscope text-borgona me-2 fa-lg"></i>
+                    <span><strong>Personas investigadoras</strong><br><small class="text-muted">Dedicada a la investigación científica o académica</small></span>
+                  </label>
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <div class="form-check form-check-card p-3 rounded border h-100"
+                     [class.border-borgona]="f['tipoPerfil'].value === 'INNOVADOR'"
+                     [class.bg-light]="f['tipoPerfil'].value === 'INNOVADOR'">
+                  <input
+                    type="radio"
+                    id="tipoInnovador"
+                    class="form-check-input"
+                    formControlName="tipoPerfil"
+                    value="INNOVADOR"
+                  />
+                  <label class="form-check-label w-100 cursor-pointer d-flex align-items-center" for="tipoInnovador">
+                    <i class="fas fa-lightbulb text-borgona me-2 fa-lg"></i>
+                    <span><strong>Personas innovadoras</strong><br><small class="text-muted">Enfocada en innovación tecnológica o emprendimiento</small></span>
+                  </label>
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <div class="form-check form-check-card p-3 rounded border h-100"
+                     [class.border-borgona]="f['tipoPerfil'].value === 'HIBRIDO'"
+                     [class.bg-light]="f['tipoPerfil'].value === 'HIBRIDO'">
+                  <input
+                    type="radio"
+                    id="tipoHibrido"
+                    class="form-check-input"
+                    formControlName="tipoPerfil"
+                    value="HIBRIDO"
+                  />
+                  <label class="form-check-label w-100 cursor-pointer d-flex align-items-center" for="tipoHibrido">
+                    <i class="fas fa-vial text-borgona me-2 fa-lg"></i>
+                    <span><strong>Personas investigadoras e innovadoras</strong><br><small class="text-muted">Perfil mixto en investigación e innovación</small></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="field-help mt-2"
+                 *ngIf="f['tipoPerfil'].touched && f['tipoPerfil'].hasError('required')"
+                 [@slideIn]>
+              <i class="fas fa-exclamation-circle me-1"></i>Selecciona personas investigadoras, personas innovadoras o perfil mixto.
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección: Ubicación -->
+        <div class="form-section mb-4">
+          <h5 class="section-title mb-3 d-flex align-items-center flex-wrap gap-2">
+            <i class="fas fa-map-marker-alt text-borgona me-2"></i>Ubicación
+            <button type="button" class="section-help-btn ms-auto" (click)="toggleSectionHelp('ubicacion')" [attr.aria-expanded]="openSectionHelp() === 'ubicacion'" aria-label="Ver ayuda de esta sección" title="¿Qué debo llenar aquí?">
+              <i class="fas fa-circle-question text-borgona"></i>
+            </button>
+          </h5>
+          <div class="section-help-content" *ngIf="openSectionHelp() === 'ubicacion'">
+            <i class="fas fa-info-circle me-2 text-borgona" aria-hidden="true"></i>
+            <span class="section-help-text">{{ sectionHelpTexts['ubicacion'] }}</span>
+          </div>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="paisNacimiento" class="form-label fw-semibold">
+                País de nacimiento <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-globe"></i>
+                  </span>
+                  <input
+                    data-control="paisNacimiento"
+                    id="paisNacimiento"
+                    type="text"
+                    class="form-control"
+                    [class.is-invalid]="f['paisNacimiento'].touched && f['paisNacimiento'].invalid"
+                    [class.is-valid]="f['paisNacimiento'].touched && f['paisNacimiento'].valid"
+                    formControlName="paisNacimiento"
+                    placeholder="Ej: MÉXICO"
+                  />
+                  <span class="validation-icon" *ngIf="f['paisNacimiento'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['paisNacimiento'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['paisNacimiento'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['paisNacimiento'].touched && f['paisNacimiento'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu país.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="entidadFederativa" class="form-label fw-semibold">
+                Entidad federativa <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-map"></i>
+                  </span>
+                  <select
+                    data-control="entidadFederativa"
+                    id="entidadFederativa"
+                    class="form-select"
+                    [class.is-invalid]="f['entidadFederativa'].touched && f['entidadFederativa'].invalid"
+                    [class.is-valid]="f['entidadFederativa'].touched && f['entidadFederativa'].valid"
+                    formControlName="entidadFederativa">
+                    <option value="">Selecciona entidad...</option>
+                    <option *ngFor="let entidad of entidadesFederativas" [value]="entidad">
+                      {{ entidad }}
+                    </option>
+                  </select>
+                  <span class="validation-icon" *ngIf="f['entidadFederativa'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['entidadFederativa'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['entidadFederativa'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['entidadFederativa'].touched && f['entidadFederativa'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Selecciona tu entidad federativa.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="nacionalidad" class="form-label fw-semibold">
+                Nacionalidad <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-flag"></i>
+                  </span>
+                  <input
+                    data-control="nacionalidad"
+                    id="nacionalidad"
+                    type="text"
+                    class="form-control"
+                    [class.is-invalid]="f['nacionalidad'].touched && f['nacionalidad'].invalid"
+                    [class.is-valid]="f['nacionalidad'].touched && f['nacionalidad'].valid"
+                    formControlName="nacionalidad"
+                    placeholder="Ej: MEXICANA"
+                  />
+                  <span class="validation-icon" *ngIf="f['nacionalidad'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['nacionalidad'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['nacionalidad'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['nacionalidad'].touched && f['nacionalidad'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu nacionalidad.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="municipio" class="form-label fw-semibold">
+                Municipio <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-city"></i>
+                  </span>
+                  <input
+                    data-control="municipio"
+                    id="municipio"
+                    type="text"
+                    class="form-control"
+                    [class.is-invalid]="f['municipio'].touched && f['municipio'].invalid"
+                    [class.is-valid]="f['municipio'].touched && f['municipio'].valid"
+                    formControlName="municipio"
+                    placeholder="Ej: Toluca"
+                  />
+                  <span class="validation-icon" *ngIf="f['municipio'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['municipio'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['municipio'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help"
+                     *ngIf="f['municipio'].touched && f['municipio'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu municipio.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección: Identificación -->
+        <div class="form-section mb-4">
+          <h5 class="section-title mb-3 d-flex align-items-center flex-wrap gap-2">
+            <i class="fas fa-id-card text-borgona me-2"></i>Identificación
+            <button type="button" class="section-help-btn ms-auto" (click)="toggleSectionHelp('identificacion')" [attr.aria-expanded]="openSectionHelp() === 'identificacion'" aria-label="Ver ayuda de esta sección" title="¿Qué debo llenar aquí?">
+              <i class="fas fa-circle-question text-borgona"></i>
+            </button>
+          </h5>
+          <div class="section-help-content" *ngIf="openSectionHelp() === 'identificacion'">
+            <i class="fas fa-info-circle me-2 text-borgona" aria-hidden="true"></i>
+            <span class="section-help-text">{{ sectionHelpTexts['identificacion'] }}</span>
+          </div>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="curp" class="form-label fw-semibold">
+                CURP <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-id-badge"></i>
+                  </span>
+                  <input
+                    data-control="curp"
+                    id="curp"
+                    type="text"
+                    class="form-control"
+                    [class.is-invalid]="f['curp'].touched && (f['curp'].invalid || form.hasError('rfcCurpMismatch'))"
+                    [class.is-valid]="f['curp'].touched && f['curp'].valid && !form.hasError('rfcCurpMismatch')"
+                    formControlName="curp"
+                    placeholder="AAAA001122HDFRRN09"
+                    maxlength="18"
+                  />
+                  <span class="validation-icon" *ngIf="f['curp'].touched">
+                    <i class="fas fa-check-circle text-success" 
+                       *ngIf="f['curp'].valid && !form.hasError('rfcCurpMismatch')"></i>
+                    <i class="fas fa-times-circle text-danger" 
+                       *ngIf="f['curp'].invalid || form.hasError('rfcCurpMismatch')"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['curp'].touched && f['curp'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu CURP.
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['curp'].touched && f['curp'].hasError('curp')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>CURP con formato inválido.
+                </div>
+                <div class="field-help" 
+                     *ngIf="form.hasError('rfcCurpMismatch') && f['curp'].touched && f['rfc'].touched"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>El RFC y CURP no parecen corresponder a la misma persona. Verifica que sean correctos.
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-12 col-md-6">
+              <label for="rfc" class="form-label fw-semibold">
+                RFC <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-file-invoice"></i>
+                  </span>
+                  <input
+                    data-control="rfc"
+                    id="rfc"
+                    type="text"
+                    class="form-control"
+                    [class.is-invalid]="f['rfc'].touched && (f['rfc'].invalid || form.hasError('rfcCurpMismatch'))"
+                    [class.is-valid]="f['rfc'].touched && f['rfc'].valid && !form.hasError('rfcCurpMismatch')"
+                    formControlName="rfc"
+                    placeholder="REGM020402ABC"
+                    maxlength="13"
+                  />
+                  <span class="validation-icon" *ngIf="f['rfc'].touched">
+                    <i class="fas fa-check-circle text-success" 
+                       *ngIf="f['rfc'].valid && !form.hasError('rfcCurpMismatch')"></i>
+                    <i class="fas fa-times-circle text-danger" 
+                       *ngIf="f['rfc'].invalid || form.hasError('rfcCurpMismatch')"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['rfc'].touched && f['rfc'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu RFC.
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['rfc'].touched && f['rfc'].hasError('rfcLength')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>RFC con formato inválido. Debe tener exactamente 13 caracteres.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="tel" class="form-label fw-semibold">
+                Teléfono <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-phone"></i>
+                  </span>
+                  <input
+                    data-control="telefono"
+                    id="tel"
+                    type="tel"
+                    class="form-control"
+                    [class.is-invalid]="f['telefono'].touched && f['telefono'].invalid"
+                    [class.is-valid]="f['telefono'].touched && f['telefono'].valid"
+                    formControlName="telefono"
+                    inputmode="numeric"
+                    placeholder="10 dígitos"
+                    maxlength="10"
+                  />
+                  <span class="validation-icon" *ngIf="f['telefono'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['telefono'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['telefono'].invalid"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['telefono'].touched && f['telefono'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu teléfono.
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['telefono'].touched && f['telefono'].hasError('phone')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Debe contener al menos 10 dígitos.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección: Contacto -->
+        <div class="form-section mb-4">
+          <h5 class="section-title mb-3 d-flex align-items-center flex-wrap gap-2">
+            <i class="fas fa-envelope text-borgona me-2"></i>Contacto
+            <button type="button" class="section-help-btn ms-auto" (click)="toggleSectionHelp('contacto')" [attr.aria-expanded]="openSectionHelp() === 'contacto'" aria-label="Ver ayuda de esta sección" title="¿Qué debo llenar aquí?">
+              <i class="fas fa-circle-question text-borgona"></i>
+            </button>
+          </h5>
+          <div class="section-help-content" *ngIf="openSectionHelp() === 'contacto'">
+            <i class="fas fa-info-circle me-2 text-borgona" aria-hidden="true"></i>
+            <span class="section-help-text">{{ sectionHelpTexts['contacto'] }}</span>
+          </div>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="email" class="form-label fw-semibold">
+                Correo electrónico <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-envelope"></i>
+                  </span>
+                  <input
+                    data-control="email"
+                    id="email"
+                    type="email"
+                    class="form-control"
+                    [class.is-invalid]="f['email'].touched && (f['email'].invalid || form.hasError('emailMismatch'))"
+                    [class.is-valid]="f['email'].touched && f['email'].valid && !form.hasError('emailMismatch')"
+                    formControlName="email"
+                    autocomplete="email"
+                    placeholder="ejemplo@correo.com"
+                  />
+                  <span class="validation-icon" *ngIf="f['email'].touched">
+                    <i class="fas fa-check-circle text-success" 
+                       *ngIf="f['email'].valid && !form.hasError('emailMismatch')"></i>
+                    <i class="fas fa-times-circle text-danger" 
+                       *ngIf="f['email'].invalid || form.hasError('emailMismatch')"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['email'].touched && f['email'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu correo.
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['email'].touched && f['email'].hasError('email')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce un correo válido.
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['email'].touched && f['email'].hasError('taken')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Este correo ya está registrado.
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['email'].touched && form.hasError('emailMismatch')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Los correos no coinciden.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="correo2" class="form-label fw-semibold">
+                Confirmar correo electrónico <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-envelope"></i>
+                  </span>
+                  <input
+                    data-control="confirmCorreo"
+                    id="correo2"
+                    type="email"
+                    class="form-control"
+                    [class.is-invalid]="f['confirmCorreo'].touched && (f['confirmCorreo'].invalid || form.hasError('emailMismatch'))"
+                    [class.is-valid]="f['confirmCorreo'].touched && f['confirmCorreo'].valid && !form.hasError('emailMismatch')"
+                    formControlName="confirmCorreo"
+                    autocomplete="email"
+                    placeholder="Confirma tu correo"
+                  />
+                  <span class="validation-icon" *ngIf="f['confirmCorreo'].touched">
+                    <i class="fas fa-check-circle text-success" 
+                       *ngIf="f['confirmCorreo'].valid && !form.hasError('emailMismatch')"></i>
+                    <i class="fas fa-times-circle text-danger" 
+                       *ngIf="f['confirmCorreo'].invalid || form.hasError('emailMismatch')"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['confirmCorreo'].touched && f['confirmCorreo'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Confirma tu correo.
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['confirmCorreo'].touched && f['confirmCorreo'].hasError('email')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce un correo válido.
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['confirmCorreo'].touched && form.hasError('emailMismatch')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Los correos no coinciden.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección: Seguridad -->
+        <div class="form-section mb-4">
+          <h5 class="section-title mb-3 d-flex align-items-center flex-wrap gap-2">
+            <i class="fas fa-lock text-borgona me-2"></i>Seguridad
+            <button type="button" class="section-help-btn ms-auto" (click)="toggleSectionHelp('seguridad')" [attr.aria-expanded]="openSectionHelp() === 'seguridad'" aria-label="Ver ayuda de esta sección" title="¿Qué debo llenar aquí?">
+              <i class="fas fa-circle-question text-borgona"></i>
+            </button>
+          </h5>
+          <div class="section-help-content" *ngIf="openSectionHelp() === 'seguridad'">
+            <i class="fas fa-info-circle me-2 text-borgona" aria-hidden="true"></i>
+            <span class="section-help-text">{{ sectionHelpTexts['seguridad'] }}</span>
+          </div>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="pwd" class="form-label fw-semibold">
+                Contraseña <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-lock"></i>
+                  </span>
+                  <input
+                    data-control="password"
+                    [type]="pwdVisible() ? 'text' : 'password'"
+                    id="pwd"
+                    class="form-control"
+                    [class.is-invalid]="f['password'].touched && (f['password'].invalid || form.hasError('mismatch'))"
+                    [class.is-valid]="f['password'].touched && f['password'].valid && !form.hasError('mismatch')"
+                    formControlName="password"
+                    autocomplete="new-password"
+                    placeholder="Mínimo 8 caracteres"
+                  />
+                  <button
+                    class="btn btn-outline-secondary toggle-visibility"
+                    type="button"
+                    (click)="pwdVisible.set(!pwdVisible())"
+                    [attr.aria-pressed]="pwdVisible()"
+                    aria-label="Mostrar u ocultar contraseña"
+                    title="Mostrar/ocultar">
+                    <i [class.fas]="true" [class.fa-eye]="!pwdVisible()" [class.fa-eye-slash]="pwdVisible()"></i>
+                  </button>
+                  <span class="validation-icon" *ngIf="f['password'].touched">
+                    <i class="fas fa-check-circle text-success" 
+                       *ngIf="f['password'].valid && !form.hasError('mismatch')"></i>
+                    <i class="fas fa-times-circle text-danger" 
+                       *ngIf="f['password'].invalid || form.hasError('mismatch')"></i>
+                  </span>
+                </div>
+                <div class="pwd-meter" [attr.data-level]="passwordStrength()"></div>
+                <div class="field-help" 
+                     *ngIf="f['password'].touched && f['password'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Introduce una contraseña.
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['password'].touched && f['password'].hasError('weak')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Mínimo 8 caracteres, mayúsculas/minúsculas y números.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="pwd2" class="form-label fw-semibold">
+                Confirmar contraseña <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text">
+                    <i class="fas fa-lock"></i>
+                  </span>
+                  <input
+                    data-control="confirmPassword"
+                    [type]="confirmPwdVisible() ? 'text' : 'password'"
+                    id="pwd2"
+                    class="form-control"
+                    [class.is-invalid]="f['confirmPassword'].touched && (f['confirmPassword'].invalid || form.hasError('mismatch'))"
+                    [class.is-valid]="f['confirmPassword'].touched && f['confirmPassword'].valid && !form.hasError('mismatch')"
+                    formControlName="confirmPassword"
+                    autocomplete="new-password"
+                    placeholder="Confirma tu contraseña"
+                  />
+                  <button
+                    class="btn btn-outline-secondary toggle-visibility"
+                    type="button"
+                    (click)="confirmPwdVisible.set(!confirmPwdVisible())"
+                    [attr.aria-pressed]="confirmPwdVisible()"
+                    aria-label="Mostrar u ocultar contraseña"
+                    title="Mostrar/ocultar">
+                    <i [class.fas]="true" [class.fa-eye]="!confirmPwdVisible()" [class.fa-eye-slash]="confirmPwdVisible()"></i>
+                  </button>
+                  <span class="validation-icon" *ngIf="f['confirmPassword'].touched">
+                    <i class="fas fa-check-circle text-success" 
+                       *ngIf="f['confirmPassword'].valid && !form.hasError('mismatch')"></i>
+                    <i class="fas fa-times-circle text-danger" 
+                       *ngIf="f['confirmPassword'].invalid || form.hasError('mismatch')"></i>
+                  </span>
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['confirmPassword'].touched && f['confirmPassword'].hasError('required')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Confirma tu contraseña.
+                </div>
+                <div class="field-help" 
+                     *ngIf="f['confirmPassword'].touched && form.hasError('mismatch')"
+                     [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Las contraseñas no coinciden.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botón de envío -->
+        <div class="d-grid mt-4">
+          <button 
+            class="btn btn-login w-100 btn-lg" 
+            type="submit" 
+            [disabled]="submitting() || form.invalid">
+            <span *ngIf="!submitting()">
+              <i class="fas fa-user-plus me-2"></i>REGISTRARSE
+            </span>
+            <span *ngIf="submitting()" class="d-flex align-items-center justify-content-center">
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Procesando…
+            </span>
+          </button>
+        </div>
+
+        <div id="formHelp" class="visually-hidden">
+          Los errores aparecen bajo cada campo.
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+

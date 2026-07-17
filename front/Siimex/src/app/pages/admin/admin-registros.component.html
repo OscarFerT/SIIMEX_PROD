@@ -1,0 +1,678 @@
+<div class="admin-registros">
+  <header class="registros-header">
+    <div>
+      <h1 class="registros-title">
+        <i class="fas fa-users"></i> Registros
+      </h1>
+      <p class="registros-subtitle">Selecciona un usuario en la tabla y usa las acciones superiores. Exporta reportes cuando lo necesites.</p>
+    </div>
+    <div class="registros-actions">
+      <button type="button" class="btn btn-outline-secondary btn-report" (click)="exportarExcel()" [disabled]="registrosFiltrados.length === 0" title="Descargar Excel">
+        <i class="fas fa-file-excel me-1"></i>Excel
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-report" (click)="exportarPdf()" [disabled]="registrosFiltrados.length === 0" title="Imprimir / PDF">
+        <i class="fas fa-file-pdf me-1"></i>PDF
+      </button>
+      <button type="button" class="btn btn-borgona" (click)="abrirModalNuevo()">
+        <i class="fas fa-user-plus me-2"></i>Nuevo usuario
+      </button>
+    </div>
+    <div class="registros-actions registros-actions-selection">
+      <span class="selected-user-chip" [class.empty]="!usuarioSeleccionado">
+        <i class="fas fa-user-check me-1"></i>
+        {{ usuarioSeleccionado ? getNombreCompleto(usuarioSeleccionado) : 'Sin usuario seleccionado' }}
+      </span>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="verDetalleSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso">
+        <i class="fas fa-eye me-1"></i>Detalle
+      </button>
+      <button type="button" class="btn btn-outline-primary btn-sm" (click)="visualizarCvSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso || cvGenerando">
+        <i class="fas fa-file-pdf me-1"></i>{{ cvGenerando ? 'Generando...' : 'Visualizar CV' }}
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarCvSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso || cvGenerando">
+        <i class="fas fa-download me-1"></i>{{ cvGenerando ? 'Generando...' : 'Descargar CV' }}
+      </button>
+      <button type="button" class="btn btn-outline-warning btn-sm" (click)="alternarEstadoSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso">
+        <i class="fas fa-power-off me-1"></i>{{ etiquetaEstadoSeleccionado }}
+      </button>
+      <button type="button" class="btn btn-outline-info btn-sm" (click)="toggleAdminSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso">
+        <i class="fas fa-shield-alt me-1"></i>{{ usuarioSeleccionado && esAdmin(usuarioSeleccionado) ? 'Revocar admin' : 'Hacer admin' }}
+      </button>
+      <button type="button" class="btn btn-outline-primary btn-sm" (click)="toggleEvaluadorSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso">
+        <i class="fas fa-clipboard-check me-1"></i>{{ usuarioSeleccionado && esEvaluador(usuarioSeleccionado) ? 'Revocar evaluador' : 'Asignar evaluador' }}
+      </button>
+      <button type="button" class="btn btn-outline-danger btn-sm" (click)="restablecerPasswordSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso">
+        <i class="fas fa-key me-1"></i>Restablecer contraseña
+      </button>
+      <button type="button" class="btn btn-danger btn-sm" (click)="eliminarSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso">
+        <i class="fas fa-trash me-1"></i>Eliminar
+      </button>
+    </div>
+  </header>
+
+  <div *ngIf="loading" class="registros-loading">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="text-muted mt-2 mb-0">Cargando registros...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error" class="registros-card">
+    <div class="filtros-section">
+      <div class="filtros-row">
+        <div class="filtro-search">
+          <i class="fas fa-search filtro-icon"></i>
+          <input
+            id="buscarUsuario"
+            type="search"
+            class="form-control"
+            placeholder="Buscar por nombre, email, CURP..."
+            [(ngModel)]="filtroTexto"
+            autocomplete="off"
+          />
+        </div>
+        <div class="filtro-select-wrap">
+          <label class="filtro-label">Perfil</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroPerfil">
+            <option value="">Todos</option>
+            <option value="INVESTIGADOR">Personas investigadoras</option>
+            <option value="INNOVADOR">Personas innovadoras</option>
+            <option value="HIBRIDO">Personas investigadoras e innovadoras</option>
+          </select>
+        </div>
+        <div class="filtro-select-wrap">
+          <label class="filtro-label">Sexo</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroSexo">
+            <option value="">Todos</option>
+            <option *ngFor="let g of GENEROS" [value]="g.value">{{ g.label }}</option>
+          </select>
+        </div>
+        <div class="filtro-select-wrap">
+          <label class="filtro-label">Entidad</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroEntidad">
+            <option value="">Todas</option>
+            <option *ngFor="let e of entidadesUnicas" [value]="e">{{ e }}</option>
+          </select>
+        </div>
+        <div class="filtro-select-wrap">
+          <label class="filtro-label">Municipio</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroMunicipio">
+            <option value="">Todos</option>
+            <option *ngFor="let m of municipiosUnicos" [value]="m">{{ m }}</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="limpiarFiltros()" [disabled]="!tieneFiltrosActivos()">
+          <i class="fas fa-eraser me-1"></i>Limpiar
+        </button>
+      </div>
+      <div class="filtros-meta">
+        <span class="registros-count">
+          <strong>{{ registrosFiltrados.length }}</strong> de {{ registros.length }} usuario(s)
+        </span>
+      </div>
+    </div>
+    <div class="tabla-section">
+      <div class="table-responsive">
+        <table class="registros-table">
+          <thead>
+            <tr>
+              <th style="width: 54px;">Sel.</th>
+              <th>Usuario</th>
+              <th>Email</th>
+              <th>Perfil</th>
+              <th>Sexo</th>
+              <th>Entidad federativa</th>
+              <th>Municipio</th>
+              <th>CURP</th>
+              <th>Teléfono</th>
+              <th>Último acceso</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of registrosFiltrados" (click)="seleccionarUsuario(r)" class="registro-row" [class.is-selected]="estaSeleccionado(r)">
+              <td class="text-center">
+                <input
+                  type="radio"
+                  name="seleccionUsuario"
+                  class="form-check-input"
+                  [checked]="estaSeleccionado(r)"
+                  (click)="$event.stopPropagation(); seleccionarUsuario(r)"
+                  aria-label="Seleccionar usuario"
+                />
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="admin-tabla-avatar">
+                    <img *ngIf="r.fotoUrl" [src]="getFotoUrlRegistro(r)" alt="" class="admin-tabla-avatar-img" />
+                    <span *ngIf="!r.fotoUrl" class="admin-tabla-avatar-inicial">{{ getInicial(r) }}</span>
+                  </div>
+                  <span>{{ getNombreCompleto(r) }}</span>
+                  <span *ngIf="esAdmin(r)" class="badge bg-danger ms-1" style="font-size: 0.65rem;">ADMIN</span>
+                  <span *ngIf="esEvaluador(r)" class="badge bg-info text-dark ms-1" style="font-size: 0.65rem;">EVALUADOR</span>
+                  <span *ngIf="r.bloqueadoListaNegra" class="badge bg-dark ms-1" style="font-size: 0.65rem;">LISTA NEGRA</span>
+                </div>
+              </td>
+              <td>{{ r.email || '—' }}</td>
+              <td>
+                <span class="badge" [class.bg-primary]="r.tipoPerfil === 'INVESTIGADOR'" [class.bg-success]="r.tipoPerfil === 'INNOVADOR'" [class.bg-warning]="r.tipoPerfil === 'HIBRIDO'">
+                  {{ r.tipoPerfil || '—' }}
+                </span>
+              </td>
+              <td>{{ getGeneroDisplay(r.genero) }}</td>
+              <td>{{ r.entidadFederativa || '—' }}</td>
+              <td>{{ r.municipio || '—' }}</td>
+              <td><code class="small">{{ r.curp || '—' }}</code></td>
+              <td>{{ r.telefono || '—' }}</td>
+              <td class="small">{{ formatearFecha(r.lastLoginAt) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div *ngIf="registros.length === 0" class="registros-empty">
+        <i class="fas fa-users fa-2x text-muted mb-2"></i>
+        <p class="mb-0 text-muted">No hay registros aún.</p>
+      </div>
+      <div *ngIf="registros.length > 0 && registrosFiltrados.length === 0" class="registros-empty">
+        <i class="fas fa-search fa-2x text-muted mb-2"></i>
+        <p class="mb-0 text-muted">Ningún usuario coincide con los filtros.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal detalle usuario (clase admin-detalle-usuario-modal para z-index global) -->
+<div class="modal fade admin-detalle-usuario-modal" [class.show]="modalVisible" [style.display]="modalVisible ? 'block' : 'none'" tabindex="-1" role="dialog" aria-labelledby="detalleUsuarioLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-borgona text-white">
+        <h5 class="modal-title" id="detalleUsuarioLabel">
+          <i class="fas fa-user me-2"></i>Detalle del usuario
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="cerrarModal()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="detalleLoading" class="text-center py-5">
+          <div class="spinner-border text-borgona" role="status"></div>
+          <p class="mt-2 text-muted">Cargando...</p>
+        </div>
+
+        <div *ngIf="detalle && !detalleLoading" class="detalle-usuario">
+          <div class="d-flex flex-wrap align-items-center gap-3 mb-4 pb-3" style="border-bottom: 1px solid #eee;">
+            <div class="foto-perfil-wrap">
+              <img *ngIf="fotoUrl" [src]="fotoUrl" alt="Foto de perfil" />
+              <div *ngIf="!fotoUrl" class="w-100 h-100 d-flex align-items-center justify-content-center text-muted">
+                <i class="fas fa-user fa-2x"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1">
+              <h5 class="mb-1 fw-bold" style="color: #2c2c2c;">{{ getNombreCompleto(detalle) }}</h5>
+              <p class="text-muted small mb-2">{{ detalle.email || '—' }}</p>
+              <span class="badge me-1 py-2 px-2" [class.bg-success]="detalle.enabled" [class.bg-secondary]="!detalle.enabled">
+                {{ detalle.enabled ? 'Activo' : 'Suspendido' }}
+              </span>
+              <span class="badge py-2 px-2" [class.bg-warning]="detalle.locked" [class.bg-secondary]="!detalle.locked">
+                {{ detalle.locked ? 'Bloqueado' : 'Desbloqueado' }}
+              </span>
+              <span *ngIf="esAdmin(detalle)" class="badge bg-danger py-2 px-2 ms-1">
+                <i class="fas fa-shield-alt me-1"></i>Administrador
+              </span>
+              <span *ngIf="esEvaluador(detalle)" class="badge bg-info text-dark py-2 px-2 ms-1">
+                <i class="fas fa-clipboard-check me-1"></i>Evaluador
+              </span>
+              <span *ngIf="detalle.bloqueadoListaNegra" class="badge bg-dark py-2 px-2 ms-1">
+                <i class="fas fa-user-slash me-1"></i>Lista negra
+              </span>
+            </div>
+          </div>
+
+          <div class="detalle-seccion">
+            <h6 class="detalle-seccion-titulo">Datos personales</h6>
+            <div class="row g-0">
+              <div class="col-12 col-md-6 detalle-campo"><strong>Nombre completo</strong><span class="valor"> {{ getNombreCompleto(detalle) }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Email</strong><span class="valor"> {{ detalle.email || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Usuario</strong><span class="valor"> {{ detalle.username || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Visibilidad perfil</strong><span class="valor"> {{ detalle.visibilidadPerfil || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Cuenta activa</strong><span class="valor"> {{ detalle.enabled ? 'Sí' : 'No' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Cuenta bloqueada</strong><span class="valor"> {{ detalle.locked ? 'Sí' : 'No' }}</span></div>
+              <div class="col-12 detalle-campo"><strong>Último inicio de sesión</strong><span class="valor" [class.text-muted]="!detalle.lastLoginAt"> {{ formatearFecha(detalle.lastLoginAt) }}</span></div>
+            </div>
+          </div>
+
+          <div class="detalle-seccion">
+            <h6 class="detalle-seccion-titulo">Registro (CURP, RFC, perfil)</h6>
+            <div class="row g-0">
+              <div class="col-12 col-md-6 detalle-campo"><strong>CURP</strong> <code>{{ detalle.curp || '—' }}</code></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>RFC</strong> <code>{{ detalle.rfc || '—' }}</code></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Tipo de perfil</strong><span class="valor"> {{ detalle.tipoPerfil || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Teléfono</strong><span class="valor"> {{ detalle.telefono || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Fecha nacimiento</strong><span class="valor"> {{ detalle.fechaNacimiento || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Género</strong><span class="valor"> {{ detalle.genero || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Nacionalidad</strong><span class="valor"> {{ detalle.nacionalidad || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>País nacimiento</strong><span class="valor"> {{ detalle.paisNacimiento || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Entidad federativa</strong><span class="valor"> {{ detalle.entidadFederativa || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Municipio</strong><span class="valor"> {{ detalle.municipio || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Estado civil</strong><span class="valor"> {{ detalle.estadoCivil || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Registro creado</strong><span class="valor"> {{ detalle.createdAt || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Última actualización</strong><span class="valor"> {{ detalle.updatedAt || '—' }}</span></div>
+            </div>
+          </div>
+
+          <div class="detalle-seccion" *ngIf="detalle.semblanza || detalle.interesHabilidad">
+            <h6 class="detalle-seccion-titulo">Semblanza e intereses</h6>
+            <div class="row g-0">
+              <div class="col-12 detalle-campo" *ngIf="detalle.semblanza">
+                <strong>Semblanza</strong><span class="valor"> {{ detalle.semblanza }}</span>
+              </div>
+              <div class="col-12 col-md-8 detalle-campo" *ngIf="detalle.interesHabilidad?.interesDescripcion">
+                <strong>Interés</strong><span class="valor"> {{ detalle.interesHabilidad?.interesDescripcion }}</span>
+              </div>
+              <div class="col-12 col-md-4 detalle-campo" *ngIf="detalle.interesHabilidad?.habilidadNivel">
+                <strong>Nivel habilidad</strong><span class="valor"> {{ detalle.interesHabilidad?.habilidadNivel }}</span>
+              </div>
+              <div class="col-12 detalle-campo" *ngIf="detalle.interesHabilidad?.habilidadDescripcion">
+                <strong>Habilidad</strong><span class="valor"> {{ detalle.interesHabilidad?.habilidadDescripcion }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detalle-seccion" *ngIf="detalle.institucion">
+            <h6 class="detalle-seccion-titulo">Institución</h6>
+            <div class="row g-0">
+              <div class="col-12 col-md-6 detalle-campo"><strong>Nombre</strong><span class="valor"> {{ detalle.institucion.nombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Clave oficial</strong><span class="valor"> {{ detalle.institucion.claveOficial || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Tipo</strong><span class="valor"> {{ detalle.institucion.tipoNombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>País</strong><span class="valor"> {{ detalle.institucion.paisNombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Entidad</strong><span class="valor"> {{ detalle.institucion.entidadNombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Nivel</strong><span class="valor"> {{ detalle.institucion.nivelUnoNombre || '—' }} / {{ detalle.institucion.nivelDosNombre || '—' }}</span></div>
+            </div>
+          </div>
+
+          <div class="detalle-seccion" *ngIf="detalle.areaConocimiento">
+            <h6 class="detalle-seccion-titulo">Área de conocimiento</h6>
+            <div class="row g-0">
+              <div class="col-12 col-md-6 detalle-campo"><strong>Área</strong><span class="valor"> {{ detalle.areaConocimiento.areaNombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Clave área</strong><span class="valor"> {{ detalle.areaConocimiento.areaClave || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Campo</strong><span class="valor"> {{ detalle.areaConocimiento.campoNombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Disciplina</strong><span class="valor"> {{ detalle.areaConocimiento.disciplinaNombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Subdisciplina</strong><span class="valor"> {{ detalle.areaConocimiento.subdisciplinaNombre || '—' }}</span></div>
+            </div>
+          </div>
+
+          <div class="detalle-seccion" *ngIf="detalle.perfilMigracion">
+            <h6 class="detalle-seccion-titulo">Migración SECIHTI</h6>
+            <div class="row g-0">
+              <div class="col-12 col-md-6 detalle-campo"><strong>ID migración</strong><span class="valor"> {{ detalle.perfilMigracion.migracionId || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>CVU</strong><span class="valor"> {{ detalle.perfilMigracion.cvu || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Login</strong><span class="valor"> {{ detalle.perfilMigracion.login || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Correo alterno</strong><span class="valor"> {{ detalle.perfilMigracion.correoAlterno || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Nivel académico</strong><span class="valor"> {{ detalle.perfilMigracion.nivelAcademico || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Institución receptora</strong><span class="valor"> {{ detalle.perfilMigracion.institucionReceptora || '—' }}</span></div>
+            </div>
+          </div>
+
+          <div class="detalle-seccion" *ngIf="detalle.evidencias">
+            <h6 class="detalle-seccion-titulo">Evidencias base</h6>
+            <div class="row g-0">
+              <div class="col-12 col-md-6 detalle-campo"><strong>Currículum</strong><span class="valor"> {{ detalle.evidencias.curriculum?.nombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>INE</strong><span class="valor"> {{ detalle.evidencias.ine?.nombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Comprobante domicilio</strong><span class="valor"> {{ detalle.evidencias.domicilio?.nombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Cédula profesional</strong><span class="valor"> {{ detalle.evidencias.cedula?.nombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Certificado 1</strong><span class="valor"> {{ detalle.evidencias.cert1?.nombre || '—' }}</span></div>
+              <div class="col-12 col-md-6 detalle-campo"><strong>Certificado 2</strong><span class="valor"> {{ detalle.evidencias.cert2?.nombre || '—' }}</span></div>
+            </div>
+          </div>
+
+          <div class="detalle-seccion" *ngIf="rubrosConEvidencias(detalle).length > 0">
+            <h6 class="detalle-seccion-titulo">Evidencias por rubro</h6>
+            <div class="row g-0">
+              <div class="col-12 col-md-6 detalle-campo" *ngFor="let rubro of rubrosConEvidencias(detalle)">
+                <strong>{{ etiquetaRubro(rubro) }}</strong>
+                <span class="valor"> {{ detalle.evidenciasRubrosPersonalizadas?.[rubro]?.length || 0 }} archivo(s)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formación académica -->
+          <div class="detalle-seccion" *ngIf="detalle.trayectoriaAcademica && detalle.trayectoriaAcademica.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-graduation-cap me-2"></i>Formación académica
+              <span class="badge bg-secondary ms-2">{{ detalle.trayectoriaAcademica.length }}</span>
+            </h6>
+            <div *ngFor="let ta of detalle.trayectoriaAcademica" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-6 detalle-campo"><strong>Nivel</strong><span class="valor"> {{ ta.nivelNombre || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Título</strong><span class="valor"> {{ ta.titulo || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Institución</strong><span class="valor"> {{ ta.institucion || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Estatus</strong><span class="valor"> {{ ta.estatusNombre || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Cédula profesional</strong><span class="valor"> {{ ta.cedulaProfesional || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Fecha obtención</strong><span class="valor"> {{ ta.fechaObtencion || '—' }}</span></div>
+                <div class="col-12 detalle-campo" *ngIf="ta.tituloTesis"><strong>Título de tesis</strong><span class="valor"> {{ ta.tituloTesis }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Experiencia profesional -->
+          <div class="detalle-seccion" *ngIf="detalle.trayectoriaProfesional && detalle.trayectoriaProfesional.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-briefcase me-2"></i>Experiencia profesional
+              <span class="badge bg-secondary ms-2">{{ detalle.trayectoriaProfesional.length }}</span>
+            </h6>
+            <div *ngFor="let tp of detalle.trayectoriaProfesional" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-6 detalle-campo"><strong>Nombramiento</strong><span class="valor"> {{ tp.nombramiento || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Institución</strong><span class="valor"> {{ tp.institucion || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Fecha inicio</strong><span class="valor"> {{ tp.fechaInicio || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Fecha fin</strong><span class="valor"> {{ tp.esActual ? 'Actual' : (tp.fechaFin || '—') }}</span></div>
+                <div class="col-12 detalle-campo" *ngIf="tp.logros"><strong>Logros</strong><span class="valor"> {{ tp.logros }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Estancias de investigación -->
+          <div class="detalle-seccion" *ngIf="detalle.estancias && detalle.estancias.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-flask me-2"></i>Estancias de investigación
+              <span class="badge bg-secondary ms-2">{{ detalle.estancias.length }}</span>
+            </h6>
+            <div *ngFor="let e of detalle.estancias" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-6 detalle-campo"><strong>Proyecto</strong><span class="valor"> {{ e.nombreProyecto || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Tipo</strong><span class="valor"> {{ e.tipoNombre || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Institución receptora</strong><span class="valor"> {{ e.institucionReceptora || '—' }}</span></div>
+                <div class="col-12 col-md-3 detalle-campo"><strong>Inicio</strong><span class="valor"> {{ e.fechaInicio || '—' }}</span></div>
+                <div class="col-12 col-md-3 detalle-campo"><strong>Fin</strong><span class="valor"> {{ e.fechaFin || '—' }}</span></div>
+                <div class="col-12 detalle-campo" *ngIf="e.logros"><strong>Logros</strong><span class="valor"> {{ e.logros }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Congresos y eventos -->
+          <div class="detalle-seccion" *ngIf="detalle.congresos && detalle.congresos.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-calendar-alt me-2"></i>Congresos y eventos
+              <span class="badge bg-secondary ms-2">{{ detalle.congresos.length }}</span>
+            </h6>
+            <div *ngFor="let c of detalle.congresos" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-6 detalle-campo"><strong>Evento</strong><span class="valor"> {{ c.nombreEvento || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Título trabajo</strong><span class="valor"> {{ c.tituloTrabajo || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Participación</strong><span class="valor"> {{ c.tipoParticipacionNombre || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Fecha</strong><span class="valor"> {{ c.fecha || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>País sede</strong><span class="valor"> {{ c.paisSede || '—' }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Divulgación científica -->
+          <div class="detalle-seccion" *ngIf="detalle.divulgaciones && detalle.divulgaciones.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-bullhorn me-2"></i>Divulgación científica
+              <span class="badge bg-secondary ms-2">{{ detalle.divulgaciones.length }}</span>
+            </h6>
+            <div *ngFor="let d of detalle.divulgaciones" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-6 detalle-campo"><strong>Título</strong><span class="valor"> {{ d.titulo || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Tipo</strong><span class="valor"> {{ d.tipoDivulgacionNombre || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Medio</strong><span class="valor"> {{ d.medioNombre || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Dirigido a</strong><span class="valor"> {{ d.dirigidoA || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Producto obtenido</strong><span class="valor"> {{ d.productoObtenidoNombre || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Fecha</strong><span class="valor"> {{ d.fecha || '—' }}</span></div>
+                <div class="col-12 detalle-campo" *ngIf="d.institucionOrganizadora"><strong>Institución organizadora</strong><span class="valor"> {{ d.institucionOrganizadora }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Artículos / Aportaciones científicas -->
+          <div class="detalle-seccion" *ngIf="detalle.articulos && detalle.articulos.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-file-alt me-2"></i>Artículos / Aportaciones
+              <span class="badge bg-secondary ms-2">{{ detalle.articulos.length }}</span>
+            </h6>
+            <div *ngFor="let a of detalle.articulos" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-6 detalle-campo"><strong>Título</strong><span class="valor"> {{ a.titulo || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Tipo</strong><span class="valor"> {{ a.tipo || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Año</strong><span class="valor"> {{ a.anio || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Estado</strong><span class="valor"> {{ a.estadoNombre || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Rol</strong><span class="valor"> {{ a.rolParticipacionNombre || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Revista</strong><span class="valor"> {{ a.nombreRevista || '—' }}</span></div>
+                <div class="col-12 col-md-3 detalle-campo" *ngIf="a.issn"><strong>ISSN</strong><span class="valor"> {{ a.issn }}</span></div>
+                <div class="col-12 col-md-3 detalle-campo" *ngIf="a.doi"><strong>DOI</strong><span class="valor"> {{ a.doi }}</span></div>
+                <div class="col-12 detalle-campo" *ngIf="a.autores && a.autores.length > 0">
+                  <strong>Autores</strong>
+                  <span class="valor"> {{ a.autores.length }} autor(es):
+                    <span *ngFor="let au of a.autores; let last = last">{{ au.nombreCompleto }}<span *ngIf="au.orcid"> ({{ au.orcid }})</span>{{ last ? '' : ', ' }}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cursos impartidos -->
+          <div class="detalle-seccion" *ngIf="detalle.cursos && detalle.cursos.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-chalkboard-teacher me-2"></i>Cursos impartidos
+              <span class="badge bg-secondary ms-2">{{ detalle.cursos.length }}</span>
+            </h6>
+            <div *ngFor="let c of detalle.cursos" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-6 detalle-campo"><strong>Nombre</strong><span class="valor"> {{ c.nombre || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Programa</strong><span class="valor"> {{ c.programa || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Institución</strong><span class="valor"> {{ c.institucion || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Horas</strong><span class="valor"> {{ c.horasTotales || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Nivel</strong><span class="valor"> {{ c.nivelEscolaridad || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Inicio</strong><span class="valor"> {{ c.fechaInicio || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Fin</strong><span class="valor"> {{ c.fechaFin || '—' }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Idiomas -->
+          <div class="detalle-seccion" *ngIf="detalle.idiomas && detalle.idiomas.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-language me-2"></i>Idiomas
+              <span class="badge bg-secondary ms-2">{{ detalle.idiomas.length }}</span>
+            </h6>
+            <div *ngFor="let i of detalle.idiomas" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-4 detalle-campo"><strong>Idioma</strong><span class="valor"> {{ i.nombre || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Dominio</strong><span class="valor"> {{ i.dominioNombre || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Certificado</strong><span class="valor"> {{ i.esCertificado ? 'Sí' : 'No' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Conversación</strong><span class="valor"> {{ i.conversacion || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Lectura</strong><span class="valor"> {{ i.lectura || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Escritura</strong><span class="valor"> {{ i.escritura || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo" *ngIf="i.certInstitucion"><strong>Institución cert.</strong><span class="valor"> {{ i.certInstitucion }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo" *ngIf="i.vigenciaFin"><strong>Vigencia</strong><span class="valor"> {{ i.vigenciaFin }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Logros y distinciones -->
+          <div class="detalle-seccion" *ngIf="detalle.logros && detalle.logros.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-trophy me-2"></i>Logros y distinciones
+              <span class="badge bg-secondary ms-2">{{ detalle.logros.length }}</span>
+            </h6>
+            <div *ngFor="let l of detalle.logros" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-4 detalle-campo"><strong>Tipo</strong><span class="valor"> {{ l.tipo || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Nombre</strong><span class="valor"> {{ l.nombre || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Año</strong><span class="valor"> {{ l.anio || '—' }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Herramientas -->
+          <div class="detalle-seccion" *ngIf="detalle.herramientas && detalle.herramientas.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-tools me-2"></i>Herramientas
+              <span class="badge bg-secondary ms-2">{{ detalle.herramientas.length }}</span>
+            </h6>
+            <div class="d-flex flex-wrap gap-2">
+              <span *ngFor="let h of detalle.herramientas" class="badge bg-light text-dark border py-2 px-3">{{ h.nombre }}</span>
+            </div>
+          </div>
+
+          <!-- Incidencia social -->
+          <div class="detalle-seccion" *ngIf="detalle.incidenciaSocial && detalle.incidenciaSocial.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-hands-helping me-2"></i>Incidencia social
+              <span class="badge bg-secondary ms-2">{{ detalle.incidenciaSocial.length }}</span>
+            </h6>
+            <div *ngFor="let inc of detalle.incidenciaSocial" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-6 detalle-campo"><strong>Título</strong><span class="valor"> {{ inc.titulo || '—' }}</span></div>
+                <div class="col-12 col-md-3 detalle-campo"><strong>Ubicación</strong><span class="valor"> {{ inc.ubicacion || '—' }}</span></div>
+                <div class="col-12 col-md-3 detalle-campo"><strong>Fecha</strong><span class="valor"> {{ inc.fecha || '—' }}</span></div>
+                <div class="col-12 detalle-campo" *ngIf="inc.descripcion"><strong>Descripción</strong><span class="valor"> {{ inc.descripcion }}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Propiedad intelectual -->
+          <div class="detalle-seccion" *ngIf="detalle.propiedadIntelectual && detalle.propiedadIntelectual.length > 0">
+            <h6 class="detalle-seccion-titulo">
+              <i class="fas fa-lightbulb me-2"></i>Propiedad intelectual
+              <span class="badge bg-secondary ms-2">{{ detalle.propiedadIntelectual.length }}</span>
+            </h6>
+            <div *ngFor="let pi of detalle.propiedadIntelectual" class="tray-card mb-2">
+              <div class="row g-0">
+                <div class="col-12 col-md-6 detalle-campo"><strong>Título</strong><span class="valor"> {{ pi.titulo || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Tipo</strong><span class="valor"> {{ pi.tipo || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Nº registro</strong><span class="valor"> {{ pi.numeroRegistro || '—' }}</span></div>
+                <div class="col-12 col-md-6 detalle-campo"><strong>Institución/Oficina</strong><span class="valor"> {{ pi.institucionOficina || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>País</strong><span class="valor"> {{ pi.pais || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Fecha registro</strong><span class="valor"> {{ pi.fechaRegistro || '—' }}</span></div>
+                <div class="col-12 col-md-4 detalle-campo"><strong>Año</strong><span class="valor"> {{ pi.anio || '—' }}</span></div>
+                <div class="col-12 detalle-campo" *ngIf="pi.descripcion"><strong>Descripción</strong><span class="valor"> {{ pi.descripcion }}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer flex-wrap gap-2">
+        <div class="me-auto small text-muted">Las acciones del usuario se gestionan en la barra superior.</div>
+        <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop fade" [class.show]="modalVisible" (click)="cerrarModal()"></div>
+</div>
+
+<!-- Modal nuevo usuario -->
+<div class="modal fade admin-detalle-usuario-modal" [class.show]="modalNuevoVisible" [style.display]="modalNuevoVisible ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-borgona text-white">
+        <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Nuevo usuario</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="cerrarModalNuevo()" aria-label="Cerrar"></button>
+      </div>
+      <form (ngSubmit)="crearUsuario()" #formNuevo="ngForm">
+        <div class="modal-body">
+          <div *ngIf="creandoError" class="alert alert-danger">{{ creandoError }}</div>
+          <div class="row g-2">
+            <div class="col-12 col-md-6">
+              <label class="form-label">Email <span class="text-danger">*</span></label>
+              <input type="email" class="form-control" [(ngModel)]="nuevoUsuario.email" name="email" required />
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Contraseña <span class="text-danger">*</span></label>
+              <input type="password" class="form-control" [(ngModel)]="nuevoUsuario.password" name="password" required minlength="8" />
+              <small class="text-muted">Mínimo 8 caracteres</small>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Nombre <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="nuevoUsuario.nombre" name="nombre" required />
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Ap. paterno <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="nuevoUsuario.apellidoPaterno" name="apellidoPaterno" required />
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Ap. materno</label>
+              <input type="text" class="form-control" [(ngModel)]="nuevoUsuario.apellidoMaterno" name="apellidoMaterno" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">CURP <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="nuevoUsuario.curp" name="curp" required maxlength="18" style="text-transform:uppercase" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">RFC</label>
+              <input type="text" class="form-control" [(ngModel)]="nuevoUsuario.rfc" name="rfc" maxlength="13" style="text-transform:uppercase" />
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Fecha nacimiento <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" [(ngModel)]="nuevoUsuario.fechaNacimiento" name="fechaNacimiento" required />
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Género <span class="text-danger">*</span></label>
+              <select class="form-select" [(ngModel)]="nuevoUsuario.genero" name="genero" required>
+                <option value="">Seleccionar</option>
+                <option value="MASCULINO">Masculino</option>
+                <option value="FEMENINO">Femenino</option>
+                <option value="OTRO">Otro</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Tipo perfil <span class="text-danger">*</span></label>
+              <select class="form-select" [(ngModel)]="nuevoUsuario.tipoPerfil" name="tipoPerfil" required>
+                <option value="INVESTIGADOR">Personas investigadoras</option>
+                <option value="INNOVADOR">Personas innovadoras</option>
+                <option value="HIBRIDO">Personas investigadoras e innovadoras</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Rol</label>
+              <select class="form-select" [(ngModel)]="nuevoUsuario.rol" name="rol">
+                <option value="ROLE_USER">Usuario</option>
+                <option value="ROLE_ADMIN">Administrador</option>
+                <option value="ROLE_EVALUADOR">Evaluador</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Estado civil</label>
+              <select class="form-select" [(ngModel)]="nuevoUsuario.estadoCivil" name="estadoCivil">
+                <option value="SOLTERO">Soltero</option>
+                <option value="CASADO">Casado</option>
+                <option value="DIVORCIADO">Divorciado</option>
+                <option value="VIUDO">Viudo</option>
+                <option value="UNION_LIBRE">Unión libre</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Teléfono</label>
+              <input type="text" class="form-control" [(ngModel)]="nuevoUsuario.telefono" name="telefono" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Nacionalidad</label>
+              <input type="text" class="form-control" [(ngModel)]="nuevoUsuario.nacionalidad" name="nacionalidad" placeholder="México" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">País nacimiento</label>
+              <input type="text" class="form-control" [(ngModel)]="nuevoUsuario.paisNacimiento" name="paisNacimiento" placeholder="México" />
+            </div>
+            <div class="col-12">
+              <label class="form-label">Entidad federativa</label>
+              <input type="text" class="form-control" [(ngModel)]="nuevoUsuario.entidadFederativa" name="entidadFederativa" />
+            </div>
+            <div class="col-12">
+              <label class="form-label">Municipio</label>
+              <input type="text" class="form-control" [(ngModel)]="nuevoUsuario.municipio" name="municipio" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalNuevo()">Cancelar</button>
+          <button type="submit" class="btn btn-borgona" [disabled]="creando || formNuevo.invalid">
+            <span *ngIf="!creando"><i class="fas fa-save me-1"></i>Crear</span>
+            <span *ngIf="creando">Creando...</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-backdrop fade" [class.show]="modalNuevoVisible" (click)="cerrarModalNuevo()"></div>
+</div>
+
+

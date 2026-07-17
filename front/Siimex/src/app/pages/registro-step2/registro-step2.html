@@ -1,0 +1,247 @@
+<div class="r2-page">
+  <!-- Hero -->
+  <div class="r2-hero">
+    <div class="r2-hero-inner">
+      <div class="r2-hero-icon"><i class="fas fa-folder-open"></i></div>
+      <h1 class="r2-hero-title">Documentos y perfil</h1>
+      <p class="r2-hero-sub">Sube tus documentos oficiales para completar tu expediente. INE y Cédula: máx. {{ MAX_MB_INE_CEDULA }} MB · Certificaciones: máx. {{ MAX_MB_CERT }} MB.</p>
+    </div>
+  </div>
+
+  <div class="r2-container">
+    <!-- Progress bar -->
+    <div class="r2-progress">
+        <div class="r2-progress-bar">
+        <div class="r2-progress-fill"
+             [style.width.%]="(seccionesCompletadas() / 4) * 100">
+        </div>
+      </div>
+      <span class="r2-progress-label">
+        {{ seccionesCompletadas() }} de 4 secciones
+      </span>
+    </div>
+
+    <div *ngIf="archivosYaCargados" class="r2-alert r2-alert-info">
+      <i class="fas fa-info-circle"></i>
+      <span><strong>Archivos ya registrados.</strong> Los campos están deshabilitados.</span>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate enctype="multipart/form-data">
+
+      <!-- 1. Perfil personal -->
+      <section class="r2-section" [class.r2-section--done]="tieneFotoPerfil()">
+        <div class="r2-section-header">
+          <div class="r2-section-num" [class.r2-section-num--done]="tieneFotoPerfil()">1</div>
+          <div class="r2-section-info">
+            <h3 class="r2-section-title">Perfil personal</h3>
+            <p class="r2-section-desc">Fotografía obligatoria y semblanza profesional</p>
+          </div>
+          <span class="r2-badge r2-badge-req">Requerido</span>
+          <i *ngIf="tieneFotoPerfil()" class="fas fa-check-circle r2-check"></i>
+        </div>
+
+        <div class="r2-section-body">
+          <!-- Foto -->
+          <div class="r2-foto-area">
+            <input type="file" class="visually-hidden" id="fotoFile" #fotoInput
+                   (change)="onFotoChange($event)" accept=".jpg,.jpeg,.png,image/jpeg,image/png" />
+            <label for="fotoFile" class="r2-foto-circle" title="Clic para subir foto">
+              <img *ngIf="fotoPreview" [src]="fotoPreview" alt="Foto de perfil" />
+              <div class="r2-foto-placeholder" *ngIf="!fotoPreview">
+                <i class="fas fa-camera"></i>
+              </div>
+              <div class="r2-foto-overlay">
+                <i class="fas fa-camera"></i>
+                <span>{{ fotoPreview ? 'Cambiar' : 'Subir' }}</span>
+              </div>
+            </label>
+            <div class="r2-foto-meta">
+              <span class="r2-foto-status">{{ fotoPreview ? 'Foto cargada' : 'Sin foto' }}</span>
+              <small class="r2-foto-hint">JPG o PNG, máx. 5 MB</small>
+              <button type="button" class="r2-foto-clear" *ngIf="fotoPreview" (click)="clearFoto(); $event.preventDefault()">
+                <i class="fas fa-trash-alt me-1"></i>Quitar
+              </button>
+            </div>
+          </div>
+          <div class="r2-field-error" *ngIf="f.fotoFile.touched && f.fotoFile.errors?.['maxSize']">La foto excede 5 MB.</div>
+          <div class="r2-field-error" *ngIf="f.fotoFile.touched && f.fotoFile.errors?.['accept']">Solo imágenes JPG o PNG.</div>
+          <div class="r2-field-error" *ngIf="mostrarErrorFotoObligatoria()">La fotografía de perfil es obligatoria.</div>
+
+          <!-- Semblanza -->
+          <div class="r2-textarea-wrap">
+            <label for="semblanza" class="r2-label">Semblanza profesional</label>
+            <textarea id="semblanza" formControlName="semblanza"
+                      class="r2-input r2-textarea"
+                      rows="4" maxlength="1500"
+                      placeholder="Describe brevemente tu perfil, intereses de investigación, logros destacados..."></textarea>
+            <div class="r2-textarea-footer">
+              <span class="r2-field-error" *ngIf="f.semblanza.errors?.['maxlength']">Máximo 1500 caracteres.</span>
+              <span class="r2-char-count">{{ semblanzaLength }}/1500</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. RFC + INE -->
+      <section class="r2-section" [class.r2-section--done]="f.rfcNum.valid && f.fiscalPdf.value">
+        <div class="r2-section-header">
+          <div class="r2-section-num" [class.r2-section-num--done]="f.rfcNum.valid && f.fiscalPdf.value">2</div>
+          <div class="r2-section-info">
+            <h3 class="r2-section-title">RFC e INE</h3>
+            <p class="r2-section-desc">Registro federal de contribuyentes e identificación oficial</p>
+          </div>
+          <span class="r2-badge r2-badge-req">Requerido</span>
+          <i *ngIf="f.rfcNum.valid && f.fiscalPdf.value" class="fas fa-check-circle r2-check"></i>
+        </div>
+
+        <div class="r2-section-body">
+          <div class="r2-grid-2">
+            <div class="r2-field">
+              <label for="rfcNum" class="r2-label">RFC (sin guiones)</label>
+              <input id="rfcNum" type="text" class="r2-input text-uppercase"
+                     [disabled]="archivosYaCargados"
+                     formControlName="rfcNum" maxlength="13" placeholder="XXXX001122ABC" autocomplete="off" />
+              <div class="r2-field-error" *ngIf="f.rfcNum.touched && f.rfcNum.errors?.['required']">Obligatorio.</div>
+              <div class="r2-field-error" *ngIf="f.rfcNum.touched && f.rfcNum.errors?.['rfc']">Formato RFC inválido.</div>
+            </div>
+            <div class="r2-field">
+              <label class="r2-label">INE (PDF)</label>
+              <div class="r2-dropzone"
+                   [class.r2-dropzone--active]="dragging()==='fiscalPdf'"
+                   (dragover)="onDragOver($event, 'fiscalPdf')"
+                   (dragleave)="onDragLeave()"
+                   (drop)="onDrop($event, 'fiscalPdf')">
+                <input type="file" class="visually-hidden" id="fiscalPdf"
+                       (change)="onInputFile($event,'fiscalPdf')" accept=".pdf,application/pdf" />
+                <label for="fiscalPdf" class="r2-dropzone-label">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <span>Arrastra o <strong>selecciona</strong></span>
+                </label>
+              </div>
+              <div class="r2-file-chip" *ngIf="f.fiscalPdf.value as fiscal">
+                <i class="fas fa-file-pdf r2-file-chip-icon"></i>
+                <span class="r2-file-chip-name" [title]="fiscal.name">{{ fiscal.name }}</span>
+                <button type="button" class="r2-file-chip-del" (click)="clearFile('fiscalPdf')">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="r2-field-error" *ngIf="f.fiscalPdf.touched && f.fiscalPdf.errors?.['requiredFile']">Adjunta el INE.</div>
+              <div class="r2-field-error" *ngIf="f.fiscalPdf.touched && f.fiscalPdf.errors?.['maxSize']">Excede {{ MAX_MB_INE_CEDULA }} MB.</div>
+              <div class="r2-field-error" *ngIf="f.fiscalPdf.touched && f.fiscalPdf.errors?.['accept']">Formato no permitido.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Cédula profesional -->
+      <section class="r2-section" [class.r2-section--done]="f.cedulaPdf.value">
+        <div class="r2-section-header">
+          <div class="r2-section-num" [class.r2-section-num--done]="f.cedulaPdf.value">3</div>
+          <div class="r2-section-info">
+            <h3 class="r2-section-title">Cédula profesional</h3>
+            <p class="r2-section-desc">Documento emitido por la SEP</p>
+          </div>
+          <span class="r2-badge r2-badge-req">Requerido</span>
+          <i *ngIf="f.cedulaPdf.value" class="fas fa-check-circle r2-check"></i>
+        </div>
+
+        <div class="r2-section-body">
+          <div class="r2-dropzone"
+               [class.r2-dropzone--active]="dragging()==='cedulaPdf'"
+               [class.r2-dropzone--disabled]="archivosYaCargados"
+               (dragover)="onDragOver($event, 'cedulaPdf')"
+               (dragleave)="onDragLeave()"
+               (drop)="onDrop($event, 'cedulaPdf')">
+            <input type="file" class="visually-hidden" id="cedulaPdf"
+                   [disabled]="archivosYaCargados"
+                   (change)="onInputFile($event,'cedulaPdf')"
+                   accept=".pdf,application/pdf" />
+            <label for="cedulaPdf" class="r2-dropzone-label" [class.disabled]="archivosYaCargados">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <span>Arrastra o <strong>selecciona</strong></span>
+              <small>Solo PDF</small>
+            </label>
+          </div>
+          <div class="r2-file-chip" *ngIf="f.cedulaPdf.value as cedula">
+            <i class="fas fa-file r2-file-chip-icon"></i>
+            <span class="r2-file-chip-name" [title]="cedula.name">{{ cedula.name }}</span>
+            <span class="r2-file-chip-size">{{ humanSize(cedula.size) }}</span>
+            <button type="button" class="r2-file-chip-del" (click)="clearFile('cedulaPdf')">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="r2-field-error" *ngIf="f.cedulaPdf.touched && f.cedulaPdf.errors?.['requiredFile']">Adjunta la cédula profesional.</div>
+          <div class="r2-field-error" *ngIf="f.cedulaPdf.touched && f.cedulaPdf.errors?.['maxSize']">Excede {{ MAX_MB_INE_CEDULA }} MB.</div>
+          <div class="r2-field-error" *ngIf="f.cedulaPdf.touched && f.cedulaPdf.errors?.['accept']">Formato no permitido.</div>
+        </div>
+      </section>
+
+      <!-- 4. Certificaciones -->
+      <section class="r2-section" [class.r2-section--done]="hasCertificados()">
+        <div class="r2-section-header r2-section-header--click" (click)="showCerts = !showCerts">
+          <div class="r2-section-num" [class.r2-section-num--done]="hasCertificados()">4</div>
+          <div class="r2-section-info">
+            <h3 class="r2-section-title">Certificaciones</h3>
+            <p class="r2-section-desc">Evidencias de certificaciones profesionales</p>
+          </div>
+          <span class="r2-badge r2-badge-opt">Opcional</span>
+          <i *ngIf="hasCertificados()" class="fas fa-check-circle r2-check"></i>
+          <button type="button" class="r2-toggle-btn">
+            <i class="fas" [class.fa-chevron-down]="!showCerts" [class.fa-chevron-up]="showCerts"></i>
+          </button>
+        </div>
+
+        <div class="r2-section-body" [class.r2-hidden]="!showCerts">
+          <div *ngFor="let control of certificadosArray.controls; let i = index" class="r2-cert-row">
+            <label class="r2-label">Evidencia {{ i + 1 }}</label>
+            <div class="r2-cert-inline">
+              <div class="r2-dropzone r2-dropzone--sm"
+                   [class.r2-dropzone--active]="isDraggingOver(i)"
+                   (dragover)="onDragOver($event, i)"
+                   (dragleave)="onDragLeave()"
+                   (drop)="onDrop($event, i)">
+                <input type="file" class="visually-hidden" [id]="'cert' + i"
+                       [disabled]="archivosYaCargados"
+                       (change)="onInputFile($event, i)"
+                       accept=".pdf,application/pdf" />
+                <label [for]="'cert' + i" class="r2-dropzone-label r2-dropzone-label--sm" [class.disabled]="archivosYaCargados">
+                  <i class="fas fa-upload"></i>
+                  <span>Seleccionar</span>
+                </label>
+              </div>
+              <div class="r2-file-chip r2-file-chip--inline" *ngIf="control.value as cert">
+                <span class="r2-file-chip-name" [title]="cert.name">{{ cert.name }}</span>
+                <button type="button" class="r2-file-chip-del" (click)="eliminarCertificado(i)" [disabled]="archivosYaCargados">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <button type="button" class="r2-btn-remove"
+                      *ngIf="!control.value && certificadosArray.length > 1"
+                      (click)="eliminarCampoCertificado(i)"
+                      [disabled]="archivosYaCargados">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </div>
+          <button type="button" class="r2-btn-add" (click)="agregarCertificado()" [disabled]="archivosYaCargados">
+            <i class="fas fa-plus me-1"></i>Agregar evidencia
+          </button>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <div class="r2-actions">
+        <button type="button" class="r2-btn r2-btn-secondary" (click)="goBack()">
+          <i class="fas fa-arrow-left me-2"></i>Volver
+        </button>
+        <div class="r2-actions-right">
+          <button type="submit" class="r2-btn r2-btn-primary" [disabled]="submitting || !puedeCompletarRegistro()">
+            <span *ngIf="!submitting">Completar registro <i class="fas fa-arrow-right ms-1"></i></span>
+            <span *ngIf="submitting"><i class="fas fa-spinner fa-spin me-1"></i>Guardando...</span>
+          </button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>

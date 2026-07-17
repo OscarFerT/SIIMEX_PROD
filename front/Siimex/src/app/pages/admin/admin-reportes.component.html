@@ -1,0 +1,193 @@
+<div class="admin-reportes">
+  <h1 class="h4 mb-2 text-borgona">
+    <i class="fas fa-chart-line me-2"></i>Consultas y reportes
+  </h1>
+  <p class="text-muted small mb-3">Consulta postulaciones del sistema y exporta resultados a Excel o PDF.</p>
+
+  <div class="report-card mb-3">
+    <div class="report-card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold mb-1">Convocatoria</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroConvocatoriaId">
+            <option value="">Todas</option>
+            <option *ngFor="let c of convocatorias" [value]="c.id">{{ c.titulo }}</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Estado</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroEstado">
+            <option value="">Todos</option>
+            <option value="PENDIENTE">Pendiente</option>
+            <option value="SUBSANADA">Subsanada</option>
+            <option value="ACEPTADA">Aceptada</option>
+            <option value="RECHAZADA">Rechazada</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Área</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroArea">
+            <option value="">Todas</option>
+            <option *ngFor="let a of AREAS" [value]="a.value">{{ a.label }}</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Género</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroGenero">
+            <option value="">Todos</option>
+            <option *ngFor="let g of GENEROS" [value]="g.value">{{ g.label }}</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Desde</label>
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="filtroFechaDesde" />
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Hasta</label>
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="filtroFechaHasta" />
+        </div>
+        <div class="col-md-1 d-grid">
+          <button class="btn btn-borgona btn-sm" (click)="buscar()">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label small fw-semibold mb-1">Búsqueda general</label>
+          <input type="search" class="form-control form-control-sm" [(ngModel)]="filtroQ" placeholder="Nombre, correo, CURP, cédula, convocatoria..." />
+        </div>
+        <div class="col-md-4 d-flex gap-2 justify-content-md-end">
+          <button class="btn btn-outline-secondary btn-sm" (click)="limpiarFiltros()">
+            <i class="fas fa-eraser me-1"></i>Limpiar
+          </button>
+          <button class="btn btn-outline-success btn-sm" (click)="exportarExcel()" [disabled]="items.length === 0">
+            <i class="fas fa-file-excel me-1"></i>Excel
+          </button>
+          <button class="btn btn-outline-danger btn-sm" (click)="exportarPdf()" [disabled]="items.length === 0">
+            <i class="fas fa-file-pdf me-1"></i>PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-4">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="small text-muted mt-2 mb-0">Cargando reporte...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <div *ngIf="!loading && !error" class="row g-3 mb-3">
+    <div class="col-6 col-md">
+      <div class="kpi-card">
+        <span class="kpi-label">Total</span>
+        <span class="kpi-value">{{ resumen.total }}</span>
+      </div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="kpi-card">
+        <span class="kpi-label">Pendientes</span>
+        <span class="kpi-value">{{ resumen.pendientes }}</span>
+      </div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="kpi-card">
+        <span class="kpi-label">Subsanadas</span>
+        <span class="kpi-value">{{ resumen.subsanadas }}</span>
+      </div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="kpi-card">
+        <span class="kpi-label">Aceptadas</span>
+        <span class="kpi-value">{{ resumen.aceptadas }}</span>
+      </div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="kpi-card">
+        <span class="kpi-label">Rechazadas</span>
+        <span class="kpi-value">{{ resumen.rechazadas }}</span>
+      </div>
+    </div>
+    <div class="col-12 col-md">
+      <div class="kpi-card">
+        <span class="kpi-label">Compatibilidad promedio</span>
+        <span class="kpi-value">{{ resumen.promedioCompatibilidad }}%</span>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && !error" class="report-card rep-table-card">
+    <div class="table-responsive">
+      <table class="table rep-table mb-0">
+        <thead>
+          <tr>
+            <th class="rep-th rep-th-sort" (click)="ordenar('id')">
+              ID <i class="fas ms-1" [ngClass]="getSortIcon('id')"></i>
+            </th>
+            <th class="rep-th rep-th-sort" (click)="ordenar('postulante')">
+              Postulante <i class="fas ms-1" [ngClass]="getSortIcon('postulante')"></i>
+            </th>
+            <th class="rep-th rep-th-sort" (click)="ordenar('correo')">
+              Correo <i class="fas ms-1" [ngClass]="getSortIcon('correo')"></i>
+            </th>
+            <th class="rep-th rep-th-sort" (click)="ordenar('convocatoriaTitulo')">
+              Convocatoria <i class="fas ms-1" [ngClass]="getSortIcon('convocatoriaTitulo')"></i>
+            </th>
+            <th class="rep-th rep-th-sort" (click)="ordenar('area')">
+              Área <i class="fas ms-1" [ngClass]="getSortIcon('area')"></i>
+            </th>
+            <th class="rep-th rep-th-sort" (click)="ordenar('genero')">
+              Género <i class="fas ms-1" [ngClass]="getSortIcon('genero')"></i>
+            </th>
+            <th class="rep-th rep-th-sort" (click)="ordenar('estado')">
+              Estado <i class="fas ms-1" [ngClass]="getSortIcon('estado')"></i>
+            </th>
+            <th class="rep-th rep-th-sort" (click)="ordenar('compatibilidad')">
+              Compat. <i class="fas ms-1" [ngClass]="getSortIcon('compatibilidad')"></i>
+            </th>
+            <th class="rep-th rep-th-sort" (click)="ordenar('fechaCreacion')">
+              Fecha <i class="fas ms-1" [ngClass]="getSortIcon('fechaCreacion')"></i>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let i of itemsOrdenados" class="rep-row">
+            <td class="rep-td rep-td-id">{{ i.id }}</td>
+            <td class="rep-td">
+              <div class="d-flex align-items-center gap-2">
+                <div class="rep-avatar">
+                  <span class="rep-avatar-inicial">{{ getInicial(i.postulante) }}</span>
+                </div>
+                <span class="fw-medium">{{ i.postulante || '—' }}</span>
+              </div>
+            </td>
+            <td class="rep-td">
+              <a [href]="'mailto:' + i.correo" class="rep-link">{{ i.correo || '—' }}</a>
+            </td>
+            <td class="rep-td">{{ i.convocatoriaTitulo || '—' }}</td>
+            <td class="rep-td">{{ i.area || '—' }}</td>
+            <td class="rep-td">{{ formatearGenero(i.genero) || '—' }}</td>
+            <td class="rep-td">
+              <span class="rep-badge" [ngClass]="getEstadoBadgeClass(i.estado)">{{ i.estado }}</span>
+            </td>
+            <td class="rep-td">
+              <div class="rep-compat-wrap">
+                <div class="rep-compat-bar">
+                  <div class="rep-compat-fill" [ngClass]="getCompatibilidadBarClass(i.compatibilidad)" [style.width.%]="i.compatibilidad"></div>
+                </div>
+                <span class="rep-compat-valor" [ngClass]="getCompatibilidadTextClass(i.compatibilidad)">{{ i.compatibilidad }}%</span>
+              </div>
+            </td>
+            <td class="rep-td rep-td-fecha">{{ formatearFecha(i.fechaCreacion) }}</td>
+          </tr>
+          <tr *ngIf="items.length === 0">
+            <td colspan="9" class="text-center text-muted py-5">
+              <i class="fas fa-inbox fa-2x opacity-50 mb-2 d-block"></i>
+              No hay resultados con los filtros seleccionados.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

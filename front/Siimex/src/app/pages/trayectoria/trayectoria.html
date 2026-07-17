@@ -1,0 +1,1000 @@
+<div class="trayectoria-wrapper">
+  <header class="trayectoria-header mb-4">
+    <div class="trayectoria-header-content">
+      <div>
+        <h1 class="trayectoria-title text-borgona mb-2">Mi perfil único SIIMEX</h1>
+        <p class="trayectoria-subtitle text-muted mb-0">Administra tu formación, experiencia, publicaciones, congresos y más.</p>
+      </div>
+      <button type="button" class="btn btn-borgona btn-generar-cv" (click)="generarCV()" [disabled]="generandoCV">
+        <i class="fas fa-file-pdf me-2"></i>{{ generandoCV ? 'Generando...' : 'Generar CV' }}
+      </button>
+    </div>
+  </header>
+
+  <div class="trayectoria-detalle" id="cvContent">
+  <!-- Rubro 2. Institución -->
+  <section id="institucion" class="tray-seccion">
+    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+      <h6 class="tray-seccion-titulo mb-0"><i class="fas fa-university me-2"></i>Institución</h6>
+      <button type="button" class="btn btn-outline-borgona btn-sm" (click)="abrirModalInstitucion()">
+        <i class="fas fa-pen me-1"></i>{{ institucionRubro ? 'Editar' : 'Agregar' }}
+      </button>
+    </div>
+    <div class="row g-2 mb-2" *ngIf="institucionRubro; else sinInstitucionRubro">
+      <div class="col-md-6"><strong>Nombre:</strong> {{ institucionRubro.nombre || 'No disponible' }}</div>
+      <div class="col-md-6"><strong>Clave oficial:</strong> {{ institucionRubro.claveOficial || 'No disponible' }}</div>
+      <div class="col-md-6"><strong>Tipo:</strong> {{ institucionRubro.tipoNombre || 'No disponible' }}</div>
+      <div class="col-md-6"><strong>País:</strong> {{ institucionRubro.paisNombre || 'No disponible' }}</div>
+      <div class="col-md-6"><strong>Entidad:</strong> {{ institucionRubro.entidadNombre || 'No disponible' }}</div>
+      <div class="col-md-6"><strong>Nivel:</strong> {{ institucionRubro.nivelUnoNombre || 'No disponible' }}{{ institucionRubro.nivelDosNombre ? (' / ' + institucionRubro.nivelDosNombre) : '' }}</div>
+    </div>
+    <ng-template #sinInstitucionRubro>
+      <p class="text-muted small mb-2">No hay datos de institución cargados desde completar registro.</p>
+    </ng-template>
+    <div class="tray-evidence">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('institucion').length > 0; else evInstSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('institucion'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evInstSin><small class="text-muted">{{ getMensajeEvidenciaRubro('institucion') }}</small></ng-template>
+    </div>
+  </section>
+
+  <!-- Rubro 3. Área de conocimiento -->
+  <section id="areaConocimiento" class="tray-seccion">
+    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+      <h6 class="tray-seccion-titulo mb-0"><i class="fas fa-sitemap me-2"></i>Área de conocimiento</h6>
+      <button type="button" class="btn btn-outline-borgona btn-sm" (click)="abrirModalAreaConocimiento()">
+        <i class="fas fa-pen me-1"></i>{{ areaConocimientoRubro ? 'Editar' : 'Agregar' }}
+      </button>
+    </div>
+    <div class="row g-2 mb-2" *ngIf="areaConocimientoRubro; else sinAreaRubro">
+      <div class="col-md-6"><strong>Área:</strong> {{ areaConocimientoRubro.areaNombre || 'No disponible' }} <span class="text-muted small" *ngIf="areaConocimientoRubro.areaClave">({{ areaConocimientoRubro.areaClave }})</span></div>
+      <div class="col-md-6"><strong>Campo:</strong> {{ areaConocimientoRubro.campoNombre || 'No disponible' }} <span class="text-muted small" *ngIf="areaConocimientoRubro.campoClave">({{ areaConocimientoRubro.campoClave }})</span></div>
+      <div class="col-md-6"><strong>Disciplina:</strong> {{ areaConocimientoRubro.disciplinaNombre || 'No disponible' }} <span class="text-muted small" *ngIf="areaConocimientoRubro.disciplinaClave">({{ areaConocimientoRubro.disciplinaClave }})</span></div>
+      <div class="col-md-6"><strong>Subdisciplina:</strong> {{ areaConocimientoRubro.subdisciplinaNombre || 'No disponible' }} <span class="text-muted small" *ngIf="areaConocimientoRubro.subdisciplinaClave">({{ areaConocimientoRubro.subdisciplinaClave }})</span></div>
+    </div>
+    <ng-template #sinAreaRubro>
+      <p class="text-muted small mb-2">No hay área de conocimiento cargada desde completar registro.</p>
+    </ng-template>
+    <div class="tray-evidence">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('areaConocimiento').length > 0; else evAreaSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('areaConocimiento'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evAreaSin><small class="text-muted">{{ getMensajeEvidenciaRubro('areaConocimiento') }}</small></ng-template>
+    </div>
+  </section>
+
+  <!-- 1. Certificaciones -->
+  <section id="certs" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-certificate me-2"></i>Certificaciones <span id="certCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('certs').length > 0; else evCertsSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('certs'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evCertsSin><small class="text-muted">{{ getMensajeEvidenciaRubro('certs') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="certList" class="certificaciones-container"></div>
+        <div id="certEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-certificate fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay certificaciones.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('cert')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 2. Cursos -->
+  <section id="cursos" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-book me-2"></i>Cursos y diplomados <span id="courseCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('cursos').length > 0; else evCursosSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('cursos'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evCursosSin><small class="text-muted">{{ getMensajeEvidenciaRubro('cursos') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="coursesList" class="list-group list-group-flush"></div>
+        <div id="coursesEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-book fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay cursos.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('curso')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 3. Herramientas -->
+  <section id="herramientas" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-tools me-2"></i>Herramientas <span id="toolCount" class="badge bg-borgona ms-1">0/12</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('herramientas').length > 0; else evHerrSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('herramientas'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evHerrSin><small class="text-muted">{{ getMensajeEvidenciaRubro('herramientas') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="toolsList" class="tools-container"></div>
+        <div id="toolsEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-tools fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay herramientas.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('herramienta')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 4. Idiomas -->
+  <section id="idiomas" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-language me-2"></i>Idiomas <span id="langCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('idiomas').length > 0; else evIdiomasSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('idiomas'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evIdiomasSin><small class="text-muted">{{ getMensajeEvidenciaRubro('idiomas') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="langsList" class="list-group list-group-flush"></div>
+        <div id="langsEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-language fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay idiomas.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('idioma')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 5. Logros -->
+  <section id="logros" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-trophy me-2"></i>Logros <span id="logroCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('logros').length > 0; else evLogrosSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('logros'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evLogrosSin><small class="text-muted">{{ getMensajeEvidenciaRubro('logros') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="achievementsList" class="list-group list-group-flush"></div>
+        <div id="achEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-trophy fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay logros.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('logro')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 6. Artículos -->
+  <section id="articulos" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-file-alt me-2"></i>Artículos y publicaciones <span id="articleCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('articulos').length > 0; else evArticulosSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('articulos'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evArticulosSin><small class="text-muted">{{ getMensajeEvidenciaRubro('articulos') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="articlesList" class="list-group list-group-flush"></div>
+        <div id="articlesEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-file-alt fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay artículos.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('articulo')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 7. Propiedad intelectual -->
+  <section id="pi" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-copyright me-2"></i>Propiedad intelectual <span id="piCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('pi').length > 0; else evPiSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('pi'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evPiSin><small class="text-muted">{{ getMensajeEvidenciaRubro('pi') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="piList" class="list-group list-group-flush"></div>
+        <div id="piEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-copyright fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay registros de propiedad intelectual.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('pi')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 8. Trayectoria académica -->
+  <section id="trayAcademica" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-graduation-cap me-2"></i>Formación académica <span id="trayAcadCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('trayAcademica').length > 0; else evAcadSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('trayAcademica'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evAcadSin><small class="text-muted">{{ getMensajeEvidenciaRubro('trayAcademica') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="trayAcadList" class="list-group list-group-flush"></div>
+        <div id="trayAcadEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-graduation-cap fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay formación académica registrada.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('trayAcademica')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 9. Trayectoria profesional -->
+  <section id="trayProfesional" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-briefcase me-2"></i>Experiencia profesional <span id="trayProfCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('trayProfesional').length > 0; else evProfSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('trayProfesional'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evProfSin><small class="text-muted">{{ getMensajeEvidenciaRubro('trayProfesional') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="trayProfList" class="list-group list-group-flush"></div>
+        <div id="trayProfEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-briefcase fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay experiencia profesional registrada.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('trayProfesional')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 10. Estancias de investigación -->
+  <section id="estancias" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-plane me-2"></i>Estancias de investigación <span id="estanciaCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('estancias').length > 0; else evEstanciasSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('estancias'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evEstanciasSin><small class="text-muted">{{ getMensajeEvidenciaRubro('estancias') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="estanciasList" class="list-group list-group-flush"></div>
+        <div id="estanciasEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-plane fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay estancias registradas.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('estancia')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 11. Congresos y eventos -->
+  <section id="congresos" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-users me-2"></i>Congresos y eventos <span class="badge bg-borgona ms-1">{{ congresos.length }}</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('congresos').length > 0; else evCongresosSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('congresos'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evCongresosSin><small class="text-muted">{{ getMensajeEvidenciaRubro('congresos') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div class="list-group list-group-flush">
+          <div *ngFor="let c of congresos" class="list-group-item d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <div class="fw-bold mb-1"><i class="fas fa-users text-borgona me-2"></i>{{ c.nombre || 'Sin nombre' }}</div>
+              <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span *ngIf="c.tipoParticipacion" class="badge bg-borgona">{{ c.tipoParticipacion }}</span>
+                <span *ngIf="c.paisSede" class="text-muted small"><i class="fas fa-globe me-1"></i>{{ c.paisSede }}</span>
+                <span *ngIf="c.fecha" class="badge bg-info"><i class="fas fa-calendar me-1"></i>{{ c.fecha }}</span>
+              </div>
+              <div *ngIf="c.tituloTrabajo" class="small text-muted mt-1"><i class="fas fa-file-alt me-1"></i>{{ c.tituloTrabajo }}</div>
+            </div>
+            <div class="btn-group ms-2">
+              <button class="btn btn-sm btn-outline-primary" (click)="editarCongreso(c.id!)" title="Editar"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-sm btn-outline-danger" (click)="eliminarCongreso(c.id!)" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="congresos.length === 0 && !loadingCongresos" class="empty-state">
+          <div class="text-center py-4"><i class="fas fa-users fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay congresos registrados.</p></div>
+        </div>
+        <div *ngIf="loadingCongresos" class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-borgona" role="status"><span class="visually-hidden">Cargando...</span></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('congreso')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 12. Divulgación científica -->
+  <section id="divulgacion" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-bullhorn me-2"></i>Divulgación científica <span id="divulgacionCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('divulgacion').length > 0; else evDivSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('divulgacion'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evDivSin><small class="text-muted">{{ getMensajeEvidenciaRubro('divulgacion') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="divulgacionList" class="list-group list-group-flush"></div>
+        <div id="divulgacionEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-bullhorn fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay actividades de divulgación.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('divulgacion')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+
+  <!-- 13. Incidencia social -->
+  <section id="incidencia" class="tray-seccion">
+    <h6 class="tray-seccion-titulo"><i class="fas fa-handshake-angle me-2"></i>Incidencia social <span id="incidenciaCount" class="badge bg-borgona ms-1">0</span></h6>
+    <div class="tray-evidence mb-2">
+      <small class="tray-evidence-title"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</small>
+      <div class="d-flex flex-wrap gap-2" *ngIf="getEvidenciasRubro('incidencia').length > 0; else evIncSin">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                *ngFor="let doc of getEvidenciasRubro('incidencia'); trackBy: trackEvidenciaRubro"
+                (click)="abrirEvidenciaRubro(doc)">
+          <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+        </button>
+      </div>
+      <ng-template #evIncSin><small class="text-muted">{{ getMensajeEvidenciaRubro('incidencia') }}</small></ng-template>
+    </div>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div class="flex-grow-1 min-w-0">
+        <div id="incidenciaList" class="list-group list-group-flush"></div>
+        <div id="incidenciaEmpty" class="empty-state" style="display:none;">
+          <div class="text-center py-4"><i class="fas fa-handshake-angle fa-2x text-muted mb-2"></i><p class="text-muted mb-0 small">No hay registros.</p></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-borgona btn-sm flex-shrink-0" (click)="abrirModal('incidencia')"><i class="fas fa-plus me-1"></i>Agregar</button>
+    </div>
+  </section>
+  </div>
+</div>
+
+<!-- Modal agregar/editar -->
+<div class="modal fade trayectoria-form-modal" [class.show]="modalVisible" [style.display]="modalVisible ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-borgona">
+      <div class="modal-header bg-borgona text-white">
+        <h5 class="modal-title">{{ getModalTitulo() }}</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="cerrarModal()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Certificación -->
+        <form *ngIf="modalTipo === 'cert'" id="certForm" (ngSubmit)="subirCertificacionModal($event)">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+            <input id="certName" class="form-control input-custom" type="text" required maxlength="200" placeholder="Ej: Certificado de Python" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Archivo <span class="text-danger">*</span></label>
+            <input id="certFile" class="form-control input-custom" type="file" accept=".pdf,application/pdf" required (change)="onCertFileChange($event)" />
+            <small class="form-text text-muted">Solo PDF · máx. 10MB</small>
+          </div>
+          <div id="certFormMsg" class="pub-inline-feedback mt-2" role="status" style="display:none;"></div>
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-upload me-1"></i>Subir</button>
+          </div>
+        </form>
+
+        <!-- Institución -->
+        <form *ngIf="modalTipo === 'institucion'" id="instForm" (ngSubmit)="guardarInstitucionRubro(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre de la institución <span class="text-danger">*</span></label>
+            <input id="instNombreModal" class="form-control input-custom" type="text" required placeholder="Nombre oficial" />
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Clave oficial</label>
+              <input id="instClaveModal" class="form-control input-custom" type="text" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Tipo</label>
+              <input id="instTipoModal" class="form-control input-custom" type="text" />
+            </div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <label class="form-label fw-semibold">País</label>
+              <input id="instPaisModal" class="form-control input-custom" type="text" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Entidad</label>
+              <input id="instEntidadModal" class="form-control input-custom" type="text" />
+            </div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Nivel 1</label>
+              <input id="instNivel1Modal" class="form-control input-custom" type="text" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Nivel 2</label>
+              <input id="instNivel2Modal" class="form-control input-custom" type="text" />
+            </div>
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-danger" *ngIf="institucionRubro" (click)="eliminarInstitucionRubro()">Eliminar</button>
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Área de conocimiento -->
+        <form *ngIf="modalTipo === 'areaConocimiento'" id="areaForm" (ngSubmit)="guardarAreaConocimientoRubro(); $event.preventDefault()">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Área</label>
+              <input id="areaNombreModal" class="form-control input-custom" type="text" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Clave área</label>
+              <input id="areaClaveModal" class="form-control input-custom" type="text" />
+            </div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Campo</label>
+              <input id="campoNombreModal" class="form-control input-custom" type="text" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Clave campo</label>
+              <input id="campoClaveModal" class="form-control input-custom" type="text" />
+            </div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Disciplina</label>
+              <input id="disciplinaNombreModal" class="form-control input-custom" type="text" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Clave disciplina</label>
+              <input id="disciplinaClaveModal" class="form-control input-custom" type="text" />
+            </div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Subdisciplina</label>
+              <input id="subdisciplinaNombreModal" class="form-control input-custom" type="text" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Clave subdisciplina</label>
+              <input id="subdisciplinaClaveModal" class="form-control input-custom" type="text" />
+            </div>
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-danger" *ngIf="areaConocimientoRubro" (click)="eliminarAreaConocimientoRubro()">Eliminar</button>
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Curso -->
+        <form *ngIf="modalTipo === 'curso'" id="courseForm" (ngSubmit)="guardarCurso(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Título <span class="text-danger">*</span></label>
+            <input id="courseTitle" class="form-control input-custom" type="text" required placeholder="Ej: Curso de Angular" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Programa/Institución</label>
+            <input id="courseProvider" class="form-control input-custom" type="text" placeholder="Ej: Universidad Nacional" />
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Duración (hrs)</label>
+              <input id="courseHours" class="form-control input-custom" type="number" min="1" placeholder="40" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Institución</label>
+              <input id="courseInstitucion" class="form-control input-custom" type="text" placeholder="Institución" />
+            </div>
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Herramienta -->
+        <div *ngIf="modalTipo === 'herramienta'">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre de la herramienta</label>
+            <input id="toolInput" class="form-control input-custom" type="text" placeholder="Ej. Python, Git, QGIS" />
+          </div>
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="button" class="btn btn-borgona" (click)="agregarHerramientaDesdeModal()"><i class="fas fa-plus me-1"></i>Agregar</button>
+          </div>
+        </div>
+
+        <!-- Idioma -->
+        <form *ngIf="modalTipo === 'idioma'" id="langForm" (ngSubmit)="guardarIdioma(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Idioma <span class="text-danger">*</span></label>
+            <input id="langName" class="form-control input-custom" type="text" required placeholder="Ej: Inglés" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nivel</label>
+            <select id="langLevel" class="form-select input-custom">
+              <option value="basico">Básico</option>
+              <option value="intermedio">Intermedio</option>
+              <option value="avanzado">Avanzado</option>
+              <option value="nativo">Nativo</option>
+            </select>
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Logro -->
+        <form *ngIf="modalTipo === 'logro'" id="achievementForm" (ngSubmit)="guardarLogro(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Título <span class="text-danger">*</span></label>
+            <input id="achTitle" class="form-control input-custom" type="text" required placeholder="Ej: Premio a la Excelencia" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Descripción</label>
+            <textarea id="achDesc" class="form-control input-custom" rows="2" placeholder="Describe tu logro..."></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold"><i class="fas fa-calendar me-1"></i>Fecha</label>
+            <input id="achDate" class="form-control input-custom" type="date" />
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Artículo -->
+        <form *ngIf="modalTipo === 'articulo'" id="articleForm" (ngSubmit)="guardarArticulo(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Título <span class="text-danger">*</span></label>
+            <input id="articleTitle" class="form-control input-custom" type="text" required placeholder="Ej: Machine Learning Applications" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Revista/Publicación</label>
+            <input id="articleJournal" class="form-control input-custom" type="text" placeholder="Ej: Nature" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Año</label>
+            <input id="articleYear" class="form-control input-custom" type="number" min="1800" max="9999" placeholder="2024" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">DOI / URL</label>
+            <input id="articleDOI" class="form-control input-custom mb-1" type="text" placeholder="DOI" />
+            <input id="articleURL" class="form-control input-custom" type="url" placeholder="https://..." />
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Propiedad intelectual -->
+        <form *ngIf="modalTipo === 'pi'" id="piForm" (ngSubmit)="guardarPropiedadIntelectual(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo <span class="text-danger">*</span></label>
+            <select id="piTipo" class="form-select input-custom" required>
+              <option value="PATENTE">Patente</option>
+              <option value="MARCA">Marca</option>
+              <option value="DISENO_INDUSTRIAL">Diseño industrial</option>
+              <option value="DERECHO_AUTOR">Derecho de autor</option>
+              <option value="SECRETO_INDUSTRIAL">Secreto industrial</option>
+              <option value="OTRO">Otro</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Título <span class="text-danger">*</span></label>
+            <input id="piTitulo" class="form-control input-custom" type="text" required placeholder="Ej: Patente de invención..." />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Número de registro</label>
+            <input id="piNumeroRegistro" class="form-control input-custom" type="text" placeholder="Número de registro oficial" />
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Institución / Oficina</label>
+              <input id="piInstitucion" class="form-control input-custom" type="text" placeholder="IMPI, INDAUTOR..." />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">País</label>
+              <input id="piPais" class="form-control input-custom" type="text" placeholder="México" />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Descripción</label>
+            <textarea id="piDescripcion" class="form-control input-custom" rows="2" placeholder="Breve descripción..."></textarea>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Fecha de registro</label>
+              <input id="piFechaRegistro" class="form-control input-custom" type="date" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Año</label>
+              <input id="piAnio" class="form-control input-custom" type="number" min="1900" max="2100" placeholder="2024" />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Documento adjunto (opcional)</label>
+            <input id="piDocumento" class="form-control input-custom" type="file" accept=".pdf,application/pdf" (change)="onPiFileChange($event)" />
+            <small class="form-text text-muted">Solo PDF · máx. 10MB</small>
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Incidencia social -->
+        <form *ngIf="modalTipo === 'incidencia'" id="incidenciaForm" (ngSubmit)="guardarIncidenciaSocial(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Título <span class="text-danger">*</span></label>
+            <input id="incidenciaTitulo" class="form-control input-custom" type="text" required placeholder="Ej: Proyecto de salud comunitaria" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Ubicación</label>
+            <input id="incidenciaUbicacion" class="form-control input-custom" type="text" placeholder="Lugar o institución" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Descripción</label>
+            <textarea id="incidenciaDescripcion" class="form-control input-custom" rows="2" placeholder="Describe el proyecto..."></textarea>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Fecha</label>
+              <input id="incidenciaFecha" class="form-control input-custom" type="date" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Año</label>
+              <input id="incidenciaAnio" class="form-control input-custom" type="number" min="1900" max="2100" placeholder="2024" />
+            </div>
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Trayectoria académica -->
+        <form *ngIf="modalTipo === 'trayAcademica'" id="trayAcadForm" (ngSubmit)="guardarTrayAcademica(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nivel de escolaridad <span class="text-danger">*</span></label>
+            <select id="trayAcadNivel" class="form-select input-custom" required>
+              <option value="">Selecciona...</option>
+              <option value="Doctorado">Doctorado</option>
+              <option value="Maestría">Maestría</option>
+              <option value="Licenciatura">Licenciatura</option>
+              <option value="Especialidad">Especialidad</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Título obtenido <span class="text-danger">*</span></label>
+            <input id="trayAcadTitulo" class="form-control input-custom" type="text" required placeholder="Ej: Doctorado en Ciencias" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Institución</label>
+            <input id="trayAcadInstitucion" class="form-control input-custom" type="text" placeholder="Universidad o centro de investigación" />
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Estatus</label>
+              <select id="trayAcadEstatus" class="form-select input-custom">
+                <option value="">Selecciona...</option>
+                <option value="Titulado">Titulado</option>
+                <option value="Pasante">Pasante</option>
+                <option value="En curso">En curso</option>
+                <option value="Candidato">Candidato</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Fecha de obtención</label>
+              <input id="trayAcadFecha" class="form-control input-custom" type="date" />
+            </div>
+          </div>
+          <div class="mb-3 mt-2">
+            <label class="form-label fw-semibold">Cédula profesional</label>
+            <input id="trayAcadCedula" class="form-control input-custom" type="text" placeholder="Número de cédula" />
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Trayectoria profesional -->
+        <form *ngIf="modalTipo === 'trayProfesional'" id="trayProfForm" (ngSubmit)="guardarTrayProfesional(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Puesto o nombramiento <span class="text-danger">*</span></label>
+            <input id="trayProfNombramiento" class="form-control input-custom" type="text" required placeholder="Ej: Investigador Titular" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Institución / Empresa <span class="text-danger">*</span></label>
+            <input id="trayProfInstitucion" class="form-control input-custom" type="text" required placeholder="Nombre de la institución" />
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Fecha de inicio</label>
+              <input id="trayProfFechaInicio" class="form-control input-custom" type="date" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Fecha de término</label>
+              <input id="trayProfFechaFin" class="form-control input-custom" type="date" />
+            </div>
+          </div>
+          <div class="form-check mt-2 mb-3">
+            <input id="trayProfEsActual" class="form-check-input" type="checkbox" />
+            <label class="form-check-label" for="trayProfEsActual">Es empleo actual</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Logros o descripción</label>
+            <textarea id="trayProfLogros" class="form-control input-custom" rows="2" placeholder="Describe tus logros..."></textarea>
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Estancia -->
+        <form *ngIf="modalTipo === 'estancia'" id="estanciaFormEl" (ngSubmit)="guardarEstancia(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo de estancia <span class="text-danger">*</span></label>
+            <select id="estanciaTipo" class="form-select input-custom" required>
+              <option value="">Selecciona...</option>
+              <option value="Posdoctoral">Posdoctoral</option>
+              <option value="Sabatina">Sabatina</option>
+              <option value="Investigador Invitado">Investigador invitado</option>
+              <option value="Estancia Corta">Estancia corta</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre del proyecto <span class="text-danger">*</span></label>
+            <input id="estanciaNombre" class="form-control input-custom" type="text" required placeholder="Nombre del proyecto o estancia" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Institución receptora</label>
+            <input id="estanciaInstitucion" class="form-control input-custom" type="text" placeholder="Instituto o universidad receptora" />
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Fecha de inicio</label>
+              <input id="estanciaFechaInicio" class="form-control input-custom" type="date" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Fecha de término</label>
+              <input id="estanciaFechaFin" class="form-control input-custom" type="date" />
+            </div>
+          </div>
+          <div class="mb-3 mt-2">
+            <label class="form-label fw-semibold">Logros</label>
+            <textarea id="estanciaLogros" class="form-control input-custom" rows="2" placeholder="Resultados o logros..."></textarea>
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Congreso -->
+        <form *ngIf="modalTipo === 'congreso'" id="congresoFormEl" (ngSubmit)="guardarCongreso(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre del congreso <span class="text-danger">*</span></label>
+            <input id="congresoNombre" class="form-control input-custom" type="text" required placeholder="Ej: Congreso internacional de IA" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Título del trabajo</label>
+            <input id="congresoTitulo" class="form-control input-custom" type="text" placeholder="Título de la ponencia o póster" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo de participación</label>
+            <select id="congresoTipo" class="form-select input-custom">
+              <option value="">Selecciona...</option>
+              <option value="Ponente">Ponente</option>
+              <option value="Conferencista Magistral">Conferencista magistral</option>
+              <option value="Presentación de Póster">Presentación de póster</option>
+              <option value="Organizador">Organizador</option>
+            </select>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Fecha del evento</label>
+              <input id="congresoFecha" class="form-control input-custom" type="date" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">País Sede</label>
+              <select id="congresoPais" class="form-select input-custom">
+                <option value="">Selecciona...</option>
+                <option value="México">México</option>
+                <option value="España">España</option>
+                <option value="Estados Unidos">Estados Unidos</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Divulgación -->
+        <form *ngIf="modalTipo === 'divulgacion'" id="divulgacionFormEl" (ngSubmit)="guardarDivulgacion(); $event.preventDefault()">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Título del trabajo <span class="text-danger">*</span></label>
+            <input id="divulgacionTitulo" class="form-control input-custom" type="text" required placeholder="Nombre de la charla, entrevista, etc." />
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Tipo de divulgación</label>
+              <select id="divulgacionTipo" class="form-select input-custom">
+                <option value="">Selecciona...</option>
+                <option value="Científica">Científica</option>
+                <option value="Tecnológica">Tecnológica</option>
+                <option value="Humanista">Humanista</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Medio de comunicación</label>
+              <select id="divulgacionMedio" class="form-select input-custom">
+                <option value="">Selecciona...</option>
+                <option value="Televisión">Televisión</option>
+                <option value="Radio">Radio</option>
+                <option value="Prensa Escrita">Prensa Escrita</option>
+                <option value="Redes Sociales">Redes Sociales</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Público dirigido</label>
+              <select id="divulgacionDirigido" class="form-select input-custom">
+                <option value="">Selecciona...</option>
+                <option value="Público general">Público general</option>
+                <option value="Estudiantes">Estudiantes</option>
+                <option value="Especialistas">Especialistas</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Fecha</label>
+              <input id="divulgacionFecha" class="form-control input-custom" type="date" />
+            </div>
+          </div>
+          <div class="mb-3 mt-2">
+            <label class="form-label fw-semibold">Institución organizadora</label>
+            <input id="divulgacionInstitucion" class="form-control input-custom" type="text" placeholder="Organismo o medio" />
+          </div>
+          <div class="modal-footer-actions mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-borgona"><i class="fas fa-save me-1"></i>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Evidencia por rubro en modal -->
+        <div *ngIf="mostrarBloqueEvidenciaModal()" class="modal-evidence-panel border-top pt-3 mt-3">
+          <h6 class="fw-semibold text-borgona mb-2"><i class="fas fa-paperclip me-1"></i>Evidencia del rubro</h6>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold mb-1" for="modalEvidenceFile">Archivo comprobatorio (opcional)</label>
+            <input id="modalEvidenceFile"
+                   class="form-control input-custom"
+                   type="file"
+                   accept=".pdf,application/pdf"
+                   (change)="onEvidenciaModalFileChange($event)" />
+            <small class="text-muted">Solo se aceptan archivos PDF. El archivo se guarda al presionar "Guardar" en el modal.</small>
+          </div>
+          <div *ngIf="getEvidenciasModalActuales().length > 0; else sinEvidenciasModal" class="d-flex flex-column gap-2">
+            <div class="d-flex justify-content-between align-items-center border rounded px-2 py-1"
+                 *ngFor="let doc of getEvidenciasModalActuales(); trackBy: trackEvidenciaRubro">
+              <button type="button" class="btn btn-link text-start p-0 text-decoration-none" (click)="abrirEvidenciaRubro(doc)">
+                <i class="fas fa-file me-1"></i>{{ doc.nombre || ('Documento #' + doc.id) }}
+              </button>
+              <button type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      *ngIf="puedeEliminarEvidenciaModal(doc)"
+                      (click)="eliminarEvidenciaModal(doc)">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </div>
+          <ng-template #sinEvidenciasModal>
+            <small class="text-muted">Sin evidencias cargadas para este rubro.</small>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop fade" [class.show]="modalVisible" (click)="cerrarModal()"></div>
+</div>
+
+<!-- Modal detalle (ver certificación, etc.) -->
+<div class="modal fade trayectoria-form-modal" id="itemModal" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-borgona">
+      <div class="modal-header">
+        <h5 class="modal-title text-borgona" id="itemModalLabel">Detalle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="itemModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+

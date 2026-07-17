@@ -1,0 +1,48 @@
+.evaluador-postulaciones {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.text-borgona {
+  color: #6a0032;
+}
+
+.admin-card {
+  background: #fff;
+  border: 1px solid #eceff3;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+}
+
+.admin-card-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #edf1f5;
+  background: #fff;
+}
+
+.post-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.post-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-avatar-inicial {
+  color: #6a0032;
+  font-weight: 700;
+  font-size: 0.85rem;
+}

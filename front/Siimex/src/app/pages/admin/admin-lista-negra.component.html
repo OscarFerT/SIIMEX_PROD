@@ -1,0 +1,176 @@
+<div class="admin-lista-negra">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-1 text-borgona"><i class="fas fa-user-slash me-2"></i>Lista negra</h1>
+      <p class="text-muted small mb-0">Bloqueo global de postulación con tipos de sanción: 1 año, definitivo o reembolso.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-borgona btn-sm" (click)="abrirModalSancion()">
+        <i class="fas fa-gavel me-1"></i>Registrar sanción
+      </button>
+      <a routerLink="/admin/convocatorias" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i>Gestión modular
+      </a>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="text-muted mt-2 mb-0">Cargando lista negra...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error" class="card shadow-sm border-0">
+    <div class="card-body border-bottom">
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-7">
+          <label class="form-label small fw-semibold mb-1">Buscar</label>
+          <input type="search" class="form-control form-control-sm" [(ngModel)]="filtro" placeholder="Nombre, correo, CURP, motivo..." />
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label small fw-semibold mb-1">Estado</label>
+          <select class="form-select form-select-sm" [(ngModel)]="soloActivas" (ngModelChange)="cargar()">
+            <option [ngValue]="true">Solo activas</option>
+            <option [ngValue]="false">Todas</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Persona</th>
+            <th>Email</th>
+            <th>CURP</th>
+            <th>Tipo</th>
+            <th>Programa / Folio</th>
+            <th>Motivo</th>
+            <th>Vigencia</th>
+            <th>Estado</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let i of filtrados">
+            <td class="small fw-semibold">#{{ i.id }}</td>
+            <td>{{ i.nombre || ('Usuario ID ' + (i.usuarioId || '—')) }}</td>
+            <td>{{ i.email || '—' }}</td>
+            <td><code class="small">{{ i.curp || '—' }}</code></td>
+            <td class="small">{{ i.tipoSancionLabel || '1 año' }}</td>
+            <td class="small">
+              <div>{{ i.nombrePrograma || '—' }}</div>
+              <div class="text-muted">{{ i.folioReferencia || '—' }}</div>
+            </td>
+            <td class="small">{{ i.motivo }}</td>
+            <td class="small">{{ i.fechaInicio }} a {{ i.fechaFin || 'Indefinido' }}</td>
+            <td>
+              <span class="badge" [class.bg-danger]="i.activa" [class.bg-secondary]="!i.activa">
+                {{ i.activa ? 'Activa' : 'Levantada' }}
+              </span>
+            </td>
+            <td class="text-end">
+              <button type="button" class="btn btn-outline-success btn-sm" [disabled]="!i.activa" (click)="levantar(i)">
+                <i class="fas fa-unlock"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div *ngIf="filtrados.length === 0" class="text-center py-5 text-muted">
+      <i class="fas fa-user-slash fa-2x mb-2 d-block opacity-50"></i>
+      No hay registros en lista negra.
+    </div>
+  </div>
+</div>
+
+<!-- Modal registrar sanción -->
+<div class="modal fade admin-detalle-usuario-modal" [class.show]="modalSancionVisible" [style.display]="modalSancionVisible ? 'block' : 'none'" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-borgona text-white">
+        <h5 class="modal-title"><i class="fas fa-gavel me-2"></i>Registrar sanción</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="cerrarModalSancion()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-12 col-lg-5">
+            <label class="form-label small fw-semibold mb-1">Usuario registrado (ID)</label>
+            <select class="form-select form-select-sm" [(ngModel)]="form.usuarioId" (ngModelChange)="onUsuarioSeleccionado($event)">
+              <option value="">Selecciona un registro...</option>
+              <option *ngFor="let r of registrosOrdenados" [value]="r.id">
+                #{{ r.id }} · {{ nombreRegistro(r) }} · {{ r.email || 'sin correo' }}
+              </option>
+            </select>
+            <small class="text-muted">Se muestran {{ registros.length }} registros disponibles.</small>
+          </div>
+          <div class="col-12 col-lg-4">
+            <label class="form-label small fw-semibold mb-1">Correo (opcional)</label>
+            <input type="email" class="form-control form-control-sm" [(ngModel)]="form.email" />
+          </div>
+          <div class="col-12 col-lg-3">
+            <label class="form-label small fw-semibold mb-1">CURP (opcional)</label>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="form.curp" maxlength="18" />
+          </div>
+          <div class="col-12 col-lg-3">
+            <label class="form-label small fw-semibold mb-1">Duración / tipo</label>
+            <select class="form-select form-select-sm" [(ngModel)]="form.tipoSancion">
+              <option value="ANIO">1 año</option>
+              <option value="DEFINITIVO">Definitivo</option>
+              <option value="REEMBOLSO">Reembolso</option>
+            </select>
+          </div>
+          <div class="col-12 col-lg-5">
+            <label class="form-label small fw-semibold mb-1">Nombre de programa</label>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="form.nombrePrograma" maxlength="220" />
+          </div>
+          <div class="col-12 col-lg-4">
+            <label class="form-label small fw-semibold mb-1">Folio</label>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="form.folioReferencia" maxlength="120" />
+          </div>
+          <div class="col-12 col-lg-3">
+            <label class="form-label small fw-semibold mb-1">Nombre (referencia)</label>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="form.nombreReferencia" maxlength="220" />
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold mb-1">Motivo <span class="text-danger">*</span></label>
+            <textarea class="form-control form-control-sm" [(ngModel)]="form.motivo" rows="4" maxlength="4000" placeholder="Describe el motivo de la sanción"></textarea>
+          </div>
+          <div class="col-12">
+            <div class="border rounded p-2 bg-light">
+              <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                <span class="small fw-semibold text-muted">Importar y plantilla Excel</span>
+                <button type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarPlantillaExcel()">
+                  <i class="fas fa-file-download me-1"></i>Plantilla
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm" (click)="abrirSelectorImportacion()">
+                  <i class="fas fa-file-import me-1"></i>Cargar archivo
+                </button>
+                <button type="button" class="btn btn-outline-success btn-sm" (click)="importarPlantilla()" [disabled]="importRows.length === 0 || importando">
+                  <i class="fas fa-upload me-1"></i>{{ importando ? 'Importando...' : 'Importar' }}
+                </button>
+                <input id="archivoImportListaNegra" type="file" accept=".xlsx,.xls" (change)="procesarArchivoImportacion($event)" hidden />
+              </div>
+              <div class="small text-muted">
+                Plantilla XLSX con campos: `nombre_programa`, `folio`, `nombre`, `curp`, `motivo_sancion`.
+              </div>
+              <div class="small text-muted" *ngIf="importResumen">{{ importResumen }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalSancion()">Cancelar</button>
+        <button type="button" class="btn btn-borgona" (click)="sancionar()">
+          <i class="fas fa-gavel me-1"></i>Guardar sanción
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop fade" [class.show]="modalSancionVisible" (click)="cerrarModalSancion()"></div>
+</div>

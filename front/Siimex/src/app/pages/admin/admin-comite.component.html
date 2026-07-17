@@ -1,0 +1,154 @@
+<div class="admin-comite">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-1 text-borgona">
+        <i class="fas fa-users-gear me-2"></i>Comite de dictaminacion
+      </h1>
+      <p class="text-muted small mb-0">Convocatoria: <strong>{{ convocatoriaTitulo }}</strong></p>
+    </div>
+    <div class="d-flex gap-2">
+      <a [routerLink]="['/admin/convocatorias', convocatoriaId, 'gestion']" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i>Volver
+      </a>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cargarPostulaciones(); cargarResumenComite()">
+        <i class="fas fa-rotate me-1"></i>Actualizar
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="mt-2 text-muted mb-0">Cargando solicitudes...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error" class="admin-card">
+    <div class="p-3 border-bottom bg-light">
+      <div class="row g-2">
+        <div class="col-6 col-md-2"><div class="small text-muted">Total</div><div class="fw-semibold">{{ totalComite }}</div></div>
+        <div class="col-6 col-md-2"><div class="small text-muted">Aprobadas</div><div class="fw-semibold text-success">{{ aprobadasComite }}</div></div>
+        <div class="col-6 col-md-2"><div class="small text-muted">Rechazadas</div><div class="fw-semibold text-danger">{{ rechazadasComite }}</div></div>
+        <div class="col-6 col-md-2"><div class="small text-muted">Pendientes</div><div class="fw-semibold text-warning">{{ pendientesComite }}</div></div>
+        <div class="col-12 col-md-4"><div class="small text-muted">Monto aprobado</div><div class="fw-semibold">$ {{ montoTotalAprobado | number:'1.2-2' }}</div></div>
+      </div>
+    </div>
+    <div class="admin-card-header">
+      <span class="text-muted small">{{ postulacionesFiltradas.length }} de {{ postulaciones.length }} solicitud(es)</span>
+    </div>
+
+    <div class="admin-filtros p-3 border-bottom">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold mb-1">Folio</label>
+          <input type="search" class="form-control form-control-sm" [(ngModel)]="filtroFolio" />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold mb-1">Solicitante</label>
+          <input type="search" class="form-control form-control-sm" [(ngModel)]="filtroSolicitante" />
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Resultado eval.</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroResultado">
+            <option value="">Todos</option>
+            <option value="APROBADA">Aprobada</option>
+            <option value="NO_APROBADA">No aprobada</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Estado comite</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroEstadoComite">
+            <option value="">Todos</option>
+            <option value="APROBADA">Aprobada</option>
+            <option value="RECHAZADA">Rechazada</option>
+            <option value="PENDIENTE">Pendiente</option>
+          </select>
+        </div>
+        <div class="col-md-1 d-grid">
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="limpiarFiltros()">
+            <i class="fas fa-eraser"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Folio</th>
+              <th>Solicitante</th>
+              <th>Proyecto</th>
+              <th>Estado solicitud</th>
+              <th>Resultado eval.</th>
+              <th>Puntaje</th>
+              <th>Estado comite</th>
+              <th>Monto</th>
+              <th>Fecha comite</th>
+              <th>Documentos</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of postulacionesFiltradas">
+              <td class="small fw-semibold">{{ p.folio || ('SOL-' + p.id) }}</td>
+              <td class="small">
+                <div class="fw-semibold">{{ p.nombre || '—' }}</div>
+                <div class="text-muted">{{ p.correo || '—' }}</div>
+              </td>
+              <td class="small">{{ p.tituloProyecto || '—' }}</td>
+              <td>
+                <span class="badge bg-light text-dark border">{{ p.estado || '—' }}</span>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="getResultadoBadgeClass(p.resultadoEvaluacion)">
+                  {{ p.resultadoEvaluacion || 'Pendiente' }}
+                </span>
+              </td>
+              <td class="small">{{ p.puntajeEvaluacion ?? '—' }}</td>
+              <td>
+                <span class="badge" [ngClass]="getEstadoComiteBadgeClass(p.estadoComite)">
+                  {{ p.estadoComite || 'Sin dictamen' }}
+                </span>
+              </td>
+              <td class="small">{{ p.montoApoyoAsignado ?? '—' }}</td>
+              <td class="small">{{ formatearFecha(p.fechaComite) }}</td>
+              <td class="small">
+                <div class="d-flex flex-column gap-1">
+                  <button *ngIf="p.oficioAprobacionDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(p.oficioAprobacionDocumentoId, p.oficioAprobacionNombreArchivo || 'oficio_aprobacion.pdf')">
+                    <i class="fas fa-download me-1"></i>Oficio
+                  </button>
+                  <button *ngIf="p.nombramientoDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(p.nombramientoDocumentoId, p.nombramientoNombreArchivo || 'nombramiento.pdf')">
+                    <i class="fas fa-download me-1"></i>Nombramiento
+                  </button>
+                  <span *ngIf="!p.oficioAprobacionDocumentoId && !p.nombramientoDocumentoId" class="text-muted">Sin emitir</span>
+                </div>
+              </td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end gap-1 flex-wrap">
+                <button type="button" class="btn btn-outline-primary btn-sm" (click)="dictaminar(p)" [disabled]="!puedeDictaminar(p)" title="Disponible cuando la solicitud esté revisada">
+                  <i class="fas fa-scale-balanced me-1"></i>Dictaminar
+                </button>
+                <button type="button" class="btn btn-outline-success btn-sm" (click)="emitirOficio(p)" [disabled]="!esAprobadaComite(p)">
+                  <i class="fas fa-file-signature me-1"></i>Oficio
+                </button>
+                <button type="button" class="btn btn-outline-dark btn-sm" (click)="emitirNombramiento(p)" [disabled]="!p.oficioAprobacionDocumentoId">
+                  <i class="fas fa-id-badge me-1"></i>Nombramiento
+                </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="postulacionesFiltradas.length === 0" class="text-center py-5 text-muted">
+        <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
+        No hay solicitudes para mostrar con los filtros actuales.
+      </div>
+    </div>
+  </div>
+</div>

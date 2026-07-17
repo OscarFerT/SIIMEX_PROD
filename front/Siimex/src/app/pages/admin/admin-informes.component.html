@@ -1,0 +1,125 @@
+<div class="admin-informes">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-1 text-borgona">
+        <i class="fas fa-file-signature me-2"></i>Informes parciales y finales
+      </h1>
+      <p class="text-muted small mb-0">Convocatoria: <strong>{{ convocatoriaTitulo }}</strong></p>
+    </div>
+    <div class="d-flex gap-2">
+      <a [routerLink]="['/admin/convocatorias', convocatoriaId, 'gestion']" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i>Volver
+      </a>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cargarPostulaciones()">
+        <i class="fas fa-rotate me-1"></i>Actualizar
+      </button>
+      <button type="button" class="btn btn-outline-danger btn-sm" (click)="ejecutarReglasAutomaticas()">
+        <i class="fas fa-gears me-1"></i>Ejecutar reglas
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="mt-2 text-muted mb-0">Cargando solicitudes...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error" class="admin-card">
+    <div class="admin-card-header">
+      <span class="text-muted small">{{ postulacionesFiltradas.length }} de {{ postulaciones.length }} solicitud(es)</span>
+    </div>
+
+    <div class="admin-filtros p-3 border-bottom">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-9">
+          <label class="form-label small fw-semibold mb-1">Buscar</label>
+          <input type="search" class="form-control form-control-sm" [(ngModel)]="filtroTexto" placeholder="Folio, nombre o correo" />
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Estado informe</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroEstadoInforme">
+            <option value="">Todos</option>
+            <option value="PENDIENTE">Pendiente</option>
+            <option value="PARCIAL_RECIBIDO">Parcial recibido</option>
+            <option value="COMPLETO">Completo</option>
+            <option value="INCUMPLIDO">Incumplido</option>
+            <option value="NO_REQUIERE">No requiere</option>
+          </select>
+        </div>
+        <div class="col-md-1 d-grid">
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="limpiarFiltros()">
+            <i class="fas fa-eraser"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Folio</th>
+              <th>Solicitante</th>
+              <th>Estado informe</th>
+              <th>Límite parcial</th>
+              <th>Límite final</th>
+              <th>Informe parcial</th>
+              <th>Informe final</th>
+              <th>Motivo incumplimiento</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of postulacionesFiltradas">
+              <td class="small fw-semibold">{{ p.folio || ('SOL-' + p.id) }}</td>
+              <td class="small">
+                <div class="fw-semibold">{{ p.nombre || '—' }}</div>
+                <div class="text-muted">{{ p.correo || '—' }}</div>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="getEstadoInformeBadgeClass(p.estadoInforme)">
+                  {{ p.estadoInforme || 'Sin configurar' }}
+                </span>
+              </td>
+              <td class="small">{{ requiereInformeParcial ? formatearFecha(p.fechaLimiteInformeParcial) : 'No requerido' }}</td>
+              <td class="small">{{ requiereInformeFinal ? formatearFecha(p.fechaLimiteInformeFinal) : 'No requerido' }}</td>
+              <td class="small">
+                <span *ngIf="!requiereInformeParcial">No requerido</span>
+                <button *ngIf="p.informeParcialDocumentoId" type="button" class="btn btn-link btn-sm p-0" (click)="abrirDocumento(p.informeParcialDocumentoId)">
+                  {{ p.informeParcialNombreArchivo || 'Ver' }}
+                </button>
+                <span *ngIf="requiereInformeParcial && !p.informeParcialDocumentoId">—</span>
+              </td>
+              <td class="small">
+                <span *ngIf="!requiereInformeFinal">No requerido</span>
+                <button *ngIf="p.informeFinalDocumentoId" type="button" class="btn btn-link btn-sm p-0" (click)="abrirDocumento(p.informeFinalDocumentoId)">
+                  {{ p.informeFinalNombreArchivo || 'Ver' }}
+                </button>
+                <span *ngIf="requiereInformeFinal && !p.informeFinalDocumentoId">—</span>
+              </td>
+              <td class="small">{{ p.motivoIncumplimientoInforme || '—' }}</td>
+              <td class="text-end">
+                <button type="button" class="btn btn-outline-primary btn-sm me-1" (click)="configurarFechas(p)" [disabled]="!requiereInformeParcial && !requiereInformeFinal">
+                  <i class="fas fa-calendar-check me-1"></i>Configurar
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" (click)="marcarIncumplimiento(p)" [disabled]="(p.estadoInforme || '').toUpperCase() === 'INCUMPLIDO'">
+                  <i class="fas fa-ban me-1"></i>Incumplimiento
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="postulacionesFiltradas.length === 0" class="text-center py-5 text-muted">
+        <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
+        No hay solicitudes para mostrar.
+      </div>
+    </div>
+  </div>
+</div>

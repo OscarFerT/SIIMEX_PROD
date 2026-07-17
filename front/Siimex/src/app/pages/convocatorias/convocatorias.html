@@ -1,0 +1,229 @@
+<!-- Contenedor principal -->
+<main class="container mt-5 mb-5">
+  <header
+    class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4"
+  >
+    <div>
+      <h2 class="text-borgona">Convocatorias vigentes</h2>
+      <p class="muted-small mb-0">
+        Explora oportunidades de investigación y postúlate según tu perfil.
+      </p>
+    </div>
+
+    <!-- Filtros -->
+    <form class="conv-filters" [formGroup]="form">
+      <div class="filter-group">
+        <i class="fas fa-search filter-icon"></i>
+        <input
+          formControlName="q"
+          type="search"
+          class="form-control input-filter"
+          placeholder="Buscar por palabra clave..."
+          aria-label="Buscar convocatorias"
+        />
+      </div>
+      <div class="filter-group">
+        <i class="fas fa-filter filter-icon"></i>
+        <select
+          formControlName="area"
+          class="form-select"
+          aria-label="Filtrar por área"
+        >
+          <option value="">Todas las áreas</option>
+          <option value="energias">Energías</option>
+          <option value="educacion">Educación</option>
+          <option value="tecnologia">Tecnología</option>
+          <option value="salud">Salud</option>
+          <option value="medio-ambiente">Medio ambiente</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </form>
+  </header>
+
+  <!-- Cargando -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="mt-2 text-muted">Cargando convocatorias...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <!-- Grid de tarjetas -->
+  <section *ngIf="!loading && !error" class="row" id="cardsContainer" aria-live="polite">
+    <div
+      *ngFor="let c of convocatoriasFiltradas"
+      class="col-md-4 mb-4"
+      [attr.data-area]="c.area || ''"
+      [attr.data-keywords]="c.keywords || ''"
+    >
+      <div class="conv-card h-100">
+        <div class="conv-card-header" [class.with-cover]="!!c.imagenUrl" [style.background-image]="getHeaderBackground(c)">
+          <div class="conv-card-icon">
+            <img [src]="getIcono(c)" alt="" aria-hidden="true" />
+          </div>
+          <div class="conv-card-match">
+            <div class="match-circle" [attr.data-percent]="getCompatibilidad(c) >= 0 ? getCompatibilidad(c) : null">
+              <svg class="match-svg" viewBox="0 0 36 36">
+                <path class="match-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                <path class="match-circle-progress" [attr.stroke-dasharray]="(getCompatibilidad(c) >= 0 ? getCompatibilidad(c) : 0) + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              </svg>
+              <div class="match-percent">{{ getCompatibilidad(c) >= 0 ? (getCompatibilidad(c) + '%') : '—' }}</div>
+            </div>
+            <span class="match-label">Compatibilidad</span>
+          </div>
+        </div>
+        <div class="conv-card-body">
+          <div *ngIf="yaPostule(c)" class="postulacion-estado-badge" [class.pendiente]="getMiEstado(c) === 'PENDIENTE'" [class.observaciones]="getMiEstado(c) === 'CON_OBSERVACIONES'" [class.subsanada]="getMiEstado(c) === 'SUBSANADA'" [class.aceptada]="getMiEstado(c) === 'ACEPTADA' || getMiEstado(c) === 'REVISADA'" [class.rechazada]="getMiEstado(c) === 'RECHAZADA'">
+            <i class="fas fa-check-circle me-1"></i>
+            {{ textoEstadoPostulacion(c) }}
+          </div>
+          <h5 class="conv-card-title">{{ c.titulo }}</h5>
+          <p class="conv-card-desc">{{ c.descripcion || 'Sin descripción.' }}</p>
+          <div class="conv-card-meta">
+            <div class="meta-item">
+              <i class="fas fa-calendar-alt"></i>
+              <span>Cierre: <strong>{{ formatearFecha(c.fechaCierre) }}</strong></span>
+            </div>
+            <div class="meta-item" *ngIf="c.fechaPublicacion">
+              <i class="fas fa-bullhorn"></i>
+              <span>Publicada: <strong>{{ formatearFecha(c.fechaPublicacion) }}</strong></span>
+            </div>
+            <div class="meta-item">
+              <i class="fas fa-tag"></i>
+              <span>{{ c.area || 'General' }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="conv-card-footer">
+          <button
+            class="btn btn-outline-conv"
+            type="button"
+            (click)="abrirModal(c)"
+          >
+            <i class="fas fa-info-circle me-1"></i>
+            Requisitos
+          </button>
+          <a class="btn btn-primary-conv text-center" [routerLink]="getPostulacionRoute(c)" [queryParams]="getPostulacionQueryParams(c)">
+            <i class="fas fa-paper-plane me-1"></i>
+            {{ textoBotonPostulacion(c) }}
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Empty state -->
+  <div *ngIf="!loading && !error && convocatoriasFiltradas.length === 0" class="text-center mt-4" id="emptyState">
+    <img src="assets/img/devops.png" alt="" style="width: 80px; opacity: 0.6" />
+    <p class="muted-small mt-2">No se encontraron convocatorias que coincidan con tu búsqueda.</p>
+  </div>
+</main>
+
+<!-- Modal dinámico -->
+<div
+  class="modal fade"
+  #modalConv
+  id="modalConv"
+  tabindex="-1"
+  aria-labelledby="modalConvLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" *ngIf="modalSeleccionada">
+    <div class="modal-content border-borgona conv-modal-content">
+      <div class="modal-header">
+        <div class="conv-modal-header-content">
+          <h5 class="modal-title text-borgona" id="modalConvLabel">
+            {{ modalSeleccionada.titulo }}
+          </h5>
+          <div class="conv-modal-meta d-flex flex-wrap gap-3 mt-2">
+            <span class="conv-meta-badge" *ngIf="modalSeleccionada.area">
+              <i class="fas fa-tag me-1"></i>{{ modalSeleccionada.area }}
+            </span>
+            <span class="conv-meta-badge" *ngIf="modalSeleccionada.fechaApertura">
+              <i class="fas fa-calendar-check me-1"></i>Apertura: {{ formatearFecha(modalSeleccionada.fechaApertura) }}
+            </span>
+            <span class="conv-meta-badge conv-meta-cierre">
+              <i class="fas fa-calendar-times me-1"></i>Cierre: {{ formatearFecha(modalSeleccionada.fechaCierre) }}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Cerrar"
+          (click)="cerrarModal()"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <!-- Descripción / Resumen -->
+        <section class="conv-modal-section">
+          <h6 class="text-borgona conv-section-title">
+            <i class="fas fa-info-circle me-2"></i>Resumen
+          </h6>
+          <div class="conv-section-body" *ngIf="modalSeleccionada.resumen || modalSeleccionada.descripcion">
+            <p class="mb-0" *ngIf="modalSeleccionada.resumen">{{ modalSeleccionada.resumen }}</p>
+            <p class="mb-0 mt-2" *ngIf="modalSeleccionada.resumen && modalSeleccionada.descripcion">
+              {{ modalSeleccionada.descripcion }}
+            </p>
+            <p class="mb-0" *ngIf="!modalSeleccionada.resumen && modalSeleccionada.descripcion">
+              {{ modalSeleccionada.descripcion }}
+            </p>
+          </div>
+          <p class="text-muted mb-0" *ngIf="!modalSeleccionada.resumen && !modalSeleccionada.descripcion">
+            Sin descripción disponible.
+          </p>
+        </section>
+
+        <!-- Requisitos -->
+        <section class="conv-modal-section" *ngIf="modalSeleccionada.requisitos">
+          <h6 class="text-borgona conv-section-title">
+            <i class="fas fa-tasks me-2"></i>Requisitos
+          </h6>
+          <div class="conv-section-body">
+            <ul class="conv-requisitos-list" *ngIf="getRequisitosLista(modalSeleccionada.requisitos).length">
+              <li *ngFor="let req of getRequisitosLista(modalSeleccionada.requisitos)">
+                <i class="fas fa-check-circle text-success me-2"></i>{{ req }}
+              </li>
+            </ul>
+            <div class="conv-requisitos-texto" *ngIf="!getRequisitosLista(modalSeleccionada.requisitos).length" [innerHTML]="formatearRequisitosTexto(modalSeleccionada.requisitos)"></div>
+          </div>
+        </section>
+
+        <section class="conv-modal-section" *ngIf="getReglasConfigurables(modalSeleccionada.reglasConfigurables).length">
+          <h6 class="text-borgona conv-section-title">
+            <i class="fas fa-sliders-h me-2"></i>Reglas de la convocatoria
+          </h6>
+          <div class="conv-section-body">
+            <ul class="conv-requisitos-list">
+              <li *ngFor="let regla of getReglasConfigurables(modalSeleccionada.reglasConfigurables)">
+                <i class="fas fa-check-circle text-success me-2"></i>
+                <strong>{{ regla.clave }}:</strong> {{ regla.valor }}
+                <span *ngIf="regla.descripcion"> - {{ regla.descripcion }}</span>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- Información adicional -->
+        <div class="conv-modal-info-box">
+          <i class="fas fa-lightbulb me-2"></i>
+          <span>Revisa que tu perfil y currículum cumplan con los requisitos antes de postularte.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-borgona px-4" [routerLink]="getPostulacionRoute(modalSeleccionada)" [queryParams]="getPostulacionQueryParams(modalSeleccionada)" (click)="cerrarModal()">
+          <i class="fas fa-paper-plane me-2"></i>{{ textoBotonPostulacion(modalSeleccionada) }}
+        </a>
+        <button class="btn btn-outline-secondary" type="button" (click)="cerrarModal()">
+          <i class="fas fa-times me-1"></i>Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+

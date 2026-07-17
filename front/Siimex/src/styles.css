@@ -1,0 +1,1101 @@
+/* ============================================
+   GLOBAL STYLES - SIIMEX / COMECyT
+   ============================================ */
+
+@import "@fontsource/roboto";
+
+/* ============================================
+   CSS VARIABLES
+   ============================================ */
+:root {
+  --borgona: #7A1E48;
+  --borgona-dark: #5e1838;
+  --borgona-light: #9a2d5f;
+  --borgona-50: rgba(122, 30, 72, 0.08);
+  --borgona-100: rgba(122, 30, 72, 0.12);
+  --color-dorado: #9e8e5e;
+  --bg-soft: #F5F1E7;
+  --card-border: #E2D8CF;
+  --muted: #666666;
+  --text-strong: #1f1f1f;
+  --text-muted: #5b5f66;
+  --text-soft: #8b8f96;
+  --border: rgba(0, 0, 0, 0.08);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================
+   BASE
+   ============================================ */
+html {
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #FBF8F4;
+  color: #222;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  overflow-y: visible;
+  position: relative;
+}
+
+/* ============================================
+   TYPOGRAPHY & UTILITY
+   ============================================ */
+.text-borgona { color: var(--borgona); }
+.bg-borgona { background-color: var(--borgona) !important; }
+.muted-small { font-size: .95rem; color: var(--muted); }
+.border-borgona { border: 1px solid var(--borgona); }
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn-login,
+.btn-borgona,
+.btn-register {
+  background: var(--borgona);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-login:hover,
+.btn-borgona:hover,
+.btn-register:hover {
+  background-color: var(--borgona-dark);
+  color: #fff;
+}
+
+.btn-outline-secondary { border-radius: 6px; }
+
+/* ============================================
+   FORMS & INPUTS
+   ============================================ */
+.form-label {
+  color: var(--borgona);
+}
+
+.input-custom,
+.form-control,
+.form-select {
+  border: 1px solid var(--borgona);
+  background-color: #FDFBF7;
+  color: #333;
+  border-radius: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-custom:focus,
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--borgona);
+  box-shadow: 0 0 0 3px rgba(122, 30, 72, 0.12);
+}
+
+.input-group-text {
+  border: 1px solid var(--borgona);
+  background-color: var(--bg-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: .45rem .6rem;
+}
+
+.is-invalid {
+  border-color: red;
+  background-color: #ffe6e6;
+}
+
+.was-validated .form-control:invalid,
+.form-control.is-invalid {
+  border-color: #dc3545;
+  box-shadow: none;
+}
+
+.form-control.is-valid {
+  border-color: #198754;
+  box-shadow: none;
+}
+
+/* ============================================
+   CARDS & LAYOUT
+   ============================================ */
+.card {
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--card-border);
+  background: #fff;
+}
+
+.card .card-header {
+  background: #fff9f6;
+  border-bottom: 1px solid var(--card-border);
+  color: var(--borgona);
+  font-weight: 700;
+}
+
+.card .card-body { background: #fff; }
+.card-title { font-weight: bold; }
+
+.modal-content {
+  background-color: #fff;
+}
+
+.modal-body {
+  background-color: #F5F1E7;
+}
+
+/* ============================================
+   LOGIN / REGISTER LAYOUT
+   ============================================ */
+.login-wrapper {
+  min-height: 100vh;
+}
+
+.header-bar {
+  height: 60px;
+  background-image: url('assets/img/up.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-color: #fff;
+}
+
+.login-container {
+  display: flex;
+  max-width: 900px;
+  margin: auto;
+  background-color: #fff;
+  border: 1px solid #140303;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.login-left {
+  flex: 1;
+  background-color: #f8f8f8;
+  padding: 2rem;
+  min-width: 0;
+}
+
+.login-right {
+  flex: 1;
+  background-color: var(--color-dorado);
+  color: var(--borgona);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  position: relative;
+  min-width: 0;
+}
+
+.login-right img {
+  max-width: 180px;
+  height: auto;
+  display: block;
+  margin-bottom: 1rem;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 4px rgba(250, 249, 249, 0.233));
+  background-color: transparent;
+}
+
+.SIMEX-title {
+  color: var(--borgona);
+  font-weight: bold;
+}
+
+.SIMEX-subtitle {
+  color: var(--borgona);
+  margin-bottom: 2rem;
+}
+
+.comecyt-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--borgona);
+}
+
+.comecyt-subtitle {
+  font-size: 1rem;
+  color: var(--borgona);
+}
+
+.forgot-link {
+  color: var(--borgona);
+  text-decoration: none;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================
+   NAVBAR
+   ============================================ */
+nav.navbar.comecyt-unified { overflow: visible !important; }
+.notif-dropdown { z-index: 99999 !important; }
+.navbar .nav-link { color: #fff !important; }
+.navbar .nav-link.active {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+
+.hover-link {
+  transition: background-color 0.3s ease, color 0.3s ease;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+.hover-link:hover {
+  background-color: var(--color-dorado);
+  color: var(--borgona);
+}
+
+/* ============================================
+   CAROUSEL
+   ============================================ */
+.carousel-indicators [data-bs-target] {
+  background-color: var(--borgona);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.carousel-indicators .active {
+  opacity: 1;
+}
+
+/* ============================================
+   PROFILE & UPLOAD PLACEHOLDERS
+   ============================================ */
+.profile-pic-placeholder,
+.curriculum-placeholder {
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, #f8f6f4);
+  border: 1px dashed var(--card-border);
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  min-height: 96px;
+}
+
+.upload-placeholder {
+  border: 2px dashed var(--borgona);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7a6b6b;
+}
+
+.upload-small { height: 90px; }
+
+/* ============================================
+   CONVOCATORIAS CARDS (global overrides)
+   ============================================ */
+.conv-card-title {
+  font-weight: 700;
+  color: var(--borgona);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.conv-card-desc { color: #444; margin: .75rem 0 1rem 0; }
+
+/* ============================================
+   SMALL HELPERS
+   ============================================ */
+.icon-sm { width: 22px; height: 22px; display: inline-block; vertical-align: middle; margin-right: .5rem; }
+.input-filter { max-width: 420px; min-width: 180px; }
+.profile-match { display: flex; align-items: center; gap: .5rem; font-weight: 600; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot-green { background: #2ECC71; }
+.dot-yellow { background: #F1C40F; }
+.dot-red { background: #E74C3C; }
+
+[aria-live] { outline: none; }
+
+.btn-borgona.d-flex img { filter: none; margin-right: .45rem; }
+
+/* ============================================
+   BADGE
+   ============================================ */
+.badge.bg-borgona {
+  background: var(--borgona) !important;
+  color: #fff !important;
+}
+
+/* ============================================
+   INVESTIGADORES GRID
+   ============================================ */
+#investigadoresGrid .card-img-top {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+#investigadoresGrid .card-img-top,
+#investigadoresGrid .card .img-fluid {
+  border-radius: 8px 8px 0 0;
+  transition: transform .22s ease, box-shadow .18s ease;
+}
+
+#investigadoresGrid article button:focus .card-img-top,
+#investigadoresGrid article button:hover .card-img-top {
+  transform: scale(1.02);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  outline: none;
+}
+
+#investigadoresGrid article button.btn-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ============================================
+   Z-INDEX HIERARCHY
+   ============================================ */
+.sticky-top {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1030 !important;
+}
+
+.navbar.sticky-top,
+.comecyt-unified.sticky-top {
+  z-index: 1030 !important;
+}
+
+main.container {
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar[style*="position: fixed"],
+.sidebar.position-fixed {
+  z-index: 1040 !important;
+}
+
+.sticky-top-form,
+.sticky-element {
+  z-index: 10 !important;
+}
+
+.dropdown-menu,
+.user-menu .dropdown {
+  z-index: 1020 !important;
+}
+
+.comecyt-unified {
+  position: sticky !important;
+  top: 0 !important;
+  width: 100% !important;
+}
+
+/* ============================================
+   MODAL Z-INDEX FIX
+   ============================================ */
+.modal-backdrop {
+  z-index: 1040 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  pointer-events: auto !important;
+}
+
+.modal {
+  z-index: 1055 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  pointer-events: none !important;
+}
+
+.modal-dialog {
+  position: relative !important;
+  margin: 1rem auto !important;
+  pointer-events: auto !important;
+}
+
+.modal-content {
+  pointer-events: auto !important;
+  position: relative !important;
+}
+
+.modal.show {
+  display: block !important;
+}
+
+.modal.show .modal-dialog {
+  transform: none !important;
+}
+
+.modal-content * {
+  pointer-events: auto !important;
+}
+
+.modal button,
+.modal a,
+.modal input,
+.modal textarea,
+.modal select {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+body .modal,
+body .modal-backdrop {
+  position: fixed !important;
+  z-index: 1055 !important;
+}
+
+body .modal-backdrop {
+  z-index: 1040 !important;
+}
+
+.container .modal,
+.content .modal,
+main .modal,
+app-root .modal {
+  position: fixed !important;
+  z-index: 1055 !important;
+}
+
+/* Admin modal detalle */
+.admin-detalle-usuario-modal {
+  position: fixed !important;
+  z-index: 99999 !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.admin-detalle-usuario-modal .modal-backdrop {
+  z-index: 99998 !important;
+}
+
+.admin-detalle-usuario-modal .modal-dialog {
+  z-index: 100000 !important;
+  margin-top: 5rem !important;
+}
+
+/* ============================================
+   OVERFLOW FIXES
+   ============================================ */
+:host {
+  overflow-x: hidden;
+}
+
+app-root {
+  overflow-x: hidden;
+  overflow-y: visible;
+  display: block;
+  width: 100%;
+  min-height: 100%;
+}
+
+.container,
+.container-fluid {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.card,
+.form-section {
+  overflow-x: hidden;
+}
+
+/* ============================================
+   SWEETALERT2 Z-INDEX (above Bootstrap modals)
+   ============================================ */
+.swal2-container {
+  /* Debe quedar por encima de modales admin personalizados (incluye z-index altos). */
+  z-index: 2147483647 !important;
+  position: fixed !important;
+}
+
+.swal2-container.swal2-center {
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ============================================
+   SWAL POSTULACION DETAIL
+   ============================================ */
+.swal-detalle-postulacion {
+  border-radius: 16px !important;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12) !important;
+  overflow: hidden;
+}
+
+.swal-detalle-postulacion .swal2-title {
+  color: #2d3748 !important;
+  font-size: 1.35rem !important;
+  font-weight: 600 !important;
+  padding: 1.25rem 1.5rem 0 !important;
+  margin-bottom: 1.25rem !important;
+}
+
+.swal-titulo-post {
+  display: inline-flex;
+  align-items: center;
+}
+
+.swal-detalle-postulacion .swal2-html-container {
+  margin: 0 !important;
+  padding: 0.5rem 1.5rem 1.5rem !important;
+  text-align: left !important;
+}
+
+.swal-detalle-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.swal-grid-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1.5rem;
+}
+
+.swal-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.swal-info-item .swal-icon {
+  color: var(--borgona);
+  font-size: 0.9rem;
+  margin-top: 0.2rem;
+  width: 1rem;
+  text-align: center;
+}
+
+.swal-info-item .swal-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #718096;
+}
+
+.swal-info-item .swal-valor {
+  font-size: 0.95rem;
+  color: #2d3748;
+}
+
+.swal-seccion {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.swal-seccion-titulo {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 0.6rem;
+}
+
+.swal-compat-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.swal-compat-bar {
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.swal-compat-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.swal-compat-fill.swal-compat-high {
+  background: linear-gradient(90deg, #198754 0%, #20c997 100%);
+}
+
+.swal-compat-fill.swal-compat-medium {
+  background: linear-gradient(90deg, #fd7e14 0%, #ffc107 100%);
+}
+
+.swal-compat-fill.swal-compat-low {
+  background: linear-gradient(90deg, #6c757d 0%, #adb5bd 100%);
+}
+
+.swal-compat-valor { font-size: 0.95rem; font-weight: 700; }
+.swal-compat-valor.swal-compat-high { color: #198754; }
+.swal-compat-valor.swal-compat-medium { color: #fd7e14; }
+.swal-compat-valor.swal-compat-low { color: #6c757d; }
+
+.swal-estado-badge {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.swal-estado-ok { background: #d1fae5; color: #065f46; }
+.swal-estado-no { background: #fee2e2; color: #991b1b; }
+.swal-estado-pend { background: #fef3c7; color: #92400e; }
+.swal-estado-info { background: #dbeafe; color: #1e40af; }
+
+.swal-observaciones {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4a5568;
+  line-height: 1.5;
+}
+
+.swal-criterios-lista {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
+  color: #4a5568;
+  line-height: 1.7;
+}
+
+.swal-criterios-lista li { margin-bottom: 0.25rem; }
+.swal-criterio-key { font-weight: 600; color: #2d3748; }
+
+.swal-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.swal-badge-success { background: #d1fae5; color: #065f46; }
+.swal-badge-neutral { background: #e2e8f0; color: #4a5568; }
+.swal-cv-filename { font-size: 0.8rem; color: #718096; margin-top: 0.4rem; }
+
+.swal-doc-adjunto {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+.swal-doc-adjunto:last-child { border-bottom: none; }
+.swal-doc-label { font-size: 0.9rem; color: #4a5568; text-transform: capitalize; }
+
+.swal-docs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.swal-detalle-postulacion .swal2-actions {
+  gap: 0.75rem !important;
+  padding: 0 1.5rem 1.5rem !important;
+}
+
+.swal-detalle-postulacion .swal2-styled.swal2-confirm {
+  border-radius: 10px !important;
+  padding: 0.6rem 1.25rem !important;
+  font-weight: 600 !important;
+}
+
+.swal-detalle-postulacion .swal2-styled.swal2-cancel {
+  border-radius: 10px !important;
+  padding: 0.6rem 1.25rem !important;
+}
+
+/* ============================================
+   GLOBAL RESPONSIVE
+   ============================================ */
+
+/* Tablets */
+@media (max-width: 991px) {
+  #investigadoresGrid .card-img-top {
+    height: 200px;
+  }
+}
+
+/* Small tablets & large phones */
+@media (max-width: 767px) {
+  .input-filter { max-width: 100%; }
+  .conv-card-desc { font-size: .95rem; }
+  .card .card-header { font-size: .95rem; }
+
+  #investigadoresGrid .card-img-top {
+    height: 180px;
+  }
+
+  .swal-grid-info {
+    grid-template-columns: 1fr;
+  }
+
+  .swal-detalle-postulacion .swal2-html-container {
+    padding: 0.5rem 1rem 1rem !important;
+  }
+
+  .swal-detalle-postulacion .swal2-title {
+    font-size: 1.15rem !important;
+    padding: 1rem 1rem 0 !important;
+  }
+}
+
+/* Phones */
+@media (max-width: 576px) {
+  .login-container {
+    flex-direction: column;
+  }
+
+  .login-left,
+  .login-right {
+    width: 100%;
+    border-right: none;
+  }
+
+  .login-right img {
+    max-width: 120px;
+  }
+
+  .header-bar {
+    height: 40px;
+    background-size: contain;
+  }
+
+  #investigadoresGrid .card-img-top {
+    height: 160px;
+  }
+
+  .container,
+  .container-fluid {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .container,
+  .container-fluid {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+/* ============================================
+   ADMIN MODAL THEME (GLOBAL)
+   ============================================ */
+.admin-surface .swal2-container {
+  backdrop-filter: blur(2px);
+}
+
+.admin-surface .swal2-popup {
+  width: min(680px, calc(100vw - 2rem)) !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(128, 0, 32, 0.16) !important;
+  box-shadow: 0 28px 64px rgba(17, 24, 39, 0.26) !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+.admin-surface .swal2-title {
+  margin: 0 !important;
+  padding: 1rem 1.25rem !important;
+  font-size: 1.08rem !important;
+  font-weight: 700 !important;
+  color: #3c0f1f !important;
+  text-align: left !important;
+  border-bottom: 1px solid rgba(122, 30, 72, 0.14) !important;
+  background: linear-gradient(180deg, #fff 0%, #fdf6f8 100%) !important;
+}
+
+.admin-surface .swal2-html-container {
+  margin: 0 !important;
+  padding: 1rem 1.25rem 0.75rem !important;
+  text-align: left !important;
+  color: #334155 !important;
+}
+
+.admin-surface .swal2-input,
+.admin-surface .swal2-select,
+.admin-surface .swal2-textarea {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  border-radius: 12px !important;
+  border: 1px solid #d7dde7 !important;
+  background: #fcfdff !important;
+  color: #1f2937 !important;
+  box-shadow: none !important;
+}
+
+.admin-surface .swal2-input:focus,
+.admin-surface .swal2-select:focus,
+.admin-surface .swal2-textarea:focus {
+  border-color: #8b1538 !important;
+  box-shadow: 0 0 0 0.2rem rgba(139, 21, 56, 0.12) !important;
+}
+
+.admin-surface .swal2-actions {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0.9rem 1.25rem 1.1rem !important;
+  gap: 0.6rem !important;
+  justify-content: flex-end !important;
+  border-top: 1px solid rgba(122, 30, 72, 0.12) !important;
+  background: #fff !important;
+}
+
+.admin-surface .swal2-styled {
+  border-radius: 11px !important;
+  font-weight: 600 !important;
+  padding: 0.62rem 1.15rem !important;
+}
+
+.admin-surface .swal2-styled.swal2-confirm {
+  border: 1px solid rgba(122, 30, 72, 0.45) !important;
+  background: linear-gradient(135deg, #7a1e48 0%, #991b3d 100%) !important;
+  box-shadow: 0 10px 22px rgba(122, 30, 72, 0.28) !important;
+}
+
+.admin-surface .swal2-styled.swal2-cancel {
+  border: 1px solid #d2d8e2 !important;
+  background: #f8fafc !important;
+  color: #334155 !important;
+}
+
+.admin-surface .swal2-validation-message {
+  border-radius: 10px !important;
+  margin: 0.5rem 1.25rem 0 !important;
+}
+
+.admin-surface .admin-detalle-usuario-modal .modal-content,
+.admin-surface .admin-modal-convocatoria .modal-content {
+  border-radius: 18px !important;
+  border: 1px solid rgba(122, 30, 72, 0.16) !important;
+  box-shadow: 0 28px 64px rgba(17, 24, 39, 0.25) !important;
+  overflow: hidden !important;
+}
+
+.admin-surface .admin-detalle-usuario-modal .modal-header,
+.admin-surface .admin-modal-convocatoria .modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: linear-gradient(135deg, #6f1234 0%, #8b1538 55%, #a2234a 100%) !important;
+}
+
+.admin-surface .admin-detalle-usuario-modal .modal-body,
+.admin-surface .admin-modal-convocatoria .modal-body {
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%) !important;
+}
+
+.admin-surface .admin-detalle-usuario-modal .modal-footer,
+.admin-surface .admin-modal-convocatoria .modal-footer {
+  border-top: 1px solid rgba(122, 30, 72, 0.12) !important;
+  background: #ffffff !important;
+}
+
+/* ============================================
+   ADMIN TABLES & MODALS POLISH
+   ============================================ */
+.admin-surface .admin-main-inner {
+  background:
+    radial-gradient(1100px 450px at 100% -10%, rgba(122, 30, 72, 0.12), transparent 60%),
+    radial-gradient(1000px 420px at -15% 120%, rgba(15, 118, 110, 0.08), transparent 55%),
+    linear-gradient(180deg, #f7f9fc 0%, #f2f5fb 100%);
+}
+
+.admin-surface .admin-card {
+  border: 1px solid #dfe5f1 !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%) !important;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.07) !important;
+  overflow: hidden !important;
+}
+
+.admin-surface .admin-card-header {
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%) !important;
+  border-bottom: 1px solid #e5ebf5 !important;
+}
+
+.admin-surface .admin-filtros {
+  background: #ffffff !important;
+}
+
+.admin-surface .table-responsive {
+  border-radius: 14px;
+  border: 1px solid #e4eaf4;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.admin-surface .table {
+  margin-bottom: 0 !important;
+}
+
+.admin-surface .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, #f6f9ff 0%, #edf3fc 100%) !important;
+  color: #324054 !important;
+  border-bottom: 1px solid #d7dfec !important;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.admin-surface .table > :not(caption) > * > * {
+  border-color: #e7edf6;
+}
+
+.admin-surface .table tbody tr {
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.admin-surface .table tbody tr:nth-child(even) {
+  background: rgba(248, 251, 255, 0.65);
+}
+
+.admin-surface .table-hover tbody tr:hover {
+  background: linear-gradient(90deg, rgba(122, 30, 72, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%) !important;
+}
+
+.admin-surface .table tbody td {
+  color: #1f2937;
+  vertical-align: middle;
+}
+
+.admin-surface .table .btn-link {
+  text-decoration: none !important;
+  font-weight: 600;
+}
+
+.admin-surface .table .btn-link:hover {
+  text-decoration: underline !important;
+}
+
+.admin-surface .rep-table,
+.admin-surface .audit-table,
+.admin-surface .registros-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+}
+
+.admin-surface .rep-table thead th,
+.admin-surface .audit-table thead th,
+.admin-surface .registros-table thead th {
+  background: linear-gradient(180deg, #f6f9ff 0%, #edf3fc 100%) !important;
+  color: #334155;
+  border-bottom: 1px solid #d7dfec;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.admin-surface .rep-table tbody tr:nth-child(even),
+.admin-surface .audit-table tbody tr:nth-child(even),
+.admin-surface .registros-table tbody tr:nth-child(even) {
+  background: rgba(248, 251, 255, 0.65);
+}
+
+.admin-surface .rep-table tbody tr:hover,
+.admin-surface .audit-table tbody tr:hover,
+.admin-surface .registros-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(122, 30, 72, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%);
+}
+
+.admin-surface .modal .modal-content {
+  border-radius: 18px !important;
+  border: 1px solid rgba(121, 138, 163, 0.22) !important;
+  box-shadow: 0 26px 60px rgba(15, 23, 42, 0.24) !important;
+}
+
+.admin-surface .modal .modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.admin-surface .modal .modal-footer {
+  border-top: 1px solid #e6ecf6;
+}
+
+/* ============================================
+   GLOBAL TABLE RESPONSIVE
+   ============================================ */
+@media (max-width: 767px) {
+  .table-responsive {
+    border: 0;
+  }
+
+  .table-responsive .table {
+    font-size: 0.85rem;
+  }
+
+  .table-responsive .table th,
+  .table-responsive .table td {
+    padding: 0.5rem;
+    white-space: nowrap;
+  }
+}
+
+/* ============================================
+   REDUCE MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

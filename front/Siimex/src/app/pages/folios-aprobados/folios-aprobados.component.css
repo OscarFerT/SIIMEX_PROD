@@ -1,0 +1,152 @@
+:host {
+  display: block;
+  background: #f6f7f9;
+  min-height: 100vh;
+}
+
+.text-borgona {
+  color: #6a0032;
+}
+
+.text-borgona.text-borgona {
+  color: #6a0032;
+}
+
+.folios-header {
+  background: #6a0032;
+  color: #fff;
+  padding: 2.5rem 0;
+}
+
+.folios-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.folios-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.folios-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.folios-subtitle {
+  margin: 0.45rem 0 0;
+  opacity: 0.9;
+}
+
+.folios-meta {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  opacity: 0.82;
+}
+
+.folios-content {
+  padding: 1.5rem 0 3rem;
+}
+
+.folios-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(240px, 1.2fr) auto auto auto;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.btn-borgona {
+  background: #6a0032;
+  border-color: #6a0032;
+  color: #fff;
+}
+
+.btn-borgona:hover {
+  background: #800020;
+  border-color: #800020;
+  color: #fff;
+}
+
+.folios-state {
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+
+.folios-summary {
+  margin-bottom: 0.85rem;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.folios-table-wrap {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.folios-table th {
+  background: #f8fafc;
+  color: #4b5563;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.folios-table td,
+.folios-table th {
+  padding: 0.9rem;
+  vertical-align: middle;
+}
+
+.folios-badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .folios-header .container,
+  .folios-toolbar {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media print {
+  .folios-header a,
+  .folios-toolbar {
+    display: none !important;
+  }
+
+  :host {
+    background: #fff;
+  }
+
+  .folios-header {
+    background: #fff;
+    color: #111;
+    padding: 0 0 1rem;
+  }
+
+  .folios-content {
+    padding: 0;
+  }
+
+  .folios-table-wrap {
+    border: 0;
+  }
+}

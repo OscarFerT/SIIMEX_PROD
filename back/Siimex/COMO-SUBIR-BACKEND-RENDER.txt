@@ -1,0 +1,111 @@
+================================================================================
+  CÓMO SUBIR EL BACKEND (Spring Boot) A RENDER.COM
+================================================================================
+
+Requisitos previos
+-----------------
+- Cuenta en https://render.com
+- Repositorio Git con el código del backend (carpeta Back/back-comecyt o la raíz del back)
+- Base de datos MySQL accesible desde internet (Render MySQL, PlanetScale, Railway, etc.)
+
+
+PASO 1: Base de datos MySQL
+----------------------------
+Render ofrece "MySQL" como add-on, o puedes usar un servicio externo.
+
+Si usas Render MySQL:
+  1. En el dashboard: New + MySQL.
+  2. Anota: Internal Database URL (o External si el backend estará fuera de Render).
+  3. Para conectar desde el backend en Render usa la "Internal Database URL".
+
+Si usas MySQL externo:
+  - Asegúrate de que permita conexiones desde cualquier IP (0.0.0.0) o añade la IP de Render.
+  - Tendrás algo como: jdbc:mysql://host:3306/nombre_bd
+
+
+PASO 2: Crear Web Service en Render (Backend)
+----------------------------------------------
+1. Entra a https://dashboard.render.com
+2. Clic en "New +" → "Web Service".
+3. Conecta tu repositorio (GitHub/GitLab).
+4. Configuración del servicio:
+
+   - Name: ej. comecyt-api o back-comecyt
+   - Region: elige la más cercana (ej. Oregon)
+   - Branch: main (o la rama donde está el backend)
+
+   Root Directory (importante):
+   - Si todo el repo es solo el backend: deja en blanco.
+   - Si el backend está en una carpeta (ej. "Back/back-comecyt"):
+     Root Directory: Back/back-comecyt
+
+   Runtime: Java
+
+   Build Command:
+     ./mvnw clean package -DskipTests
+     (En Windows local usas mvnw.cmd; en Render se usa el script Unix mvnw)
+
+   Start Command:
+     java -jar target/demo-0.0.1-SNAPSHOT.jar
+
+   Instance Type: Free (o de pago si necesitas más recursos).
+
+
+PASO 3: Variables de entorno (Environment)
+-------------------------------------------
+En el Web Service → Environment → Add Environment Variable.
+Añade estas variables (sustituye valores por los tuyos):
+
+  KEY                      |  VALOR (ejemplo)
+  -------------------------|------------------------------------------
+  JAVA_VERSION             |  17
+  SPRING_DATASOURCE_URL    |  jdbc:mysql://HOST:3306/BD?useSSL=true&...
+  SPRING_DATASOURCE_USERNAME|  usuario_mysql
+  SPRING_DATASOURCE_PASSWORD|  contraseña_mysql
+  SECURITY_JWT_SECRET_BASE64|  (tu clave JWT en Base64, 256 bits)
+  APP_UPLOAD_DIRECTORY      |  /opt/render/project/src/usuarios
+
+Notas:
+- En Render el puerto lo asigna la variable PORT. En application.properties
+  cambia la línea server.port=8083 por: server.port=${PORT:8083}
+  Así en local seguirás usando 8083 y en Render usará el PORT que asigne Render.
+- SECURITY_JWT_SECRET_BASE64: genera una clave segura en Base64 (32 bytes).
+- APP_UPLOAD_DIRECTORY: en Render el disco no es persistente en plan free;
+  para archivos persistentes usa un almacenamiento externo (S3, etc.).
+
+
+PASO 4: Ajustar application.properties para producción
+------------------------------------------------------
+Puedes usar variables de entorno y no commitear secretos:
+
+  server.port=${PORT:8083}
+  spring.datasource.url=${SPRING_DATASOURCE_URL}
+  spring.datasource.username=${SPRING_DATASOURCE_USERNAME}
+  spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
+  security.jwt.secret-base64=${SECURITY_JWT_SECRET_BASE64}
+  app.upload.directory=${APP_UPLOAD_DIRECTORY:usuarios}
+
+(O crea application-prod.properties y activa el perfil "prod" con SPRING_PROFILES_ACTIVE=prod).
+
+
+PASO 5: Desplegar
+-----------------
+1. Guarda los cambios y clic en "Create Web Service".
+2. Render ejecutará Build y luego Start.
+3. La URL del backend será algo como: https://comecyt-api.onrender.com
+4. Prueba: https://comecyt-api.onrender.com/actuator/health (si tienes actuator).
+
+
+CORS
+----
+Si el frontend estará en otro dominio (ej. en Render también), configura CORS en el
+backend para permitir el origen del front (en SecurityConfig o con @CrossOrigin).
+
+
+Errores frecuentes
+------------------
+- "Build failed": revisa que Root Directory sea correcta y que mvnw exista.
+- "Application failed to start": revisa SPRING_DATASOURCE_* y que la BD sea accesible.
+- Timeout en plan free: el servicio se duerme tras inactividad; la primera petición puede tardar.
+
+================================================================================

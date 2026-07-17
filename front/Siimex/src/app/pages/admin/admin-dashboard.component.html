@@ -1,0 +1,237 @@
+<div class="admin-dashboard">
+  <header class="dashboard-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+      <h1 class="dashboard-title">
+        <i class="fas fa-chart-pie me-2"></i>Dashboard
+      </h1>
+      <p class="dashboard-subtitle text-muted mb-0">KPIs y métricas de solicitudes, sexo, modalidad, INV/HIB, municipio, institución y grado académico</p>
+    </div>
+    <div class="d-flex flex-wrap align-items-end gap-2">
+      <div class="dashboard-filter">
+        <label class="form-label small fw-semibold mb-1">Convocatoria</label>
+        <select class="form-select form-select-sm" [(ngModel)]="convocatoriaIdSeleccionada" (change)="onCambiarConvocatoria()">
+          <option value="">General (todas)</option>
+          <option *ngFor="let c of convocatorias" [value]="c.id">{{ etiquetaConvocatoria(c) }}</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-outline-success btn-sm" (click)="exportarExcelDashboard()" [disabled]="!stats">
+        <i class="fas fa-file-excel me-1"></i>Excel
+      </button>
+    </div>
+  </header>
+
+  <div class="alert alert-secondary py-2 px-3 small mb-3" *ngIf="stats">
+    Mostrando resultados de: <strong>{{ etiquetaConvocatoriaSeleccionada }}</strong>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="mt-2 text-muted">Cargando estadísticas...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <ng-container *ngIf="stats && !loading">
+    <section class="kpi-section">
+      <div class="row g-3">
+        <div class="col-12 col-sm-6 col-lg-3">
+          <div class="kpi-card kpi-card-solicitudes">
+            <div class="kpi-icon"><i class="fas fa-file-signature"></i></div>
+            <div class="kpi-content">
+              <span class="kpi-value">{{ stats.totalSolicitudes || 0 }}</span>
+              <span class="kpi-label">Total solicitudes</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+          <div class="kpi-card kpi-card-investigadores">
+            <div class="kpi-icon"><i class="fas fa-microscope"></i></div>
+            <div class="kpi-content">
+              <span class="kpi-value">{{ invCount }}</span>
+              <span class="kpi-label">Investigadores</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+          <div class="kpi-card kpi-card-innovadores">
+            <div class="kpi-icon"><i class="fas fa-lightbulb"></i></div>
+            <div class="kpi-content">
+              <span class="kpi-value">{{ stats.innovadores || 0 }}</span>
+              <span class="kpi-label">Innovadores</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+          <div class="kpi-card kpi-card-hibridos">
+            <div class="kpi-icon"><i class="fas fa-code-branch"></i></div>
+            <div class="kpi-content">
+              <span class="kpi-value">{{ hibCount }}</span>
+              <span class="kpi-label">Híbridos</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-4">
+          <div class="kpi-card kpi-card-primary">
+            <div class="kpi-icon"><i class="fas fa-users"></i></div>
+            <div class="kpi-content">
+              <span class="kpi-value">{{ stats.totalUsuarios }}</span>
+              <span class="kpi-label">Total usuarios</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-4">
+          <div class="kpi-card kpi-card-activas">
+            <div class="kpi-icon"><i class="fas fa-user-check"></i></div>
+            <div class="kpi-content">
+              <span class="kpi-value">{{ stats.cuentasActivas }}</span>
+              <span class="kpi-label">Cuentas activas</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-4">
+          <div class="kpi-card kpi-card-suspendidas">
+            <div class="kpi-icon"><i class="fas fa-user-slash"></i></div>
+            <div class="kpi-content">
+              <span class="kpi-value">{{ stats.cuentasSuspendidas }}</span>
+              <span class="kpi-label">Cuentas suspendidas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="charts-section">
+      <div class="row g-4">
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="chart-card">
+            <h3 class="chart-card-title"><i class="fas fa-rotate me-2"></i>Actualizaciones por mes</h3>
+            <div class="bar-chart" *ngIf="stats.actualizacionesPorMes.length">
+              <div class="bar-chart-bars">
+                <div *ngFor="let p of stats.actualizacionesPorMes" class="bar-wrap">
+                  <div class="bar bar-updates" [style.height.%]="barHeight(p.cantidad, maxActualizacionesMes)" [title]="p.cantidad + ' actualizaciones'"></div>
+                </div>
+              </div>
+              <div class="bar-chart-labels">
+                <span *ngFor="let p of stats.actualizacionesPorMes" class="bar-label">{{ p.etiqueta }}</span>
+              </div>
+            </div>
+            <p *ngIf="!stats.actualizacionesPorMes.length" class="text-muted small mb-0">Sin actualizaciones por mes.</p>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="chart-card">
+            <h3 class="chart-card-title"><i class="fas fa-venus-mars me-2"></i>Género (sexo)</h3>
+            <div class="donut-wrap">
+              <div class="donut" [style.background]="donutGradient(sexoPieData)"></div>
+              <div class="donut-center">
+                <span class="donut-total">{{ pieTotal(sexoPieData) }}</span>
+                <span class="donut-label">total</span>
+              </div>
+            </div>
+            <p class="text-muted small text-center mb-2" *ngIf="!hasPieData(sexoPieData)">Sin datos para esta vista.</p>
+            <div class="pie-legend">
+              <div *ngFor="let item of sexoPieData" class="pie-legend-item" [class.is-muted]="item.muted">
+                <span class="pie-legend-dot" [style.background]="item.color"></span>
+                <span>{{ formatLabel(item.label) }}: <strong>{{ item.valor }}</strong> ({{ item.porcentaje | number:'1.0-0' }}%)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="chart-card">
+            <h3 class="chart-card-title"><i class="fas fa-layer-group me-2"></i>Modalidad convocatorias</h3>
+            <div class="donut-wrap">
+              <div class="donut" [style.background]="donutGradient(modalidadPieData)"></div>
+              <div class="donut-center">
+                <span class="donut-total">{{ pieTotal(modalidadPieData) }}</span>
+                <span class="donut-label">total</span>
+              </div>
+            </div>
+            <p class="text-muted small text-center mb-2" *ngIf="!hasPieData(modalidadPieData)">Sin datos para esta vista.</p>
+            <div class="pie-legend">
+              <div *ngFor="let item of modalidadPieData" class="pie-legend-item" [class.is-muted]="item.muted">
+                <span class="pie-legend-dot" [style.background]="item.color"></span>
+                <span>{{ formatLabel(item.label) }}: <strong>{{ item.valor }}</strong> ({{ item.porcentaje | number:'1.0-0' }}%)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="chart-card">
+            <h3 class="chart-card-title"><i class="fas fa-user-tag me-2"></i>Tipo INV / HIB / INN</h3>
+            <div class="donut-wrap">
+              <div class="donut" [style.background]="donutGradient(tipoInvesPieData)"></div>
+              <div class="donut-center">
+                <span class="donut-total">{{ pieTotal(tipoInvesPieData) }}</span>
+                <span class="donut-label">total</span>
+              </div>
+            </div>
+            <p class="text-muted small text-center mb-2" *ngIf="!hasPieData(tipoInvesPieData)">Sin datos para esta vista.</p>
+            <div class="pie-legend">
+              <div *ngFor="let item of tipoInvesPieData" class="pie-legend-item" [class.is-muted]="item.muted">
+                <span class="pie-legend-dot" [style.background]="item.color"></span>
+                <span>{{ formatLabel(item.label) }}: <strong>{{ item.valor }}</strong> ({{ item.porcentaje | number:'1.0-0' }}%)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+          <div class="chart-card">
+            <h3 class="chart-card-title"><i class="fas fa-map-marker-alt me-2"></i>Municipio (top 10)</h3>
+            <div class="bar-chart" *ngIf="municipioBarData.length">
+              <div class="bar-chart-bars">
+                <div *ngFor="let item of municipioBarData" class="bar-wrap">
+                  <div class="bar bar-municipio" [style.height.%]="barHeight(item.valor, maxMunicipio)" [title]="formatLabel(item.label) + ': ' + item.valor"></div>
+                </div>
+              </div>
+              <div class="bar-chart-labels">
+                <span *ngFor="let item of municipioBarData" class="bar-label">{{ formatLabel(item.label) }}</span>
+              </div>
+            </div>
+            <p *ngIf="!municipioBarData.length" class="text-muted small mb-0">Sin datos de municipio.</p>
+          </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+          <div class="chart-card">
+            <h3 class="chart-card-title"><i class="fas fa-university me-2"></i>Institución (top 10)</h3>
+            <div class="bar-chart" *ngIf="institucionBarData.length">
+              <div class="bar-chart-bars">
+                <div *ngFor="let item of institucionBarData" class="bar-wrap">
+                  <div class="bar bar-institucion" [style.height.%]="barHeight(item.valor, maxInstitucion)" [title]="formatLabel(item.label) + ': ' + item.valor"></div>
+                </div>
+              </div>
+              <div class="bar-chart-labels">
+                <span *ngFor="let item of institucionBarData" class="bar-label">{{ formatLabel(item.label) }}</span>
+              </div>
+            </div>
+            <p *ngIf="!institucionBarData.length" class="text-muted small mb-0">Sin datos de institución.</p>
+          </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+          <div class="chart-card">
+            <h3 class="chart-card-title"><i class="fas fa-graduation-cap me-2"></i>Grado académico (top 10)</h3>
+            <div class="bar-chart" *ngIf="gradoBarData.length">
+              <div class="bar-chart-bars">
+                <div *ngFor="let item of gradoBarData" class="bar-wrap">
+                  <div class="bar bar-grado" [style.height.%]="barHeight(item.valor, maxGrado)" [title]="formatLabel(item.label) + ': ' + item.valor"></div>
+                </div>
+              </div>
+              <div class="bar-chart-labels">
+                <span *ngFor="let item of gradoBarData" class="bar-label">{{ formatLabel(item.label) }}</span>
+              </div>
+            </div>
+            <p *ngIf="!gradoBarData.length" class="text-muted small mb-0">Sin datos de grado académico.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </ng-container>
+</div>

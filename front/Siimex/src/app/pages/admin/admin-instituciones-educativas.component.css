@@ -1,0 +1,14 @@
+.admin-inst-edu .text-borgona {
+  color: #6a0032;
+}
+
+.admin-inst-edu .btn-borgona {
+  background: #7a1e48;
+  color: #fff;
+  border-color: #7a1e48;
+}
+
+.admin-inst-edu .btn-borgona:hover {
+  background: #65183c;
+  border-color: #65183c;
+}

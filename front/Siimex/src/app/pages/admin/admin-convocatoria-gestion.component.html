@@ -1,0 +1,214 @@
+<div class="admin-convocatoria-gestion">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-1 text-borgona">
+        <i class="fas fa-sitemap me-2"></i>{{ convocatoriaId ? 'Gestión modular de convocatoria' : 'Gestión modular de convocatorias' }}
+      </h1>
+      <p class="text-muted small mb-0">
+        {{ convocatoriaId
+          ? 'Panel modular por convocatoria.'
+          : 'Pantalla principal del bloque: selecciona convocatoria y abre sus módulos.' }}
+      </p>
+    </div>
+    <a [routerLink]="convocatoriaId ? '/admin/convocatorias' : '/admin/convocatorias/listado'" class="btn btn-outline-secondary btn-sm">
+      <i class="fas" [ngClass]="convocatoriaId ? 'fa-arrow-left' : 'fa-list'"></i>
+      {{ convocatoriaId ? ' Volver' : ' Ver listado' }}
+    </a>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="mt-2 text-muted mb-0">{{ convocatoriaId ? 'Cargando convocatoria...' : 'Cargando convocatorias...' }}</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error && convocatoria" class="gestion-wrap">
+    <div class="gestion-header-card">
+      <div>
+        <h2 class="h5 mb-1">{{ convocatoria.titulo }}</h2>
+        <div class="small text-muted">
+          Área: {{ convocatoria.area || '—' }} |
+          Apertura: {{ convocatoria.fechaApertura || '—' }} |
+          Cierre: {{ convocatoria.fechaCierre || '—' }}
+        </div>
+      </div>
+      <span class="badge" [class.bg-success]="convocatoria.vigente" [class.bg-secondary]="!convocatoria.vigente">
+        {{ convocatoria.vigente ? 'Vigente' : 'Inactiva' }}
+      </span>
+    </div>
+
+    <section class="operacion-card mt-3">
+      <div class="operacion-head">
+        <div>
+          <h3 class="h6 mb-1">
+            <i class="fas fa-route me-2"></i>Mecánica operativa SIIMEX
+          </h3>
+          <p class="text-muted small mb-0">Seguimiento de los 10 puntos del proceso con evidencia generada por el sistema.</p>
+        </div>
+        <div class="operacion-actions" *ngIf="operacionSiimex">
+          <button type="button" class="btn btn-outline-success btn-sm" (click)="exportarOperacionExcel()">
+            <i class="fas fa-file-excel me-1"></i>Excel
+          </button>
+          <button type="button" class="btn btn-outline-danger btn-sm" (click)="imprimirOperacion()">
+            <i class="fas fa-file-pdf me-1"></i>PDF
+          </button>
+          <div class="operacion-avance">
+            <strong>{{ avanceOperacion }}%</strong>
+            <span>{{ pasosCompletos }} de {{ operacionSiimex.pasos.length }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="loadingOperacion" class="text-center py-4 text-muted">
+        <div class="spinner-border spinner-border-sm text-borgona me-2" role="status"></div>
+        Calculando avance operativo...
+      </div>
+
+      <div *ngIf="!loadingOperacion && operacionSiimex" class="operacion-body">
+        <div class="operacion-progress">
+          <div class="operacion-progress-fill" [style.width.%]="avanceOperacion"></div>
+        </div>
+
+        <div class="operacion-kpis">
+          <div>
+            <span>Solicitudes</span>
+            <strong>{{ operacionSiimex.totalSolicitudes }}</strong>
+          </div>
+          <div>
+            <span>Revisadas</span>
+            <strong>{{ operacionSiimex.revisadas }}</strong>
+          </div>
+          <div>
+            <span>Aprobadas</span>
+            <strong>{{ operacionSiimex.aprobadas }}</strong>
+          </div>
+          <div>
+            <span>Oficios</span>
+            <strong>{{ operacionSiimex.oficios }}</strong>
+          </div>
+          <div>
+            <span>Nombramientos</span>
+            <strong>{{ operacionSiimex.nombramientos }}</strong>
+          </div>
+          <div>
+            <span>Apoyos</span>
+            <strong>{{ operacionSiimex.apoyosEntregados }}</strong>
+          </div>
+          <div>
+            <span>Recibos validados</span>
+            <strong>{{ operacionSiimex.recibosValidados }}</strong>
+          </div>
+        </div>
+
+        <div class="operacion-pasos">
+          <article *ngFor="let paso of operacionSiimex.pasos" class="operacion-paso" [class.completo]="paso.estado === 'COMPLETO'" [class.en-proceso]="paso.estado === 'EN_PROCESO'">
+            <div class="paso-icon">
+              <i class="fas" [ngClass]="getIconoPaso(paso.estado)"></i>
+            </div>
+            <div class="paso-content">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <h4>{{ paso.numero }}. {{ paso.titulo }}</h4>
+                <span class="badge" [ngClass]="getEstadoPasoClass(paso.estado)">
+                  {{ getEstadoPasoLabel(paso.estado) }}
+                </span>
+              </div>
+              <p>{{ paso.descripcion }}</p>
+              <small>{{ paso.evidencia }}</small>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <div class="row g-3 mt-1">
+      <div class="col-12 col-md-6 col-xl-4" *ngFor="let m of modulos">
+        <div class="modulo-card h-100">
+          <div class="modulo-top">
+            <div class="modulo-icon">
+              <i class="fas {{ m.icono }}"></i>
+            </div>
+            <div class="d-flex flex-column gap-1">
+              <span class="modulo-nombre">{{ m.nombre }}</span>
+              <span class="badge rounded-pill" [class.bg-success]="m.estado === 'activo'" [class.bg-warning]="m.estado === 'pendiente'">
+                {{ m.estado === 'activo' ? 'Disponible' : 'No activo' }}
+              </span>
+            </div>
+          </div>
+
+          <p class="modulo-desc">{{ m.descripcion }}</p>
+
+          <div class="d-flex align-items-center justify-content-between mt-auto">
+            <small class="text-muted">
+              <i class="fas" [class.fa-cubes]="m.alcance === 'convocatoria'" [class.fa-globe]="m.alcance === 'general'"></i>
+              {{ m.alcance === 'convocatoria' ? 'Por convocatoria' : 'General' }}
+            </small>
+
+            <a *ngIf="m.estado === 'activo' && m.ruta"
+               class="btn btn-outline-primary btn-sm"
+               [routerLink]="m.ruta"
+               [queryParams]="m.queryParams || null">
+              Abrir
+            </a>
+            <button *ngIf="m.estado !== 'activo' || !m.ruta" type="button" class="btn btn-outline-secondary btn-sm" disabled>
+              Desactivado
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && !error && !convocatoria" class="gestion-wrap">
+    <div class="gestion-header-card">
+      <div>
+        <h2 class="h5 mb-1">Selecciona una convocatoria</h2>
+        <div class="small text-muted">
+          Desde aquí puedes entrar directamente a la gestión modular por convocatoria o a revisión.
+        </div>
+      </div>
+      <a routerLink="/admin/convocatorias/listado" class="btn btn-outline-primary btn-sm">
+        <i class="fas fa-gear me-1"></i>Administrar convocatorias
+      </a>
+    </div>
+
+    <div class="row g-3 mt-1">
+      <div class="col-12 col-md-6 col-xl-4" *ngFor="let c of convocatorias">
+        <div class="modulo-card h-100">
+          <div class="modulo-top">
+            <div class="modulo-icon">
+              <i class="fas fa-bullhorn"></i>
+            </div>
+            <div class="d-flex flex-column gap-1">
+              <span class="modulo-nombre">{{ c.titulo }}</span>
+              <span class="badge rounded-pill" [class.bg-success]="c.vigente" [class.bg-secondary]="!c.vigente">
+                {{ c.vigente ? 'Vigente' : 'Inactiva' }}
+              </span>
+            </div>
+          </div>
+
+          <p class="modulo-desc">
+            Área: {{ c.area || '—' }}<br />
+            Cierre: {{ c.fechaCierre || '—' }}
+          </p>
+
+          <div class="d-flex align-items-center justify-content-end gap-2 mt-auto">
+            <a class="btn btn-outline-primary btn-sm" [routerLink]="['/admin/convocatorias', c.id, 'gestion']">
+              Gestión
+            </a>
+            <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/admin/convocatorias', c.id, 'postulaciones']">
+              Revisión
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="convocatorias.length === 0" class="text-center py-5 text-muted">
+      <i class="fas fa-bullhorn fa-2x mb-2 d-block opacity-50"></i>
+      Aún no hay convocatorias registradas.
+    </div>
+  </div>
+</div>

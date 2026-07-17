@@ -1,0 +1,3111 @@
+<div class="app-body" [formGroup]="form">
+
+  <aside class="sidebar">
+    <!-- Indicador de Progreso General -->
+    <div class="progress-card">
+      <div class="progress-header">
+        <h4 class="progress-title">Progreso del registro</h4>
+        <span class="progress-percentage">{{ getOverallProgress() }}%</span>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" [style.width.%]="getOverallProgress()"></div>
+      </div>
+      <p class="progress-text">Completa todas las secciones para finalizar tu registro</p>
+    </div>
+
+    <nav aria-label="Navegación lateral" class="nav-steps">
+      <!-- Migración SECIHTI al inicio -->
+      <div class="nav-group">
+        <div class="group-label">Migración</div>
+      </div>
+      <button type="button" class="nav-step-item"
+        (click)="setView('documentos')"
+        [class.active]="view() === 'documentos'"
+        [attr.aria-current]="view() === 'documentos' ? 'page' : null">
+        <div class="step-icon">
+          <img src="assets/img/documentos.png" alt="Migración SECIHTI" style="width: 24px; height: 24px; object-fit: contain;">
+        </div>
+        <div class="step-content">
+          <span class="step-title">Migración SECIHTI</span>
+          <span class="step-subtitle">Importar datos históricos del sistema anterior</span>
+          <div class="step-info" style="font-size: 11px; color: #666; margin-top: 4px; line-height: 1.3;">
+            Incluye: Trayectorias, producción científica, logros, idiomas, estancias y divulgación
+          </div>
+        </div>
+      </button>
+
+      <!-- Secciones dinámicas con progreso -->
+      <ng-container *ngFor="let step of getSectionSteps()">
+        <div class="nav-group" *ngIf="step.order === 1 || getSectionSteps()[step.order - 2]?.group !== step.group">
+          <div class="group-label">{{ step.group }}</div>
+        </div>
+        
+        <button type="button" class="nav-step-item"
+          (click)="setView(step.id)"
+          [class.active]="view() === step.id"
+          [class.completed]="isSectionComplete(step.id)"
+          [attr.aria-current]="view() === step.id ? 'page' : null">
+          <div class="step-icon" [class.completed]="isSectionComplete(step.id)">
+            <img [src]="step.iconImage" [alt]="step.title" style="width: 24px; height: 24px; object-fit: contain;">
+            <i class="fas fa-check check-icon" *ngIf="isSectionComplete(step.id)"></i>
+          </div>
+          <div class="step-content">
+            <span class="step-title">{{ step.title }}</span>
+            <span class="step-subtitle">{{ step.description }}</span>
+            <div class="step-progress">
+              <div class="step-progress-bar" [style.--progress-width.%]="getSectionProgress(step.id)">
+                <div class="step-progress-fill" [style.width.%]="getSectionProgress(step.id)"></div>
+              </div>
+              <span class="step-progress-text">
+                <img [src]="step.iconImage" [alt]="step.title" style="width: 12px; height: 12px; object-fit: contain; margin-right: 4px; vertical-align: middle;">
+                {{ getSectionProgress(step.id) }}%
+              </span>
+            </div>
+          </div>
+        </button>
+      </ng-container>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <!-- Indicador de carga de datos -->
+    <div *ngIf="loadingUserData()" class="alert alert-info d-flex align-items-center mb-3" role="status">
+      <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+      <span>Cargando tus datos del registro...</span>
+    </div>
+    <!-- Mensaje cuando la carga automática falló: permite editar manualmente -->
+    <div *ngIf="dataLoadFailed()" class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3" role="alert">
+      <span>
+        <strong>No se pudieron cargar los datos automáticamente.</strong>
+        Puedes completar o editar el formulario manualmente. Si el servidor estaba ocupado, puedes intentar cargar de nuevo.
+      </span>
+      <button type="button" class="btn btn-sm btn-outline-dark" (click)="retryLoadUserData()">
+        Reintentar cargar datos
+      </button>
+    </div>
+
+    <div *ngIf="submitting() || processingMigration()" class="submit-progress-overlay" role="status" aria-live="polite" aria-busy="true">
+      <div class="submit-progress-card">
+        <div class="submit-progress-meta">
+          <span class="submit-progress-pill">{{ submitProgressBadge() }}</span>
+          <span class="submit-progress-value">{{ submitProgress() }}%</span>
+        </div>
+        <h2 class="submit-progress-title">{{ submitProgressTitle() }}</h2>
+        <p class="submit-progress-label">{{ submitProgressLabel() }}</p>
+        <div class="submit-progress-track">
+          <div class="submit-progress-fill" [style.width.%]="submitProgress()"></div>
+        </div>
+        <p class="submit-progress-detail">{{ submitProgressDetails() }}</p>
+      </div>
+    </div>
+
+    <ng-container [ngSwitch]="view()">
+
+
+
+<section *ngSwitchCase="'personaPrincipal'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img src="assets/img/user.png" alt="Datos personales" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Datos personales</h1>
+        <p class="section-subtitle">Completa tu información personal básica</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('personaPrincipal') }}%</span>
+      </div>
+    </div>
+
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          <div class="card border-borgona shadow-sm mb-3">
+            <div class="card-header bg-light text-borgona fw-bold text-center">Identificación</div>
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <img src="assets/img/id-insignia.png" alt="ID" style="width: 50px; opacity: 0.7;">
+              </div>
+              <div class="text-start">
+                <label class="form-label small text-muted fw-bold">ID Interno</label>
+                <input type="text" id="id_perfil" formControlName="uuid_interno" 
+                       class="form-control form-control-sm text-center" readonly>
+                       <p class="text-muted small">Formato SIIMEX-INV-XXX (investigador/a), SIIMEX-IND-XXX (innovador/a) o SIIMEX-HIB-XXX (mixto). Este ID es único y se utiliza para identificar tu perfil en el sistema.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold text-center">Enlaces académicos</div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="orcid_url">ORCID URL</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-borgona">
+                    <img src="assets/img/copiar-link.png" style="width:16px;height:16px;">
+                  </span>
+                  <input type="url" id="orcid_url" formControlName="pers_orcid_url" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('pers_orcid_url')"
+                         placeholder="https://orcid.org/...">
+                  <div class="invalid-feedback">Ingrese una URL válida (http/https).</div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="scholar_url">Google Scholar URL</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-borgona">
+                    <img src="assets/img/copiar-link.png" style="width:16px;height:16px;">
+                  </span>
+                  <input type="url" id="scholar_url" formControlName="pers_scholar_url" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('pers_scholar_url')"
+                         placeholder="https://scholar.google.com/...">
+                  <div class="invalid-feedback">Ingrese una URL válida (http/https).</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Datos de identidad</div>
+            <div class="card-body">
+              <div class="row g-2 align-items-start">
+                <div class="col-md-4">
+                  <label class="form-label fw-bold small" for="nombre">Nombre(s) *</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-borgona">
+                      <img src="assets/img/user.png" style="width:18px;height:18px;">
+                    </span>
+                    <input type="text" id="nombre" formControlName="pers_nombre" 
+                           class="form-control input-custom" 
+                           [class.is-invalid]="isFieldInvalid('pers_nombre')"
+                           placeholder="Nombre(s)">
+                    <div class="invalid-feedback">El nombre es obligatorio.</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold small" for="primer_apellido">Primer apellido *</label>
+                  <input type="text" id="primer_apellido" formControlName="pers_primer_apellido" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('pers_primer_apellido')"
+                         placeholder="Apellido paterno">
+                  <div class="invalid-feedback">El primer apellido es obligatorio.</div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold small" for="segundo_apellido">Segundo apellido</label>
+                  <input type="text" id="segundo_apellido" formControlName="pers_segundo_apellido" 
+                         class="form-control input-custom" placeholder="Apellido materno">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Información oficial y demográfica</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="curp">CURP *</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-borgona">
+                      <img src="assets/img/archivo.png" style="width:18px;height:18px;">
+                    </span>
+                    <input type="text" id="curp" formControlName="pers_curp" 
+                           class="form-control input-custom text-uppercase" 
+                           [class.is-invalid]="isFieldInvalid('pers_curp')"
+                           placeholder="CURP">
+                    <div class="invalid-feedback">Formato de CURP inválido (18 caracteres).</div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="rfc">RFC *</label>
+                  <input type="text" id="rfc" formControlName="pers_rfc" 
+                         class="form-control input-custom text-uppercase" 
+                         [class.is-invalid]="isFieldInvalid('pers_rfc')"
+                         placeholder="RFC">
+                  <div class="invalid-feedback">RFC obligatorio (Mínimo 10 caracteres).</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="fecha_nacimiento">Fecha de nacimiento *</label>
+                  <input type="date" id="fecha_nacimiento" formControlName="pers_fecha_nacimiento" 
+                         class="form-control input-custom"
+                         [class.is-invalid]="isFieldInvalid('pers_fecha_nacimiento')">
+                  <div class="invalid-feedback">La fecha de nacimiento es obligatoria.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="sexo_nombre">Sexo</label>
+                  <select id="sexo_nombre" formControlName="pers_sexo_nombre" class="form-select input-custom">
+                    <option value="">Selecciona...</option>
+                    <option value="Mujer">Mujer</option>
+                    <option value="Hombre">Hombre</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Lugar de nacimiento y estado civil</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="pais_nacimiento_nombre">País de nacimiento</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-borgona">
+                      <img src="assets/img/paises.png" style="width:18px;height:18px;">
+                    </span>
+                    <input type="text" id="pais_nacimiento_nombre" formControlName="pers_pais_nac_nombre" 
+                           class="form-control input-custom" placeholder="País">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="entidad_nombre">Entidad federativa *</label>
+                  <select id="entidad_nombre" formControlName="pers_entidad_nombre" 
+                          class="form-select input-custom"
+                          [class.is-invalid]="isFieldInvalid('pers_entidad_nombre')">
+                    <option value="">Selecciona entidad...</option>
+                    <option *ngFor="let entidad of entidadesFederativas" [value]="entidad">
+                      {{ entidad }}
+                    </option>
+                  </select>
+                  <div class="invalid-feedback">La entidad federativa es obligatoria.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="nacionalidad_nombre">Nacionalidad</label>
+                  <select class="form-select input-custom mb-2"
+                          [ngModel]="selectedNacionalidadNombre"
+                          (ngModelChange)="onNacionalidadCatalogoChange($event)"
+                          [ngModelOptions]="{ standalone: true }">
+                    <option value="">Selecciona del catálogo...</option>
+                    <option [value]="catalogoOtroValue">Otro</option>
+                    <option *ngFor="let nacionalidad of catalogoVisibleSinOtro(catalogoNacionalidades)" [value]="nacionalidad.nombre">{{ nacionalidad.nombre }}</option>
+                  </select>
+                  <input *ngIf="mostrarCampoManualCatalogo(selectedNacionalidadNombre)" type="text" id="nacionalidad_nombre" formControlName="pers_nacionalidad_nombre" 
+                         class="form-control input-custom" list="catalogoNacionalidadesList" placeholder="Ej. Mexicana">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="estado_civil_nombre">Estado civil</label>
+                  <select id="estado_civil_nombre" formControlName="pers_estado_civil_nombre" class="form-select input-custom" (change)="onEstadoCivilChange()">
+                    <option value="">Selecciona...</option>
+                    <option *ngFor="let estado of catalogoEstadosCiviles" [value]="estado.nombre">{{ estado.nombre }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Semblanza profesional</div>
+            <div class="card-body">
+              <label class="form-label fw-bold small" for="semblanza">Resumen de trayectoria *</label>
+              <textarea id="semblanza" formControlName="pers_semblanza" class="form-control input-custom" 
+                        [class.is-invalid]="isFieldInvalid('pers_semblanza')"
+                        rows="5" placeholder="Escribe tu semblanza aquí..."></textarea>
+              <div class="invalid-feedback">La semblanza es obligatoria.</div>
+            </div>
+          </div>
+
+          <div class="text-center mt-4">
+            <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto" 
+                    (click)="setView('padronInstitucional')">
+              <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+              Siguiente: Padrón institucional
+            </button>
+          </div>
+        </div>   
+      </div>
+  </div>
+</section>
+
+<section *ngSwitchCase="'padronInstitucional'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img src="assets/img/id-insignia.png" alt="Padrón institucional" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Datos para padrón institucional</h1>
+        <p class="section-subtitle">Información requerida para integrar el padrón DICyFRH si resultas beneficiaria o beneficiario.</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('padronInstitucional') }}%</span>
+      </div>
+    </div>
+
+    <div class="card border-borgona mb-3 shadow-sm">
+      <div class="card-header bg-light text-borgona fw-bold">Contacto e identificación oficial</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold small" for="telefono_padron">Teléfono *</label>
+            <input type="tel" id="telefono_padron" formControlName="telefono" class="form-control input-custom"
+                   [class.is-invalid]="isFieldInvalid('telefono')" placeholder="Teléfono fijo o de contacto">
+            <div class="invalid-feedback">El teléfono es obligatorio.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold small" for="celular_padron">Celular</label>
+            <input type="tel" id="celular_padron" formControlName="celular" class="form-control input-custom" placeholder="Celular">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold small" for="tipo_id_oficial">Tipo de identificación oficial *</label>
+            <select id="tipo_id_oficial" formControlName="tipoIdentificacionOficial" class="form-select input-custom"
+                    [class.is-invalid]="isFieldInvalid('tipoIdentificacionOficial')">
+              <option value="">Selecciona...</option>
+              <option *ngFor="let tipo of catalogoIdentificaciones" [value]="tipo.nombre">{{ tipo.nombre }}</option>
+            </select>
+            <div class="invalid-feedback">Selecciona el tipo de identificación.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small" for="id_oficial">Folio o número de identificación *</label>
+            <input type="text" id="id_oficial" formControlName="identificacionOficial" class="form-control input-custom"
+                   [class.is-invalid]="isFieldInvalid('identificacionOficial')" placeholder="Número OCR, pasaporte, cédula, etc.">
+            <div class="invalid-feedback">El folio de identificación es obligatorio.</div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold small" for="ct_red_social">Clave red social</label>
+            <select class="form-select input-custom mb-2"
+                    [ngModel]="selectedRedSocialClave"
+                    (ngModelChange)="onRedSocialCatalogoChange($event)"
+                    [ngModelOptions]="{ standalone: true }">
+              <option value="">Selecciona del catálogo...</option>
+              <option [value]="catalogoOtroValue">Otro</option>
+              <option *ngFor="let red of catalogoVisibleSinOtro(catalogoRedesSociales)" [value]="red.clave">{{ red.nombre }} ({{ red.clave }})</option>
+            </select>
+            <input *ngIf="mostrarCampoManualCatalogo(selectedRedSocialClave)" type="text" id="ct_red_social" formControlName="claveRedSocial" class="form-control input-custom" placeholder="Catálogo" list="catalogoRedesSocialesList">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold small" for="red_social">Red social</label>
+            <input type="text" id="red_social" formControlName="redSocial" class="form-control input-custom" placeholder="@usuario o URL">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-borgona mb-3 shadow-sm">
+      <div class="card-header bg-light text-borgona fw-bold">Domicilio</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small" for="calle_padron">Calle *</label>
+            <input type="text" id="calle_padron" formControlName="calle" class="form-control input-custom"
+                   [class.is-invalid]="isFieldInvalid('calle')" placeholder="Calle">
+            <div class="invalid-feedback">La calle es obligatoria.</div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold small" for="num_ext_padron">Número exterior *</label>
+            <input type="text" id="num_ext_padron" formControlName="numeroExterior" class="form-control input-custom"
+                   [class.is-invalid]="isFieldInvalid('numeroExterior')" placeholder="Núm. ext.">
+            <div class="invalid-feedback">El número exterior es obligatorio.</div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold small" for="num_int_padron">Número interior</label>
+            <input type="text" id="num_int_padron" formControlName="numeroInterior" class="form-control input-custom" placeholder="Núm. int.">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small" for="entre_calle_padron">Entre calle</label>
+            <input type="text" id="entre_calle_padron" formControlName="entreCalle" class="form-control input-custom" placeholder="Entre calle">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small" for="y_calle_padron">Y calle</label>
+            <input type="text" id="y_calle_padron" formControlName="yCalle" class="form-control input-custom" placeholder="Y calle">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small" for="colonia_padron">Colonia *</label>
+            <input type="text" id="colonia_padron" formControlName="colonia" class="form-control input-custom"
+                   [class.is-invalid]="isFieldInvalid('colonia')" placeholder="Colonia">
+            <div class="invalid-feedback">La colonia es obligatoria.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold small" for="entidad_domicilio_nombre">Entidad federativa *</label>
+            <select id="entidad_domicilio_nombre"
+                    class="form-select input-custom"
+                    [ngModel]="selectedEntidadDomicilioNombre"
+                    (ngModelChange)="onEntidadFederativaDomicilioCatalogoChange($event)"
+                    [ngModelOptions]="{ standalone: true }">
+              <option value="">Selecciona entidad...</option>
+              <option *ngFor="let entidad of catalogoEntidadesFederativas" [value]="entidad.nombre">{{ entidad.nombre }}</option>
+            </select>
+            <small class="text-muted d-block mt-1">La clave se llena con el catálogo oficial de entidades federativas.</small>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold small" for="ct_entidad_padron">Clave entidad federativa</label>
+            <input type="text" id="ct_entidad_padron" formControlName="claveEntidadFederativa" class="form-control input-custom"
+                   [readonly]="!!selectedEntidadDomicilioNombre" [class.bg-light]="!!selectedEntidadDomicilioNombre" placeholder="Catálogo" list="catalogoEntidadesClaveList">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold small" for="municipio_padron">Municipio *</label>
+            <select *ngIf="puedeSeleccionarMunicipioCatalogo()" class="form-select input-custom mb-2"
+                    [ngModel]="selectedMunicipioNombre"
+                    (ngModelChange)="onMunicipioCatalogoChange($event)"
+                    [ngModelOptions]="{ standalone: true }"
+                    [disabled]="!puedeSeleccionarMunicipioCatalogo()">
+              <option value="">{{ !selectedEntidadDomicilioNombre ? 'Selecciona primero la entidad...' : (puedeSeleccionarMunicipioCatalogo() ? 'Selecciona primero el municipio...' : 'Para esta entidad captura el municipio manualmente...') }}</option>
+              <option [value]="catalogoOtroValue">Otro</option>
+              <option *ngFor="let municipio of catalogoVisibleSinOtro(catalogoMunicipios)" [value]="municipio.nombre">{{ municipio.nombre }}</option>
+            </select>
+            <input *ngIf="mostrarCampoManualMunicipio()" type="text" id="municipio_padron" formControlName="municipioDomicilio" class="form-control input-custom"
+                   [class.is-invalid]="isFieldInvalid('municipioDomicilio')" placeholder="Municipio" list="catalogoMunicipiosList">
+            <small class="text-muted d-block mt-1">{{ puedeSeleccionarMunicipioCatalogo() ? 'Al elegir municipio se completa su clave y se ordenan las localidades.' : 'Si la entidad no pertenece al padrón cargado, el municipio se captura manualmente.' }}</small>
+            <div class="invalid-feedback">El municipio es obligatorio.</div>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold small" for="ct_municipio_padron">Clave municipio</label>
+            <input type="text" id="ct_municipio_padron" formControlName="claveMunicipio" class="form-control input-custom"
+                   [readonly]="esSeleccionCatalogo(selectedMunicipioNombre)" [class.bg-light]="esSeleccionCatalogo(selectedMunicipioNombre)" [placeholder]="puedeSeleccionarMunicipioCatalogo() ? 'Catálogo' : 'Captura manual'">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small" for="localidad_padron">Localidad *</label>
+            <select *ngIf="puedeSeleccionarMunicipioCatalogo()" class="form-select input-custom mb-2"
+                    [ngModel]="selectedLocalidadNombre"
+                    (ngModelChange)="onLocalidadCatalogoChange($event)"
+                    [ngModelOptions]="{ standalone: true }"
+                    [disabled]="!puedeSeleccionarLocalidad()">
+              <option value="">{{ !puedeSeleccionarMunicipioCatalogo() ? 'Para esta entidad captura la localidad manualmente...' : (puedeSeleccionarLocalidad() ? 'Selecciona la localidad...' : 'Selecciona primero el municipio...') }}</option>
+              <option [value]="catalogoOtroValue">Otro</option>
+              <option *ngFor="let localidadItem of catalogoVisibleSinOtro(catalogoLocalidadesFiltradas)" [value]="localidadItem.nombre">{{ localidadItem.nombre }}</option>
+            </select>
+            <input *ngIf="mostrarCampoManualLocalidad()" type="text" id="localidad_padron" formControlName="localidad" class="form-control input-custom"
+                   [class.is-invalid]="isFieldInvalid('localidad')" placeholder="Localidad" list="catalogoLocalidadesList">
+            <small class="text-muted d-block mt-1">{{ puedeSeleccionarMunicipioCatalogo() ? 'La localidad puede completar su clave y el código postal cuando exista en el catálogo.' : 'Para entidades fuera del padrón, la localidad y el código postal se capturan manualmente.' }}</small>
+            <div class="invalid-feedback">La localidad es obligatoria.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small" for="ct_localidad_padron">Clave localidad</label>
+            <input type="text" id="ct_localidad_padron" formControlName="claveLocalidad" class="form-control input-custom"
+                   [readonly]="esSeleccionCatalogo(selectedLocalidadNombre)" [class.bg-light]="esSeleccionCatalogo(selectedLocalidadNombre)" [placeholder]="puedeSeleccionarMunicipioCatalogo() ? 'Catálogo' : 'Captura manual'">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold small" for="cp_padron">Código postal *</label>
+            <input type="text" id="cp_padron" formControlName="codigoPostal" class="form-control input-custom"
+                   [readonly]="codigoPostalEsAutomatico()" [class.bg-light]="codigoPostalEsAutomatico()"
+                   [class.is-invalid]="isFieldInvalid('codigoPostal')" maxlength="5" placeholder="00000">
+            <small class="text-muted d-block mt-1">{{ codigoPostalEsAutomatico() ? 'Se completa desde la localidad seleccionada.' : 'Puedes capturarlo manualmente si no viene del catálogo.' }}</small>
+            <div class="invalid-feedback">Ingresa un código postal de 5 dígitos.</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold small" for="otra_referencia_padron">Otra referencia</label>
+            <input type="text" id="otra_referencia_padron" formControlName="otraReferencia" class="form-control input-custom" placeholder="Referencia de ubicación">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-4">
+      <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
+              (click)="setView('institucion')">
+        <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;">
+        Siguiente: Institución
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Caso 'inicio' ahora muestra Datos personales (mismo contenido que personaPrincipal) -->
+<section *ngSwitchCase="'inicio'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img src="assets/img/user.png" alt="Datos personales" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Datos personales</h1>
+        <p class="section-subtitle">Completa tu información personal básica</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('personaPrincipal') }}%</span>
+      </div>
+    </div>
+
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          <div class="card border-borgona shadow-sm mb-3">
+            <div class="card-header bg-light text-borgona fw-bold text-center">Identificación</div>
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <img src="assets/img/id-insignia.png" alt="ID" style="width: 50px; opacity: 0.7;">
+              </div>
+              <div class="text-start">
+                <label class="form-label small text-muted fw-bold">ID Interno</label>
+                <input type="text" id="id_perfil_inicio" formControlName="uuid_interno" 
+                       class="form-control form-control-sm text-center" readonly>
+                       <p class="text-muted small">Formato SIIMEX-INV-XXX (investigador/a), SIIMEX-IND-XXX (innovador/a) o SIIMEX-HIB-XXX (mixto). Este ID es único y se utiliza para identificar tu perfil en el sistema.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold text-center">Enlaces académicos</div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="orcid_url_inicio">ORCID URL (Opcional)</label>
+                <p class="text-muted small">Identificador Abierto de Investigadora, Investigador, Colaboradora y Colaborador.</p>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-borgona">
+                    <img src="assets/img/copiar-link.png" style="width:16px;height:16px;">
+                  </span>
+                  <input type="url" id="orcid_url_inicio" formControlName="pers_orcid_url" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('pers_orcid_url')"
+                         placeholder="https://orcid.org/...">
+                  <div class="invalid-feedback">Ingrese una URL válida (http/https).</div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="scholar_url_inicio">Google Scholar URL (Opcional)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-borgona">
+                    <img src="assets/img/copiar-link.png" style="width:16px;height:16px;">
+                  </span>
+                  <input type="url" id="scholar_url_inicio" formControlName="pers_scholar_url" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('pers_scholar_url')"
+                         placeholder="https://scholar.google.com/...">
+                  <div class="invalid-feedback">Ingrese una URL válida (http/https).</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Datos de identidad</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label fw-bold small" for="nombre_inicio">Nombre(s) *</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-borgona">
+                      <img src="assets/img/user.png" style="width:18px;height:18px;">
+                    </span>
+                    <input type="text" id="nombre_inicio" formControlName="pers_nombre" 
+                           class="form-control input-custom" 
+                           [class.is-invalid]="isFieldInvalid('pers_nombre')"
+                           placeholder="Nombre(s)">
+                    <div class="invalid-feedback">El nombre es obligatorio.</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold small" for="primer_apellido_inicio">Primer apellido *</label>
+                  <input type="text" id="primer_apellido_inicio" formControlName="pers_primer_apellido" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('pers_primer_apellido')"
+                         placeholder="Apellido paterno">
+                  <div class="invalid-feedback">El primer apellido es obligatorio.</div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold small" for="segundo_apellido_inicio">Segundo apellido</label>
+                  <input type="text" id="segundo_apellido_inicio" formControlName="pers_segundo_apellido" 
+                         class="form-control input-custom" placeholder="Apellido materno">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Información oficial y demográfica</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="curp_inicio">CURP *</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-borgona">
+                      <img src="assets/img/archivo.png" style="width:18px;height:18px;">
+                    </span>
+                    <input type="text" id="curp_inicio" formControlName="pers_curp" 
+                           class="form-control input-custom text-uppercase" 
+                           [class.is-invalid]="isFieldInvalid('pers_curp')"
+                           placeholder="CURP">
+                    <div class="invalid-feedback">Formato de CURP inválido (18 caracteres).</div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="rfc_inicio">RFC *</label>
+                  <input type="text" id="rfc_inicio" formControlName="pers_rfc" 
+                         class="form-control input-custom text-uppercase" 
+                         [class.is-invalid]="isFieldInvalid('pers_rfc')"
+                         placeholder="RFC">
+                  <div class="invalid-feedback">RFC obligatorio (Mínimo 10 caracteres).</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="fecha_nacimiento_inicio">Fecha de nacimiento *</label>
+                  <input type="date" id="fecha_nacimiento_inicio" formControlName="pers_fecha_nacimiento" 
+                         class="form-control input-custom"
+                         [class.is-invalid]="isFieldInvalid('pers_fecha_nacimiento')">
+                  <div class="invalid-feedback">La fecha de nacimiento es obligatoria.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="sexo_nombre_inicio">Sexo</label>
+                  <select id="sexo_nombre_inicio" formControlName="pers_sexo_nombre" class="form-select input-custom">
+                    <option value="">Selecciona...</option>
+                    <option value="Mujer">Mujer</option>
+                    <option value="Hombre">Hombre</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Lugar de nacimiento y estado civil</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="pais_nacimiento_nombre_inicio">País de nacimiento</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-borgona">
+                      <img src="assets/img/paises.png" style="width:18px;height:18px;">
+                    </span>
+                    <input type="text" id="pais_nacimiento_nombre_inicio" formControlName="pers_pais_nac_nombre" 
+                           class="form-control input-custom" placeholder="País">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="entidad_nombre_inicio">Entidad federativa *</label>
+                  <select id="entidad_nombre_inicio" formControlName="pers_entidad_nombre" 
+                          class="form-select input-custom"
+                          [class.is-invalid]="isFieldInvalid('pers_entidad_nombre')">
+                    <option value="">Selecciona entidad...</option>
+                    <option *ngFor="let entidad of entidadesFederativas" [value]="entidad">
+                      {{ entidad }}
+                    </option>
+                  </select>
+                  <div class="invalid-feedback">La entidad federativa es obligatoria.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="nacionalidad_nombre_inicio">Nacionalidad</label>
+                  <select class="form-select input-custom mb-2"
+                          [ngModel]="selectedNacionalidadNombre"
+                          (ngModelChange)="onNacionalidadCatalogoChange($event)"
+                          [ngModelOptions]="{ standalone: true }">
+                    <option value="">Selecciona del catálogo...</option>
+                    <option [value]="catalogoOtroValue">Otro</option>
+                    <option *ngFor="let nacionalidad of catalogoVisibleSinOtro(catalogoNacionalidades)" [value]="nacionalidad.nombre">{{ nacionalidad.nombre }}</option>
+                  </select>
+                  <input *ngIf="mostrarCampoManualCatalogo(selectedNacionalidadNombre)" type="text" id="nacionalidad_nombre_inicio" formControlName="pers_nacionalidad_nombre" 
+                         class="form-control input-custom" list="catalogoNacionalidadesList" placeholder="Ej. Mexicana">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="estado_civil_nombre_inicio">Estado civil</label>
+                  <select id="estado_civil_nombre_inicio" formControlName="pers_estado_civil_nombre" class="form-select input-custom" (change)="onEstadoCivilChange()">
+                    <option value="">Selecciona...</option>
+                    <option *ngFor="let estado of catalogoEstadosCiviles" [value]="estado.nombre">{{ estado.nombre }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Semblanza profesional</div>
+            <div class="card-body">
+              <label class="form-label fw-bold small" for="semblanza_inicio">Resumen de trayectoria *</label>
+              <textarea id="semblanza_inicio" formControlName="pers_semblanza" class="form-control input-custom" 
+                        [class.is-invalid]="isFieldInvalid('pers_semblanza')"
+                        rows="5" placeholder="Escribe tu semblanza aquí..."></textarea>
+              <div class="invalid-feedback">La semblanza es obligatoria.</div>
+            </div>
+          </div>
+
+          <div class="text-center mt-4">
+            <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto" 
+                    (click)="setView('padronInstitucional')">
+              <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+              Siguiente: Padrón institucional
+            </button>
+          </div>
+        </div>   
+      </div>
+  </div>
+</section>
+
+
+
+<section *ngSwitchCase="'institucion'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img src="assets/img/teacher_icon_243839.png" alt="Institución" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Institución</h1>
+        <p class="section-subtitle">Información de la institución donde laboras</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('institucion') }}%</span>
+      </div>
+    </div>
+  </div>
+  <div class="main-wrapper">
+    <div class="content-container">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+        <h2 class="text-borgona mb-0">Información de la institución</h2>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="notificarInstitucionNoRegistrada()">
+          <i class="fas fa-bell me-1"></i>Mi institución no aparece
+        </button>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Identificación oficial</div>
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <img src="assets/img/organizacion.png" alt="Institución" style="width: 64px;">
+              </div>
+              <div class="text-start">
+                <label class="form-label fw-bold small" for="inst_clave_oficial">Código de registro de la institución *</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-borgona">
+                    <img src="assets/img/archivo.png" style="width:16px;">
+                  </span>
+                  <input type="text" id="inst_clave_oficial" formControlName="inst_clave_oficial" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('inst_clave_oficial')"
+                         placeholder="Ej. 4220000">
+                  <div class="invalid-feedback">La clave debe ser numérica.</div>
+                </div>
+                <small class="form-text text-muted mt-1 d-block">Código único asignado por las autoridades educativas para identificar oficialmente a la institución.</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Clasificación</div>
+            <div class="card-body">
+              <label class="form-label small fw-bold" for="inst_tipo_id">Tipo de institución *</label>
+              <select id="inst_tipo_id" formControlName="inst_tipo_id" 
+                      class="form-select input-custom mb-2"
+                      [class.is-invalid]="isFieldInvalid('inst_tipo_id')">
+                <option value="">Selecciona el tipo...</option>
+                <option *ngFor="let tipo of catalogoTiposInstitucion" [value]="tipo.clave">{{ tipo.nombre }}</option>
+              </select>
+              <input *ngIf="esValorOtro(f['inst_tipo_id'].value)" type="text" formControlName="inst_tipo_nombre"
+                     class="form-control input-custom" placeholder="Especifica el tipo de institución">
+              <div class="invalid-feedback">Seleccione el tipo de institución.</div>
+              <div class="form-text muted-small mt-2">
+                <i class="fas fa-info-circle text-primary me-1"></i>
+                Si no encuentras una opción exacta, selecciona <strong>Otro</strong>.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Datos generales y ubicación</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-12">
+                  <label class="form-label fw-bold small" for="inst_nombre">Nombre de la institución *</label>
+                  <select class="form-select input-custom mb-2"
+                          [ngModel]="selectedInstitucionRegistroId"
+                          (ngModelChange)="onInstitucionCatalogoChange('inst_nombre', $event)"
+                          [ngModelOptions]="{ standalone: true }">
+                    <option value="">Selecciona del catálogo...</option>
+                    <option [value]="catalogoOtroValue">Otro</option>
+                    <option *ngFor="let institucion of catalogoInstitucionesEducativas"
+                            [value]="institucion.id">
+                      {{ institucion.nombre }}{{ institucion.cct ? ' (' + institucion.cct + ')' : '' }}
+                    </option>
+                  </select>
+                  <input *ngIf="mostrarCampoManualInstitucion('inst_nombre')" type="text" id="inst_nombre" formControlName="inst_nombre" 
+                         class="form-control input-custom" 
+                         list="catalogoInstitucionesEducativasList"
+                         [class.is-invalid]="isFieldInvalid('inst_nombre')"
+                         placeholder="Nombre completo de la institución">
+                  <div class="form-text small">Puedes seleccionar del catálogo, buscar por autocompletado o elegir Otro y escribir manualmente.</div>
+                  <div class="invalid-feedback">El nombre de la institución es obligatorio.</div>
+                </div>
+                
+                <div [ngClass]="f['inst_pais_nombre'].value === 'México' ? 'col-md-4' : 'col-md-6'">
+                  <label class="form-label fw-bold small" for="inst_pais_nombre">País donde se ubica la institución *</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-borgona">
+                      <img src="assets/img/paises.png" style="width:18px;">
+                    </span>
+                    <select id="inst_pais_nombre" formControlName="inst_pais_nombre" 
+                            class="form-select input-custom"
+                            [class.is-invalid]="isFieldInvalid('inst_pais_nombre')">
+                      <option value="">Selecciona el país...</option>
+                      <option value="México">México</option>
+                      <option value="Estados Unidos">Estados Unidos</option>
+                    </select>
+                    <div class="invalid-feedback">Seleccione un país.</div>
+                  </div>
+                </div>
+
+                <!-- Entidad federativa - Solo para México -->
+                <div class="col-md-4" *ngIf="f['inst_pais_nombre'].value === 'México'">
+                  <label class="form-label fw-bold small" for="inst_entidad_nombre">Estado o entidad federativa *</label>
+                  <select id="inst_entidad_nombre" formControlName="inst_entidad_nombre" 
+                          class="form-select input-custom"
+                          [class.is-invalid]="isFieldInvalid('inst_entidad_nombre')">
+                    <option value="">Selecciona el estado...</option>
+                    <option *ngFor="let entidad of entidadesFederativas" [value]="entidad">{{ entidad }}</option>
+                  </select>
+                  <div class="invalid-feedback">Seleccione el estado o entidad federativa.</div>
+                  <small class="form-text text-muted mt-1 d-block">Selecciona el estado de la República Mexicana donde se ubica la institución.</small>
+                </div>
+
+                <div class="col-md-4" *ngIf="f['inst_pais_nombre'].value === 'México' && !!f['inst_entidad_nombre'].value">
+                  <label class="form-label fw-bold small" for="inst_municipio_nombre">Municipio de la institución *</label>
+                  <input type="text" id="inst_municipio_nombre" formControlName="inst_municipio_nombre"
+                         class="form-control input-custom"
+                         [class.is-invalid]="isFieldInvalid('inst_municipio_nombre')"
+                         placeholder="Ej. Toluca, Ecatepec, Naucalpan">
+                  <div class="invalid-feedback">Escribe el municipio de la institución.</div>
+                  <small class="form-text text-muted mt-1 d-block">Este campo se habilita al seleccionar el estado.</small>
+                </div>
+
+                <!-- Estado de EUA - Solo para Estados Unidos -->
+                <div class="col-md-6" *ngIf="f['inst_pais_nombre'].value === 'Estados Unidos'">
+                  <label class="form-label fw-bold small" for="inst_estado_usa">Estado *</label>
+                  <select id="inst_estado_usa" formControlName="inst_estado_usa" 
+                          class="form-select input-custom"
+                          [class.is-invalid]="isFieldInvalid('inst_estado_usa')">
+                    <option value="">Selecciona el estado...</option>
+                    <option *ngFor="let estado of estadosEstadosUnidos" [value]="estado">{{ estado }}</option>
+                  </select>
+                  <div class="invalid-feedback">Seleccione el estado.</div>
+                  <small class="form-text text-muted mt-1 d-block">Selecciona el estado de Estados Unidos donde se ubica la institución.</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Unidad académica o departamento</div>
+            <div class="card-body">
+              <p class="text-muted small mb-3">
+                <i class="fas fa-info-circle text-primary me-1"></i>
+                Especifica la unidad académica o departamento donde te encuentras adscrito dentro de la institución.
+              </p>
+              <div class="row g-3">
+                <div class="col-md-12">
+                  <label class="form-label fw-bold small" for="inst_nivel_uno_nombre">Primer nivel organizacional</label>
+                  <input type="text" id="inst_nivel_uno_nombre" formControlName="inst_nivel_uno_nombre" 
+                         class="form-control input-custom" 
+                         placeholder="Ej. Facultad de Ciencias, Dirección General, Instituto de Investigación">
+                  <small class="form-text text-muted mt-1 d-block">
+                    Nivel superior de organización: Facultad, Instituto, Dirección, Centro, etc.
+                  </small>
+                </div>
+
+                <div class="col-md-12">
+                  <label class="form-label fw-bold small" for="inst_nivel_dos_nombre">Segundo nivel organizacional (Opcional)</label>
+                  <input type="text" id="inst_nivel_dos_nombre" formControlName="inst_nivel_dos_nombre" 
+                         class="form-control input-custom" 
+                         placeholder="Ej. Departamento de Matemáticas, División de Estudios, Carrera de Ingeniería">
+                  <small class="form-text text-muted mt-1 d-block">
+                    Nivel específico: Departamento, División, Programa, Carrera, Área, etc.
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
+                (click)="setView('area-conocimiento')">
+          <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+          Siguiente: Área de conocimiento
+        </button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+   <section *ngSwitchCase="'area-conocimiento'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img [src]="getSectionIconImage('area-conocimiento')" alt="Área de conocimiento" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Área de conocimiento</h1>
+        <p class="section-subtitle">Define tu especialidad académica y profesional mediante una clasificación jerárquica</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('area-conocimiento') }}%</span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-4 mb-4">
+        <div class="card border-borgona mb-3 shadow-sm">
+          <div class="card-header bg-light text-borgona fw-bold">
+            <i class="fas fa-info-circle me-2"></i>
+            Información general
+          </div>
+          <div class="card-body text-center">
+            <div class="mb-3">
+              <img src="assets/img/id-insignia.png" alt="Área" style="width: 64px; opacity: 0.8;">
+            </div>
+            <p class="text-muted small mb-3">
+              <i class="fas fa-lightbulb text-warning me-1"></i>
+              Clasifica tu perfil académico y profesional mediante un sistema jerárquico que va de lo general (Área) a lo específico (Subdisciplina).
+            </p>
+            <hr class="border-borgona opacity-25">
+            
+            <label class="form-label fw-bold text-borgona" for="area_version">
+              <i class="fas fa-calendar-alt me-1"></i>
+              Año del catálogo
+            </label>
+            <select id="area_version" formControlName="area_version"
+                    class="form-select input-custom text-center"
+                    [class.is-invalid]="isFieldInvalid('area_version')">
+              <option value="">Selecciona año...</option>
+              <option *ngFor="let year of catalogoYears" [value]="year">{{ year }}</option>
+            </select>
+            <div class="invalid-feedback">Seleccione un año de catálogo.</div>
+            <small class="form-text text-muted mt-1 d-block">
+              Versión del catálogo de Áreas de conocimiento que estás utilizando.
+            </small>
+          </div>
+        </div>
+
+        <div class="card border-borgona shadow-sm">
+          <div class="card-body">
+            <label class="form-label small text-muted fw-bold d-block">
+              <i class="fas fa-link me-1"></i>
+              ID de perfil vinculado
+            </label>
+            <input type="text" class="form-control form-control-sm text-center" [value]="f['uuid_interno'].value || ''" readonly>
+            <small class="text-muted d-block mt-2">Corresponde al identificador interno generado para este perfil.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-8">
+        <div class="alert alert-info d-flex align-items-start mb-4">
+          <i class="fas fa-info-circle me-2 mt-1"></i>
+          <div>
+            <strong>¿Cómo funciona la clasificación?</strong><br>
+            La clasificación es jerárquica: <strong>Área principal</strong> (obligatorio) → <strong>Campo</strong> (opcional) → <strong>Disciplina</strong> (opcional) → <strong>Subdisciplina</strong> (opcional). 
+            Comienza con el nivel más amplio y especifica según sea necesario.
+          </div>
+        </div>
+        
+        <div class="card border-borgona mb-5 shadow-sm">
+          <div class="card-header bg-light text-borgona fw-bold d-flex align-items-center justify-content-between py-4">
+            <span class="d-flex align-items-center gap-2">
+              <i class="fas fa-layer-group"></i>
+              <span>1. Área principal *</span>
+            </span>
+            <div class="d-flex align-items-center gap-2">
+              <button type="button" class="btn btn-sm btn-link text-borgona p-0" 
+                      (click)="mostrarAyuda('area')" 
+                      title="Información sobre el área principal">
+                <img src="assets/img/boton-de-informacion.png" alt="Información" style="width: 18px; height: 18px;">
+              </button>
+              <span class="badge bg-secondary opacity-50">ID: {{ f['area_id'].value || 'N/A' }}</span>
+            </div>
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-md-8">
+              <label class="form-label small fw-bold">
+                <i class="fas fa-tag me-1"></i>
+                Nombre del área de conocimiento
+              </label>
+              <input type="text" id="area_nombre" formControlName="area_nombre" 
+                     class="form-control input-custom" 
+                     [class.is-invalid]="isFieldInvalid('area_nombre')"
+                     placeholder="Ej. Ciencias Físico-Matemáticas y de las Ingenierías">
+              <div class="invalid-feedback">El nombre del área es obligatorio.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">
+                <i class="fas fa-key me-1"></i>
+                Código del área
+              </label>
+              <input type="text" id="area_clave" formControlName="area_clave" 
+                     class="form-control input-custom" 
+                     [class.is-invalid]="isFieldInvalid('area_clave')"
+                     placeholder="Ej. 1">
+              <div class="invalid-feedback">La clave es obligatoria.</div>
+            </div>
+            <input type="hidden" formControlName="area_id">
+          </div>
+        </div>
+
+        <div class="card border-borgona mb-5 shadow-sm">
+          <div class="card-header bg-light text-borgona fw-bold d-flex align-items-center justify-content-between py-4">
+            <span class="d-flex align-items-center gap-2">
+              <i class="fas fa-sitemap"></i>
+              <span>2. Campo (Opcional)</span>
+            </span>
+            <div class="d-flex align-items-center gap-2">
+              <button type="button" class="btn btn-sm btn-link text-borgona p-0" 
+                      (click)="mostrarAyuda('campo')" 
+                      title="Información sobre el campo">
+                <img src="assets/img/boton-de-informacion.png" alt="Información" style="width: 18px; height: 18px;">
+              </button>
+              <span class="badge bg-secondary opacity-50">ID: {{ f['campo_id'].value || 'N/A' }}</span>
+            </div>
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-md-8">
+              <label class="form-label small fw-bold">
+                <i class="fas fa-tag me-1"></i>
+                Nombre del campo de estudio
+              </label>
+              <input type="text" id="campo_nombre" formControlName="campo_nombre" class="form-control input-custom" 
+                     placeholder="Ej. Ciencias de la Computación, Informática">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">
+                <i class="fas fa-key me-1"></i>
+                Código del campo
+              </label>
+              <input type="text" id="campo_clave" formControlName="campo_clave" class="form-control input-custom" placeholder="Ej. 1.1">
+            </div>
+            <input type="hidden" formControlName="campo_id">
+          </div>
+        </div>
+
+        <div class="card border-borgona mb-5 shadow-sm">
+          <div class="card-header bg-light text-borgona fw-bold d-flex align-items-center justify-content-between py-4">
+            <span class="d-flex align-items-center gap-2">
+              <i class="fas fa-microscope"></i>
+              <span>3. Disciplina (Opcional)</span>
+            </span>
+            <div class="d-flex align-items-center gap-2">
+              <button type="button" class="btn btn-sm btn-link text-borgona p-0" 
+                      (click)="mostrarAyuda('disciplina')" 
+                      title="Información sobre la disciplina">
+                <img src="assets/img/boton-de-informacion.png" alt="Información" style="width: 18px; height: 18px;">
+              </button>
+              <span class="badge bg-secondary opacity-50">ID: {{ f['disciplina_id'].value || 'N/A' }}</span>
+            </div>
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-md-8">
+              <label class="form-label small fw-bold">
+                <i class="fas fa-tag me-1"></i>
+                Nombre de la disciplina
+              </label>
+              <input type="text" id="disciplina_nombre" formControlName="disciplina_nombre" class="form-control input-custom" 
+                     placeholder="Ej. Inteligencia Artificial, Sistemas Distribuidos">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">
+                <i class="fas fa-key me-1"></i>
+                Código de la disciplina
+              </label>
+              <input type="text" id="disciplina_clave" formControlName="disciplina_clave" class="form-control input-custom" placeholder="Ej. 1.1.1">
+            </div>
+            <input type="hidden" formControlName="disciplina_id">
+          </div>
+        </div>
+
+        <div class="card border-borgona mb-5 shadow-sm">
+          <div class="card-header bg-light text-borgona fw-bold d-flex align-items-center justify-content-between py-4">
+            <span class="d-flex align-items-center gap-2">
+              <i class="fas fa-atom"></i>
+              <span>4. Subdisciplina (Opcional)</span>
+            </span>
+            <div class="d-flex align-items-center gap-2">
+              <button type="button" class="btn btn-sm btn-link text-borgona p-0" 
+                      (click)="mostrarAyuda('subdisciplina')" 
+                      title="Información sobre la subdisciplina">
+                <img src="assets/img/boton-de-informacion.png" alt="Información" style="width: 18px; height: 18px;">
+              </button>
+              <span class="badge bg-secondary opacity-50">ID: {{ f['subdisciplina_id'].value || 'N/A' }}</span>
+            </div>
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-md-8">
+              <label class="form-label small fw-bold">
+                <i class="fas fa-tag me-1"></i>
+                Nombre de la subdisciplina
+              </label>
+              <input type="text" id="subdisciplina_nombre" formControlName="subdisciplina_nombre" class="form-control input-custom" 
+                     placeholder="Ej. Procesamiento de Lenguaje Natural, Aprendizaje Automático">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">
+                <i class="fas fa-key me-1"></i>
+                Código de la subdisciplina
+              </label>
+              <input type="text" id="subdisciplina_clave" formControlName="subdisciplina_clave" class="form-control input-custom" placeholder="Ej. 1.1.1.1">
+            </div>
+            <input type="hidden" formControlName="subdisciplina_id">
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="text-center mt-4">
+      <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto" 
+              (click)="setView('trayectoria-academica')">
+        <i class="fas fa-arrow-right"></i>
+        Siguiente: Perfil académico
+      </button>
+    </div>
+  </div>
+</section>
+
+<section *ngSwitchCase="'trayectoria-academica'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img src="assets/img/creative-education.png" alt="Perfil académico" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Perfil académico</h1>
+        <p class="section-subtitle">Grados académicos y estudios realizados</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('trayectoria-academica') }}%</span>
+      </div>
+    </div>
+  </div>
+  <div class="main-wrapper">
+    <div class="content-container">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h2 class="text-borgona mb-0">Trayectoria académica</h2>
+        <button type="button" class="btn btn-outline-success" (click)="agregarGradoAcademico()">
+          <i class="fas fa-plus me-1"></i>
+          {{ editingGradoIndex !== null ? 'Guardar edición de grado' : 'Agregar grado académico' }}
+        </button>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Estatus académico</div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="acad_nivel_nombre">Nivel de escolaridad *</label>
+                <select class="form-select input-custom mb-2"
+                        [ngModel]="selectedGradoNombre"
+                        (ngModelChange)="onGradoCatalogoChange($event)"
+                        [ngModelOptions]="{ standalone: true }">
+                  <option value="">Selecciona del catálogo...</option>
+                  <option [value]="catalogoOtroValue">Otro</option>
+                  <option *ngFor="let grado of catalogoVisibleSinOtro(catalogoGradosEstudio)" [value]="grado.nombre">{{ grado.nombre }}</option>
+                </select>
+                <input *ngIf="mostrarCampoManualCatalogo(selectedGradoNombre)" type="text" id="acad_nivel_nombre" formControlName="acad_nivel_nombre" 
+                       class="form-control input-custom"
+                       [class.is-invalid]="isFieldInvalid('acad_nivel_nombre')"
+                       list="catalogoGradosEstudioList"
+                       placeholder="Nivel académico">
+                <div class="form-text muted-small mt-2">
+                  Si tu nivel no aparece exactamente, puedes seleccionar <strong>Otro</strong> o escribirlo manualmente.
+                </div>
+                <div class="invalid-feedback">Seleccione un nivel académico.</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="acad_estatus_nombre">Estatus de finalización *</label>
+                <select id="acad_estatus_nombre" formControlName="acad_estatus_nombre" 
+                        class="form-select input-custom mb-2"
+                        [class.is-invalid]="isFieldInvalid('acad_estatus_nombre')">
+                  <option value="">Selecciona estatus...</option>
+                  <option value="Titulado">Titulado</option>
+                  <option value="Pasante">Pasante</option>
+                  <option value="En curso">En curso</option>
+                  <option value="En trámite">En trámite</option>
+                  <option value="Candidato">Candidato</option>
+                  <option value="Otro">Otro</option>
+                </select>
+                <input *ngIf="esValorOtro(f['acad_estatus_nombre'].value)" type="text" [(ngModel)]="acadEstatusManual" [ngModelOptions]="{ standalone: true }"
+                       class="form-control input-custom" placeholder="Especifica el estatus académico">
+                <div class="invalid-feedback">Seleccione el estatus actual.</div>
+              </div>
+              <div class="mb-0" *ngIf="f['acad_estatus_nombre'].value !== 'En curso' && f['acad_estatus_nombre'].value !== 'En trámite'">
+                <label class="form-label small fw-bold" for="acad_fecha_obtencion">Fecha de obtención</label>
+                <input type="date" id="acad_fecha_obtencion" formControlName="acad_fecha_obtencion" class="form-control input-custom">
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Documento probatorio</div>
+            <div class="card-body text-center">
+              <div class="curriculum-placeholder mb-3" aria-hidden="true" style="border: 2px dashed #80002022; padding: 20px;">
+                <img src="assets/img/documentos.png" alt="PDF" style="width: 40px;" class="mb-2">
+                <br><span class="text-muted small">Título, Cédula o Acta de Examen</span>
+              </div>
+              <label class="form-label small fw-bold" for="cert1">Documento probatorio de titulación (PDF) *</label>
+              <input type="file"
+                     id="cert1"
+                     class="form-control form-control-sm"
+                     (change)="onFileChange($event, 'cert1')"
+                     accept=".pdf"
+                     [class.is-invalid]="isFieldInvalid('cert1')">
+              <div class="invalid-feedback">El documento probatorio de titulación es obligatorio.</div>
+              <div *ngIf="f['cert1'].value" class="text-success small mt-1">
+                <i class="fas fa-check-circle"></i> Archivo listo
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm mt-3">
+            <div class="card-header bg-light text-borgona fw-bold">Perfil SNII</div>
+            <div class="card-body">
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input custom-switch"
+                       type="checkbox"
+                       id="acad_es_perfil_snii"
+                       formControlName="acad_es_perfil_snii">
+                <label class="form-check-label fw-semibold" for="acad_es_perfil_snii">
+                  ¿Eres perfil SNII?
+                </label>
+              </div>
+              <small class="text-muted d-block mb-3">Si activas esta opción, deberás comprobarlo con una constancia PDF.</small>
+
+              <div *ngIf="f['acad_es_perfil_snii'].value">
+                <label class="form-label fw-bold small" for="acad_constancia_snii">Compruébalo (Constancia SNII en PDF) *</label>
+                <input type="file"
+                       id="acad_constancia_snii"
+                       class="form-control form-control-sm input-custom"
+                       (change)="onFileChange($event, 'acad_constancia_snii')"
+                       accept=".pdf"
+                       [class.is-invalid]="isFieldInvalid('acad_constancia_snii')">
+                <div class="invalid-feedback">La constancia SNII es obligatoria cuando activas el perfil SNII.</div>
+                <div *ngIf="f['acad_constancia_snii'].value" class="text-success small mt-1">
+                  <i class="fas fa-check-circle"></i> Constancia cargada: {{ f['acad_constancia_snii'].value?.name }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Información del grado</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-12">
+                  <label class="form-label fw-bold small" for="acad_titulo">Título obtenido *</label>
+                  <select class="form-select input-custom mb-2"
+                          [ngModel]="selectedCarreraClave"
+                          (ngModelChange)="onCarreraCatalogoChange($event)"
+                          [ngModelOptions]="{ standalone: true }">
+                    <option value="">Selecciona del catálogo...</option>
+                    <option [value]="catalogoOtroValue">Otro</option>
+                    <option *ngFor="let carrera of catalogoVisibleSinOtro(catalogoCarreras)" [value]="carrera.clave">
+                      {{ carrera.nombre }}
+                    </option>
+                  </select>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-borgona">
+                      <img src="assets/img/certificado.png" style="width:18px;height:18px;">
+                    </span>
+                    <input *ngIf="mostrarCampoManualCatalogo(selectedCarreraClave)" type="text" id="acad_titulo" formControlName="acad_titulo" 
+                           class="form-control input-custom" 
+                           list="catalogoCarrerasList"
+                           [class.is-invalid]="isFieldInvalid('acad_titulo')"
+                           placeholder="Ej. Doctorado en Ciencias de la Computación">
+                    <div class="invalid-feedback">El nombre del título es obligatorio.</div>
+                  </div>
+                  <div class="form-text small">Puedes elegir una carrera del catálogo o usar Otro para capturarla manualmente.</div>
+                </div>
+
+                <div class="col-md-8">
+                  <label class="form-label fw-bold small">Institución de egreso</label>
+                  <select class="form-select input-custom mb-2"
+                          [ngModel]="selectedInstitucionAcademicaId"
+                          (ngModelChange)="onInstitucionCatalogoChange('acad_institucion', $event)"
+                          [ngModelOptions]="{ standalone: true }">
+                    <option value="">Selecciona del catálogo...</option>
+                    <option [value]="catalogoOtroValue">Otro</option>
+                    <option *ngFor="let institucion of catalogoInstitucionesEducativas"
+                            [value]="institucion.id">
+                      {{ institucion.nombre }}{{ institucion.cct ? ' (' + institucion.cct + ')' : '' }}
+                    </option>
+                  </select>
+                  <input *ngIf="mostrarCampoManualInstitucion('acad_institucion')" type="text" formControlName="acad_institucion" class="form-control input-custom" 
+                         list="catalogoInstitucionesEducativasList"
+                         placeholder="Nombre de la universidad">
+                  <div class="form-text small">También puedes escribir otra institución si no aparece en catálogo.</div>
+                </div>
+                
+                <div class="col-md-4">
+  <label class="form-label fw-bold small" for="acad_cedula_profesional">Cédula profesional</label>
+  <input type="text" id="acad_cedula_profesional" formControlName="acad_cedula_profesional" 
+         class="form-control input-custom" 
+         [class.is-invalid]="isFieldInvalid('acad_cedula_profesional')"
+         placeholder="No. de Cédula">
+  <div class="invalid-feedback">La cédula es obligatoria.</div>
+</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Información de titulación</div>
+            <div class="card-body row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold small" for="acad_opcion_titulacion">Opción de titulación</label>
+                <select id="acad_opcion_titulacion" formControlName="acad_opcion_titulacion" class="form-select input-custom">
+                  <option value="">Selecciona opción...</option>
+                  <option value="Tesis">Tesis</option>
+                  <option value="Examen global">Examen global</option>
+                  <option value="Experiencia profesional">Experiencia profesional</option>
+                  <option value="Promedio">Excelencia académica / promedio</option>
+                </select>
+              </div>
+              <div class="col-md-12">
+                <label class="form-label fw-bold small" for="acad_titulo_tesis">Título de la tesis o proyecto</label>
+                <textarea id="acad_titulo_tesis" formControlName="acad_titulo_tesis" 
+                          class="form-control input-custom" rows="3" 
+                          placeholder="Nombre completo del trabajo de investigación"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-end d-flex gap-2 justify-content-end">
+            <button type="button" class="btn btn-outline-success" (click)="agregarGradoAcademico()">
+              <i class="fas fa-plus me-1"></i>
+              {{ editingGradoIndex !== null ? 'Guardar edición' : 'Agregar grado' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    (click)="cancelarEdicionGradoAcademico()"
+                    *ngIf="editingGradoIndex !== null">
+              <i class="fas fa-times me-1"></i>
+              Cancelar edición
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="card border-borgona mb-3 shadow-sm">
+        <div class="card-header bg-light text-borgona fw-bold d-flex justify-content-between align-items-center">
+          <span>Grados académicos capturados</span>
+          <span class="badge bg-secondary">{{ acadGradosList.length }}</span>
+        </div>
+        <div class="card-body">
+          <div *ngIf="acadGradosList.length === 0" class="alert alert-warning mb-0">
+            Aún no agregas grados académicos. Captura el grado y presiona <strong>Agregar grado académico</strong>.
+          </div>
+
+          <div *ngFor="let grado of acadGradosList; let i = index; trackBy: trackByGradoAcademicoIndex"
+               class="grado-academico-item"
+               [class.mb-3]="i < acadGradosList.length - 1">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <h6 class="mb-1 text-borgona">{{ grado.nivelNombre }} - {{ grado.titulo }}</h6>
+                <div class="text-muted small">
+                  <span>Estatus: {{ grado.estatusNombre || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Institución: {{ grado.institucion || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Fecha: {{ grado.fechaObtencion || 'N/D' }}</span>
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="editarGradoAcademico(i)">
+                  <i class="fas fa-edit me-1"></i> Editar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminarGradoAcademico(i)">
+                  <i class="fas fa-trash me-1"></i> Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
+                (click)="setView('trayectoria-profesional')">
+          <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+          Siguiente: Trayectoria profesional
+        </button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+  <section *ngSwitchCase="'trayectoria-profesional'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img src="assets/img/empresario.png" alt="Trayectoria profesional" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Trayectoria profesional (Empleo)</h1>
+        <p class="section-subtitle">Experiencia laboral y profesional</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('trayectoria-profesional') }}%</span>
+      </div>
+    </div>
+  </div>
+  <div class="main-wrapper">
+    <div class="content-container">
+      <h2 class="text-borgona mb-4">Trayectoria profesional</h2>
+
+      <div class="row">
+        
+        <div class="col-lg-4 mb-4">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Periodo y vigencia</div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="tray_prof_fecha_inicio">Fecha de inicio *</label>
+                <input type="date" id="tray_prof_fecha_inicio" formControlName="tray_prof_fecha_inicio" 
+                       class="form-control input-custom"
+                       [class.is-invalid]="isFieldInvalid('tray_prof_fecha_inicio')">
+                <div class="invalid-feedback">La fecha de inicio es obligatoria.</div>
+              </div>
+              <div class="mb-3" *ngIf="!f['tray_prof_es_actual'].value">
+                <label class="form-label small fw-bold" for="tray_prof_fecha_fin">Fecha de término</label>
+                <input type="date" id="tray_prof_fecha_fin" formControlName="tray_prof_fecha_fin" 
+                       class="form-control input-custom">
+                <div class="form-text muted-small">Dejar vacío si es su empleo actual.</div>
+              </div>
+              
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input custom-switch" type="checkbox" id="tray_prof_es_actual" 
+                       formControlName="tray_prof_es_actual">
+                <label class="form-check-label fw-bold text-borgona" for="tray_prof_es_actual">Es empleo actual</label>
+              </div>
+              
+              <div *ngIf="f['tray_prof_es_actual'].value" class="alert alert-info small border-0 shadow-sm mb-2">
+                <i class="fas fa-info-circle me-2"></i> Al ser empleo actual, no se requiere fecha de término.
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Documento probatorio</div>
+            <div class="card-body">
+              <label class="form-label small" for="cert2">Nombramiento o constancia laboral vigente (PDF)</label>
+              <input type="file" id="cert2" (change)="onFileChange($event, 'cert2')" 
+                     class="form-control form-control-sm" accept=".pdf">
+              <div class="form-text small mt-2">Documento probatorio: Nombramiento o constancia laboral vigente.</div>
+              <div *ngIf="f['cert2'].value" class="text-success small mt-1">
+                <i class="fas fa-check-circle"></i> Archivo cargado correctamente
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Detalles del cargo</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-12">
+                  <label class="form-label fw-bold small" for="tray_prof_nombramiento">Puesto o nombramiento *</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-borgona">
+                      <img src="assets/img/empresario.png" style="width:18px;height:18px;">
+                    </span>
+                    <input type="text" id="tray_prof_nombramiento" formControlName="tray_prof_nombramiento" 
+                           class="form-control input-custom" 
+                           [class.is-invalid]="isFieldInvalid('tray_prof_nombramiento')"
+                           placeholder="Ej. Profesor o profesora investigador o investigadora titular C">
+                    <div class="invalid-feedback">El puesto es obligatorio.</div>
+                  </div>
+                </div>
+
+                <div class="col-md-12">
+                  <label class="form-label fw-bold small">Institución / Empresa *</label>
+                  <select class="form-select input-custom mb-2"
+                          [ngModel]="selectedInstitucionRegistroId"
+                          (ngModelChange)="onInstitucionCatalogoChange('inst_nombre', $event)"
+                          [ngModelOptions]="{ standalone: true }">
+                    <option value="">Selecciona del catálogo...</option>
+                    <option [value]="catalogoOtroValue">Otro</option>
+                    <option *ngFor="let institucion of catalogoInstitucionesEducativas"
+                            [value]="institucion.id">
+                      {{ institucion.nombre }}{{ institucion.cct ? ' (' + institucion.cct + ')' : '' }}
+                    </option>
+                  </select>
+                  <input *ngIf="mostrarCampoManualInstitucion('inst_nombre')" type="text" formControlName="inst_nombre" 
+                         class="form-control input-custom" 
+                         list="catalogoInstitucionesEducativasList"
+                         [class.is-invalid]="isFieldInvalid('inst_nombre')"
+                         placeholder="Nombre de la institución o empresa">
+                  <div class="form-text small">Si no corresponde a una institución del catálogo, elige Otro y escribe el nombre.</div>
+                  <div class="invalid-feedback">La institución es obligatoria.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Descripción de logros</div>
+            <div class="card-body">
+              <textarea id="tray_prof_logros" formControlName="tray_prof_logros" 
+                        class="form-control input-custom" rows="6" 
+                        placeholder="Describe tus principales responsabilidades y logros obtenidos en este cargo..."></textarea>
+              <div class="form-text muted-small mt-2">Máximo 2000 caracteres.</div>
+            </div>
+          </div>
+
+          <div class="text-end">
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
+                (click)="setView('cursos')">
+          <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+          Siguiente: Cursos y formación
+        </button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+  <section *ngSwitchCase="'cursos'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img [src]="getSectionIconImage('cursos')" alt="Cursos impartidos" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Cursos impartidos</h1>
+        <p class="section-subtitle">Docencia y enseñanza</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('cursos') }}%</span>
+      </div>
+    </div>
+  <div class="main-wrapper">
+    <div class="content-container">
+
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h2 class="text-borgona mb-0">Cursos impartidos</h2>
+        <button type="button" class="btn btn-outline-success" (click)="agregarCursoImpartido()">
+          <i class="fas fa-plus me-1"></i>
+          {{ editingCursoIndex !== null ? 'Guardar edición de curso' : 'Agregar curso impartido' }}
+        </button>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Resumen de carga</div>
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <img src="assets/img/teacher_icon_243839.png" alt="Docencia" style="width: 64px;">
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label fw-bold small" for="curso_horas_totales">Horas totales</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-borgona">
+                    <img src="assets/img/reloj.png" style="width:16px;">
+                  </span>
+                  <input type="number" id="curso_horas_totales" formControlName="curso_horas_totales" 
+                         class="form-control input-custom text-center" 
+                         [class.is-invalid]="isFieldInvalid('curso_horas_totales')"
+                         min="0"
+                         placeholder="5">
+                  <div class="invalid-feedback">No se permiten valores negativos. Mínimo: 0 horas</div>
+                </div>
+                <small class="form-text text-muted mt-1 d-block">Inicia en 5 horas (mínimo permitido: 0)</small>
+              </div>
+
+              <div class="form-check form-switch d-inline-block">
+                <input class="form-check-input custom-switch" type="checkbox" id="curso_producto_principal" 
+                       formControlName="curso_producto_principal">
+                <label class="form-check-label fw-bold text-borgona" for="curso_producto_principal">Producto principal</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Periodo</div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="curso_fecha_inicio">Fecha de inicio *</label>
+                <input type="date" id="curso_fecha_inicio" formControlName="curso_fecha_inicio" 
+                       class="form-control input-custom"
+                       [class.is-invalid]="isFieldInvalid('curso_fecha_inicio')">
+                <div class="invalid-feedback">La fecha de inicio es requerida.</div>
+              </div>
+              <div class="mb-0">
+                <label class="form-label small fw-bold" for="curso_fecha_fin">Fecha de término</label>
+                <input type="date" id="curso_fecha_fin" formControlName="curso_fecha_fin" 
+                       class="form-control input-custom">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Identificación del curso</div>
+            <div class="card-body row g-3">
+              <div class="col-md-12">
+                <label class="form-label fw-bold small" for="curso_nombre">Nombre del curso *</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-borgona">
+                    <img src="assets/img/test_tasks_list_clipboard_todo_icon_191634.png" style="width:18px;height:18px;">
+                  </span>
+                  <input type="text" id="curso_nombre" formControlName="curso_nombre" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('curso_nombre')"
+                         placeholder="Ej. Introducción a la Mecatrónica">
+                  <div class="invalid-feedback">El nombre del curso es obligatorio.</div>
+                </div>
+              </div>
+
+              <div class="col-md-12">
+                <label class="form-label fw-bold small" for="curso_institucion">Institución donde se impartió *</label>
+                <select class="form-select input-custom mb-2"
+                        [ngModel]="selectedInstitucionCursoId"
+                        (ngModelChange)="onInstitucionCatalogoChange('curso_institucion', $event)"
+                        [ngModelOptions]="{ standalone: true }">
+                  <option value="">Selecciona del catálogo...</option>
+                  <option [value]="catalogoOtroValue">Otro</option>
+                  <option *ngFor="let institucion of catalogoInstitucionesEducativas"
+                          [value]="institucion.id">
+                    {{ institucion.nombre }}{{ institucion.cct ? ' (' + institucion.cct + ')' : '' }}
+                  </option>
+                </select>
+                <input *ngIf="mostrarCampoManualInstitucion('curso_institucion')" type="text" id="curso_institucion" formControlName="curso_institucion" 
+                       class="form-control input-custom" 
+                       list="catalogoInstitucionesEducativasList"
+                       [class.is-invalid]="isFieldInvalid('curso_institucion')"
+                       placeholder="Nombre de la institución">
+                <div class="form-text small">Puedes buscarla en el catálogo o capturarla manualmente con Otro.</div>
+                <div class="invalid-feedback">La institución es obligatoria.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Programa y nivel</div>
+            <div class="card-body row g-3">
+              <div class="col-md-12">
+                <label class="form-label fw-bold small" for="curso_programa">Nombre del programa académico *</label>
+                <input type="text" id="curso_programa" formControlName="curso_programa" 
+                       class="form-control input-custom" 
+                       [class.is-invalid]="isFieldInvalid('curso_programa')"
+                       placeholder="Ej. Licenciatura en Ingeniería Civil">
+                <div class="invalid-feedback">El nombre del programa es obligatorio.</div>
+              </div>
+              
+              <div class="col-md-12">
+                <label class="form-label fw-bold small" for="curso_nivel_escolaridad">Nivel de escolaridad del curso *</label>
+                <select id="curso_nivel_escolaridad" formControlName="curso_nivel_escolaridad" 
+                        class="form-select input-custom mb-2"
+                        [class.is-invalid]="isFieldInvalid('curso_nivel_escolaridad')">
+                  <option value="">Selecciona nivel...</option>
+                  <option value="Licenciatura">Licenciatura</option>
+                  <option value="Maestría">Maestría</option>
+                  <option value="Doctorado">Doctorado</option>
+                  <option value="Técnico superior">Técnico superior</option>
+                  <option value="Otro">Otro</option>
+                </select>
+                <input *ngIf="esValorOtro(f['curso_nivel_escolaridad'].value)" type="text" [(ngModel)]="cursoNivelManual" [ngModelOptions]="{ standalone: true }"
+                       class="form-control input-custom" placeholder="Especifica el nivel del curso">
+                <div class="invalid-feedback">Seleccione un nivel.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-secondary d-flex align-items-center shadow-sm" role="alert" 
+               style="background-color: #f8f4f5; border-left: 5px solid #800020;">
+            <div class="small">
+              <strong>Nota:</strong> Los comprobantes de docencia se gestionan de forma global en la sección de <strong>Documentos</strong> bajo la categoría "CURSOS".
+            </div>
+          </div>
+
+          <div class="text-end d-flex gap-2 justify-content-end mb-3">
+            <button type="button" class="btn btn-outline-success" (click)="agregarCursoImpartido()">
+              <i class="fas fa-plus me-1"></i>
+              {{ editingCursoIndex !== null ? 'Guardar edición' : 'Agregar curso' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    (click)="cancelarEdicionCursoImpartido()"
+                    *ngIf="editingCursoIndex !== null">
+              <i class="fas fa-times me-1"></i>
+              Cancelar edición
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-borgona mb-3 shadow-sm">
+        <div class="card-header bg-light text-borgona fw-bold d-flex justify-content-between align-items-center">
+          <span>Cursos capturados</span>
+          <span class="badge bg-secondary">{{ cursosImpartidosList.length }}</span>
+        </div>
+        <div class="card-body">
+          <div *ngIf="cursosImpartidosList.length === 0" class="alert alert-warning mb-0">
+            Aún no agregas cursos. Captura los datos y presiona <strong>Agregar curso impartido</strong>.
+          </div>
+
+          <div *ngFor="let curso of cursosImpartidosList; let i = index; trackBy: trackByCursoImpartidoIndex"
+               class="curso-impartido-item"
+               [class.mb-3]="i < cursosImpartidosList.length - 1">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <h6 class="mb-1 text-borgona">{{ curso.nombre }}</h6>
+                <div class="small text-muted">
+                  <span>{{ curso.programa || 'Sin programa' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>{{ curso.institucion || 'Sin institución' }}</span>
+                </div>
+                <div class="small text-muted">
+                  <span>Horas: {{ curso.horasTotales }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Inicio: {{ curso.fechaInicio || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Nivel: {{ curso.nivelEscolaridad || 'N/D' }}</span>
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="editarCursoImpartido(i)">
+                  <i class="fas fa-edit me-1"></i> Editar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminarCursoImpartido(i)">
+                  <i class="fas fa-trash me-1"></i> Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
+                (click)="setView('idiomas')">
+          <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+          Siguiente: Idiomas
+        </button>
+      </div>
+
+    </div>
+  </div>
+  </div>
+</section>
+
+<section *ngSwitchCase="'idiomas'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img src="assets/img/language_translator_icon_150921.png" alt="Idiomas" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Idiomas</h1>
+        <p class="section-subtitle">Dominio de idiomas</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('idiomas') }}%</span>
+      </div>
+    </div>
+  </div>
+  <div class="main-wrapper">
+    <div class="content-container">
+      <h2 class="text-borgona mb-4">Dominio de idiomas</h2>
+
+      <div class="row">
+        
+        <div class="col-lg-4 mb-4">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Información general</div>
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <img src="assets/img/language_translator_icon_150921.png" alt="Idioma" style="width: 64px;">
+              </div>
+              <div class="text-start">
+                <label class="form-label fw-bold small" for="idioma_nombre">Idioma *</label>
+                <div class="input-group mb-3">
+                  <span class="input-group-text bg-light border-borgona">
+                    <img src="assets/img/language_translator_icon_150921.png" style="width:16px;">
+                  </span>
+                  <input type="text" id="idioma_nombre" formControlName="idioma_nombre" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('idioma_nombre')"
+                         placeholder="Ej. Inglés, Francés...">
+                  <div class="invalid-feedback">Especifique el idioma.</div>
+                </div>
+
+                <label class="form-label fw-bold small" for="idioma_dominio_nombre">Dominio global *</label>
+                <select id="idioma_dominio_nombre" formControlName="idioma_dominio_nombre" 
+                        class="form-select input-custom"
+                        [class.is-invalid]="isFieldInvalid('idioma_dominio_nombre')">
+                  <option value="">Selecciona nivel...</option>
+                  <option value="Excelente">Excelente</option>
+                  <option value="Avanzado">Avanzado</option>
+                  <option value="Bueno">Bueno</option>
+                  <option value="Regular">Regular</option>
+                  <option value="Básico">Básico</option>
+                </select>
+                <div class="invalid-feedback">Seleccione un nivel de dominio.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm" *ngIf="mostrarCertificacion()">
+            <div class="card-body">
+              <div class="form-check form-switch">
+                <input class="form-check-input custom-switch" type="checkbox" id="idioma_es_certificado" 
+                       formControlName="idioma_es_certificado"
+                       [disabled]="f['idioma_dominio_nombre'].value === 'Excelente'">
+                <label class="form-check-label fw-bold text-borgona" for="idioma_es_certificado">¿Cuenta con certificación?</label>
+              </div>
+              <small class="text-muted" *ngIf="f['idioma_dominio_nombre'].value !== 'Excelente'">
+                Active esta opción para registrar datos de la institución evaluadora.
+              </small>
+              <small class="text-danger fw-semibold" *ngIf="f['idioma_dominio_nombre'].value === 'Excelente'">
+                Para dominio Excelente, la certificación y su documento probatorio son obligatorios.
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Niveles de competencia</div>
+            <div class="card-body">
+              <div class="row g-3 text-center">
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold" for="idioma_lectura">Lectura</label>
+                  <select id="idioma_lectura" formControlName="idioma_lectura" class="form-select input-custom">
+                    <option value="Básico">Básico</option>
+                    <option value="Intermedio">Intermedio</option>
+                    <option value="Avanzado">Avanzado</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold" for="idioma_escritura">Escritura</label>
+                  <select id="idioma_escritura" formControlName="idioma_escritura" class="form-select input-custom">
+                    <option value="Básico">Básico</option>
+                    <option value="Intermedio">Intermedio</option>
+                    <option value="Avanzado">Avanzado</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold" for="idioma_conversacion">Conversación</label>
+                  <select id="idioma_conversacion" formControlName="idioma_conversacion" class="form-select input-custom">
+                    <option value="Básico">Básico</option>
+                    <option value="Intermedio">Intermedio</option>
+                    <option value="Avanzado">Avanzado</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm" *ngIf="mostrarCertificacion() && (f['idioma_es_certificado'].value || f['idioma_dominio_nombre'].value === 'Excelente')">
+            <div class="card-header bg-light text-borgona fw-bold">Detalles de la evaluación</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-12">
+                  <label class="form-label fw-bold small" for="idioma_cert_institucion">Institución evaluadora *</label>
+                  <input type="text" id="idioma_cert_institucion" formControlName="idioma_cert_institucion" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('idioma_cert_institucion')"
+                         placeholder="Ej. British Council, ETS, TOEFL">
+                  <div class="invalid-feedback">Especifique la institución que certifica.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="idioma_cert_puntuacion">Puntuación / Score *</label>
+                  <input type="text" id="idioma_cert_puntuacion" formControlName="idioma_cert_puntuacion" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('idioma_cert_puntuacion')"
+                         placeholder="Ej. 100 pts, C1">
+                  <div class="invalid-feedback">Ingrese el puntaje obtenido.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="idioma_vigencia_fin">Fin de vigencia</label>
+                  <input type="date" id="idioma_vigencia_fin" formControlName="idioma_vigencia_fin" 
+                         class="form-control input-custom">
+                </div>
+                <div class="col-md-12">
+                  <label class="form-label fw-bold small">Documento probatorio de certificación (PDF) <span *ngIf="f['idioma_dominio_nombre'].value === 'Excelente'" class="text-danger">*</span></label>
+                  <input type="file" id="idioma_cert_documento" (change)="onFileChange($event, 'idioma_cert_documento')" 
+                         class="form-control form-control-sm input-custom" accept=".pdf"
+                         [class.is-invalid]="isFieldInvalid('idioma_cert_documento')">
+                  <div class="invalid-feedback">Para dominio Excelente es obligatorio cargar el documento probatorio de certificación.</div>
+                  <div *ngIf="f['idioma_cert_documento'].value" class="text-success small mt-1">
+                    <i class="fas fa-check-circle"></i> Certificado cargado
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-info small border-0 shadow-sm" *ngIf="mostrarCertificacion() && !f['idioma_es_certificado'].value">
+            <i class="fas fa-info-circle me-2"></i> Si tienes un certificado oficial, activa el interruptor para ingresar los detalles.
+          </div>
+          <div class="alert alert-warning small border-0 shadow-sm" *ngIf="!mostrarCertificacion()">
+            <i class="fas fa-info-circle me-2"></i> Las certificaciones solo están disponibles para niveles de dominio avanzado o excelente.
+          </div>
+
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
+                (click)="setView('estancias')">
+          <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+          Siguiente: Estancias de investigación
+        </button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section *ngSwitchCase="'estancias'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img src="assets/img/calendario.png" alt="Estancias de investigación" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Estancias de investigación</h1>
+        <p class="section-subtitle">Estancias académicas y de investigación</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('estancias') }}%</span>
+      </div>
+    </div>
+  </div>
+  <div class="main-wrapper">
+    <div class="content-container">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h2 class="text-borgona mb-0">Estancias de investigación</h2>
+        <button type="button" class="btn btn-outline-success" (click)="agregarEstanciaInvestigacion()">
+          <i class="fas fa-plus me-1"></i>
+          {{ editingEstanciaIndex !== null ? 'Guardar edición de estancia' : 'Agregar estancia' }}
+        </button>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Tipo de estancia</div>
+            <div class="card-body">
+              <label class="form-label fw-bold small" for="estancia_tipo_nombre">Categoría *</label>
+              <select id="estancia_tipo_nombre" formControlName="estancia_tipo_nombre" 
+                      class="form-select input-custom mb-2"
+                      [class.is-invalid]="isFieldInvalid('estancia_tipo_nombre')">
+                <option value="">Selecciona tipo...</option>
+                <option value="Posdoctoral">Posdoctoral</option>
+                <option value="Sabatina">Sabatina</option>
+                <option value="Investigador Invitado">Investigador Invitado</option>
+                <option value="Estancia Corta">Estancia Corta</option>
+                <option value="Otro">Otro</option>
+              </select>
+              <input *ngIf="esValorOtro(f['estancia_tipo_nombre'].value)" type="text" [(ngModel)]="estanciaTipoManual" [ngModelOptions]="{ standalone: true }"
+                     class="form-control input-custom" placeholder="Especifica la categoría de estancia">
+              <div class="invalid-feedback">Seleccione una categoría.</div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Periodo</div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="estancia_fecha_inicio">Fecha de inicio *</label>
+                <input type="date" id="estancia_fecha_inicio" formControlName="estancia_fecha_inicio" 
+                       class="form-control input-custom"
+                       [class.is-invalid]="isFieldInvalid('estancia_fecha_inicio')">
+                <div class="invalid-feedback">La fecha de inicio es requerida.</div>
+              </div>
+              <div class="mb-0">
+                <label class="form-label small fw-bold">Fecha de término</label>
+                <input type="date" id="estancia_fecha_fin" formControlName="estancia_fecha_fin" class="form-control input-custom">
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm mt-3">
+            <div class="card-header bg-light text-borgona fw-bold">Documento probatorio</div>
+            <div class="card-body">
+              <label class="form-label small fw-bold" for="estancia_documento">Constancia de estancia o carta institucional (PDF)</label>
+              <input type="file" id="estancia_documento" (change)="onFileChange($event, 'estancia_documento')" 
+                     class="form-control form-control-sm input-custom" accept=".pdf">
+              <div *ngIf="f['estancia_documento'].value" class="text-success small mt-1">
+                <i class="fas fa-check-circle"></i> Documento cargado correctamente
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Detalles de la estancia</div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label fw-bold small" for="estancia_nombre_proyecto">Nombre del proyecto o estancia *</label>
+                <input type="text" id="estancia_nombre_proyecto" formControlName="estancia_nombre_proyecto" 
+                       class="form-control input-custom" 
+                       [class.is-invalid]="isFieldInvalid('estancia_nombre_proyecto')"
+                       placeholder="Nombre del proyecto...">
+                <div class="invalid-feedback">El nombre del proyecto es obligatorio.</div>
+              </div>
+              <div class="mb-0">
+                <label class="form-label fw-bold small" for="estancia_institucion_receptora">Institución receptora *</label>
+                <input type="text" id="estancia_institucion_receptora" formControlName="estancia_institucion_receptora" 
+                       class="form-control input-custom" 
+                       [class.is-invalid]="isFieldInvalid('estancia_institucion_receptora')"
+                       placeholder="¿Dónde realizó la estancia?">
+                <div class="invalid-feedback">La institución receptora es obligatoria.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Logros y resultados de la estancia</div>
+            <div class="card-body">
+              <textarea id="estancia_logros" formControlName="estancia_logros" 
+                        class="form-control input-custom" rows="6" 
+                        placeholder="Describe los productos u objetivos alcanzados en esta estancia específica..."></textarea>
+              <div class="form-text small mt-2">Esta información es independiente de su trayectoria profesional.</div>
+            </div>
+          </div>
+
+          <div class="text-end d-flex gap-2 justify-content-end mb-3">
+            <button type="button" class="btn btn-outline-success" (click)="agregarEstanciaInvestigacion()">
+              <i class="fas fa-plus me-1"></i>
+              {{ editingEstanciaIndex !== null ? 'Guardar edición' : 'Agregar estancia' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    (click)="cancelarEdicionEstanciaInvestigacion()"
+                    *ngIf="editingEstanciaIndex !== null">
+              <i class="fas fa-times me-1"></i>
+              Cancelar edición
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-borgona mb-3 shadow-sm">
+        <div class="card-header bg-light text-borgona fw-bold d-flex justify-content-between align-items-center">
+          <span>Estancias capturadas</span>
+          <span class="badge bg-secondary">{{ estanciasInvestigacionList.length }}</span>
+        </div>
+        <div class="card-body">
+          <div *ngIf="estanciasInvestigacionList.length === 0" class="alert alert-warning mb-0">
+            Aún no agregas estancias. Captura los datos y presiona <strong>Agregar estancia</strong>.
+          </div>
+
+          <div *ngFor="let estancia of estanciasInvestigacionList; let i = index; trackBy: trackByEstanciaInvestigacionIndex"
+               class="estancia-investigacion-item"
+               [class.mb-3]="i < estanciasInvestigacionList.length - 1">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <h6 class="mb-1 text-borgona">{{ estancia.nombreProyecto }}</h6>
+                <div class="small text-muted">
+                  <span>Tipo: {{ estancia.tipoNombre || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Inicio: {{ estancia.fechaInicio || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Institución: {{ estancia.institucionReceptora || 'N/D' }}</span>
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="editarEstanciaInvestigacion(i)">
+                  <i class="fas fa-edit me-1"></i> Editar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminarEstanciaInvestigacion(i)">
+                  <i class="fas fa-trash me-1"></i> Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-borgona px-5" (click)="setView('aportaciones')">
+          Siguiente: Aportaciones (Artículos)
+        </button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+
+<section *ngSwitchCase="'aportaciones'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img [src]="getSectionIconImage('aportaciones')" alt="Aportaciones científicas" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Aportaciones científicas</h1>
+        <p class="section-subtitle">Artículos y publicaciones</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('aportaciones') }}%</span>
+      </div>
+    </div>
+  <div class="main-wrapper">
+    <div class="content-container">
+
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h2 class="text-borgona mb-0">Aportaciones científicas</h2>
+        <button type="button" class="btn btn-outline-success" (click)="agregarArticuloCientifico()">
+          <i class="fas fa-plus me-1"></i>
+          {{ editingArticuloIndex !== null ? 'Guardar edición de artículo' : 'Agregar aportación' }}
+        </button>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Identificadores y métricas</div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="art_doi">DOI (Digital Object Identifier)</label>
+                <input type="text" id="art_doi" formControlName="art_doi" 
+                       class="form-control input-custom" 
+                       [class.is-invalid]="isFieldInvalid('art_doi')"
+                       placeholder="Ej. 10.1000/xyz123">
+                <div class="invalid-feedback">Formato de DOI no válido.</div>
+              </div>
+              
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label class="form-label small fw-bold" for="art_issn">ISSN Impreso</label>
+                  <input type="text" id="art_issn" formControlName="art_issn" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('art_issn')"
+                         placeholder="0000-0000">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-bold" for="art_issn_electronico">ISSN-e</label>
+                  <input type="text" id="art_issn_electronico" formControlName="art_issn_electronico" 
+                         class="form-control input-custom" 
+                         [class.is-invalid]="isFieldInvalid('art_issn_electronico')"
+                         placeholder="0000-0000">
+                </div>
+                <div class="col-12" *ngIf="isFieldInvalid('art_issn') || isFieldInvalid('art_issn_electronico')">
+                  <small class="text-danger small">Formato ISSN requerido: 0000-0000</small>
+                </div>
+              </div>
+
+              <div class="mb-0">
+                <label class="form-label small fw-bold" for="art_total_citas">Total de citas</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light border-borgona">
+                    <img src="assets/img/quote_5572.png" style="width:16px;">
+                  </span>
+                  <input type="number" id="art_total_citas" formControlName="art_total_citas" 
+                         class="form-control input-custom text-center"
+                         [class.is-invalid]="isFieldInvalid('art_total_citas')">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Financiamiento</div>
+            <div class="card-body">
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input custom-switch" type="checkbox" id="art_recibio_apoyo_SECIHTI" 
+                       formControlName="art_recibio_apoyo_SECIHTI">
+                <label class="form-check-label fw-bold text-borgona" for="art_recibio_apoyo_SECIHTI">¿Recibió apoyo?</label>
+              </div>
+              
+              <div *ngIf="f['art_recibio_apoyo_SECIHTI'].value">
+                <label class="form-label small fw-bold" for="art_fondo_prog_nombre">Fondo / Programa *</label>
+                <input type="text" id="art_fondo_prog_nombre" formControlName="art_fondo_prog_nombre" 
+                       class="form-control input-custom" 
+                       [class.is-invalid]="isFieldInvalid('art_fondo_prog_nombre')"
+                       placeholder="Nombre del fondo o programa">
+                <div class="invalid-feedback">Especifique el fondo.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Evidencia (Aprobación de artículo)</div>
+            <div class="card-body text-center">
+              <div class="mb-2">
+                <img src="assets/img/documentos.png" alt="PDF" style="width: 40px; opacity: 0.7;">
+              </div>
+              <input type="file" (change)="onFileChange($event, 'cert1')" 
+                     class="form-control form-control-sm" accept=".pdf">
+              <div *ngIf="f['cert1'].value" class="text-success small mt-1">Archivo listo.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Información de la publicación</div>
+            <div class="card-body row g-3">
+              <div class="col-md-12">
+                <label class="form-label fw-bold small" for="art_titulo">Título del artículo *</label>
+                <textarea id="art_titulo" formControlName="art_titulo" 
+                          class="form-control input-custom" rows="3" 
+                          [class.is-invalid]="isFieldInvalid('art_titulo')"
+                          placeholder="Título completo de la investigación"></textarea>
+                <div class="invalid-feedback">El título es obligatorio.</div>
+              </div>
+
+              <div class="col-md-12">
+                <label class="form-label fw-bold small" for="art_nombre_revista">Revista científica *</label>
+                <input type="text" id="art_nombre_revista" formControlName="art_nombre_revista" 
+                       class="form-control input-custom" 
+                       [class.is-invalid]="isFieldInvalid('art_nombre_revista')"
+                       placeholder="Nombre de la revista editorial">
+                <div class="invalid-feedback">El nombre de la revista es obligatorio.</div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label fw-bold small" for="art_anio">Año de publicación</label>
+                <input type="number" id="art_anio" formControlName="art_anio" 
+                       class="form-control input-custom" 
+                       [class.is-invalid]="isFieldInvalid('art_anio')"
+                       placeholder="Ej: 2020">
+                <div class="invalid-feedback">El año debe ser mayor o igual a 1800.</div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label fw-bold small" for="art_estado_nombre">Estado de la obra *</label>
+                <select id="art_estado_nombre" formControlName="art_estado_nombre" class="form-select input-custom">
+                  <option value="Aceptado">Aceptado</option>
+                  <option value="Publicado">Publicado</option>
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label fw-bold small" for="art_rol_part_nombre">Tu rol en el artículo *</label>
+                <select id="art_rol_part_nombre" formControlName="art_rol_part_nombre" 
+                        class="form-select input-custom"
+                        [class.is-invalid]="isFieldInvalid('art_rol_part_nombre')">
+                  <option value="">Selecciona rol...</option>
+                  <option value="Autor Principal">Autor principal</option>
+                  <option value="Coautor">Coautor</option>
+                  <option value="Autor de Correspondencia">Autor de correspondencia</option>
+                </select>
+                <div class="invalid-feedback">Seleccione su rol.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold d-flex justify-content-between align-items-center">
+              <span>Autores</span>
+              <button type="button" class="btn btn-sm btn-outline-success" (click)="agregarAutor()">
+                <i class="fas fa-plus me-1"></i> Agregar autor
+              </button>
+            </div>
+            <div class="card-body">
+              <div *ngFor="let autor of autoresList; let i = index; trackBy: trackByAutorIndex" 
+                   class="row g-3 align-items-end" [class.mb-3]="i < autoresList.length - 1" 
+                   [class.border-bottom]="i < autoresList.length - 1" [class.pb-3]="i < autoresList.length - 1">
+                <div class="col-md-1">
+                  <label class="form-label small fw-bold">Orden</label>
+                  <input type="number" class="form-control input-custom text-center"
+                         [(ngModel)]="autor.orden" [ngModelOptions]="{standalone: true}"
+                         min="1" placeholder="{{i + 1}}">
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label small fw-bold">Nombre completo</label>
+                  <input type="text" class="form-control input-custom"
+                         [(ngModel)]="autor.nombre" [ngModelOptions]="{standalone: true}"
+                         placeholder="Nombres y apellidos">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold">ORCID</label>
+                  <input type="text" class="form-control input-custom"
+                         [(ngModel)]="autor.orcid" [ngModelOptions]="{standalone: true}"
+                         placeholder="0000-0000-0000-0000">
+                </div>
+                <div class="col-md-2 text-center">
+                  <button type="button" class="btn btn-sm btn-outline-danger" 
+                          (click)="eliminarAutor(i)" [disabled]="autoresList.length === 1"
+                          title="Eliminar autor">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-end d-flex gap-2 justify-content-end mb-3">
+            <button type="button" class="btn btn-outline-success" (click)="agregarArticuloCientifico()">
+              <i class="fas fa-plus me-1"></i>
+              {{ editingArticuloIndex !== null ? 'Guardar edición' : 'Agregar aportación' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    (click)="cancelarEdicionArticuloCientifico()"
+                    *ngIf="editingArticuloIndex !== null">
+              <i class="fas fa-times me-1"></i>
+              Cancelar edición
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="card border-borgona mb-3 shadow-sm">
+        <div class="card-header bg-light text-borgona fw-bold d-flex justify-content-between align-items-center">
+          <span>Aportaciones capturadas</span>
+          <span class="badge bg-secondary">{{ articulosCientificosList.length }}</span>
+        </div>
+        <div class="card-body">
+          <div *ngIf="articulosCientificosList.length === 0" class="alert alert-warning mb-0">
+            Aún no agregas aportaciones. Captura los datos y presiona <strong>Agregar aportación</strong>.
+          </div>
+
+          <div *ngFor="let articulo of articulosCientificosList; let i = index; trackBy: trackByArticuloCientificoIndex"
+               class="articulo-cientifico-item"
+               [class.mb-3]="i < articulosCientificosList.length - 1">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <h6 class="mb-1 text-borgona">{{ articulo.titulo }}</h6>
+                <div class="small text-muted">
+                  <span>{{ articulo.nombreRevista || 'Sin revista' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Año: {{ articulo.anio || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Rol: {{ articulo.rolParticipacionNombre || 'N/D' }}</span>
+                </div>
+                <div class="small text-muted">
+                  <span>Estado: {{ articulo.estadoNombre || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Autores: {{ articulo.autores.length || 0 }}</span>
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="editarArticuloCientifico(i)">
+                  <i class="fas fa-edit me-1"></i> Editar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminarArticuloCientifico(i)">
+                  <i class="fas fa-trash me-1"></i> Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
+                (click)="setView('congresos')">
+          <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+          Siguiente: Congresos y eventos
+        </button>
+      </div>
+
+    </div>
+  </div>
+  </div>
+</section>
+
+<section *ngSwitchCase="'congresos'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img [src]="getSectionIconImage('congresos')" alt="Congresos y eventos" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Congresos y eventos</h1>
+        <p class="section-subtitle">Participación en eventos</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('congresos') }}%</span>
+      </div>
+    </div>
+  <div class="main-wrapper">
+    <div class="content-container">
+
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-borgona mb-0">Participación en eventos</h2>
+        <button type="button" class="btn btn-outline-success" (click)="agregarCongreso()">
+          <i class="fas fa-plus me-1"></i> Agregar congreso
+        </button>
+      </div>
+
+      <div *ngFor="let congreso of congresosList; let i = index; trackBy: trackByCongresoIndex"
+           class="card border-borgona mb-4 shadow-sm">
+        <div class="card-header bg-light text-borgona fw-bold d-flex justify-content-between align-items-center">
+          <span><i class="fas fa-calendar-alt me-2"></i>Congreso {{ i + 1 }}</span>
+          <button type="button" class="btn btn-sm btn-outline-danger" 
+                  (click)="eliminarCongreso(i)" [disabled]="congresosList.length === 1"
+                  title="Eliminar congreso">
+            <i class="fas fa-trash me-1"></i> Eliminar
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label fw-bold small">Nombre del congreso / simposio</label>
+              <input type="text" class="form-control input-custom"
+                     [(ngModel)]="congreso.nombre" [ngModelOptions]="{standalone: true}"
+                     placeholder="Ej. Congreso internacional de IA">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-bold small">Tipo de participación</label>
+              <select class="form-select input-custom mb-2"
+                      [(ngModel)]="congreso.tipoParticipacion" [ngModelOptions]="{standalone: true}">
+                <option value="">Selecciona...</option>
+                <option value="Ponente">Ponente</option>
+                <option value="Conferencista Magistral">Conferencista magistral</option>
+                <option value="Presentación de Póster">Presentación de póster</option>
+                <option value="Organizador">Organizador</option>
+                <option value="Otro">Otro</option>
+              </select>
+              <input *ngIf="esValorOtro(congreso.tipoParticipacion)" type="text" class="form-control input-custom"
+                     [(ngModel)]="congreso.tipoParticipacionManual" [ngModelOptions]="{standalone: true}"
+                     placeholder="Especifica el tipo de participación">
+            </div>
+            <div class="col-md-12">
+              <label class="form-label fw-bold small">Título del trabajo o ponencia</label>
+              <textarea class="form-control input-custom" rows="2"
+                        [(ngModel)]="congreso.tituloTrabajo" [ngModelOptions]="{standalone: true}"
+                        placeholder="Nombre completo de la investigación presentada"></textarea>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Fecha del evento</label>
+              <input type="date" class="form-control input-custom"
+                     [(ngModel)]="congreso.fecha" [ngModelOptions]="{standalone: true}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">País sede</label>
+              <select class="form-select input-custom mb-2"
+                      [(ngModel)]="congreso.paisSede" [ngModelOptions]="{standalone: true}">
+                <option value="">Selecciona país...</option>
+                <option value="México">México</option>
+                <option value="España">España</option>
+                <option value="Estados Unidos">Estados Unidos</option>
+                <option value="Otro">Otro</option>
+              </select>
+              <input *ngIf="esValorOtro(congreso.paisSede)" type="text" class="form-control input-custom"
+                     [(ngModel)]="congreso.paisSedeManual" [ngModelOptions]="{standalone: true}"
+                     placeholder="Especifica el país sede">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <div class="form-check form-switch">
+                <input class="form-check-input custom-switch" type="checkbox"
+                       [(ngModel)]="congreso.productoPrincipal" [ngModelOptions]="{standalone: true}"
+                       [id]="'congreso_principal_' + i">
+                <label class="form-check-label fw-bold text-borgona" [for]="'congreso_principal_' + i">Producto principal</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
+                (click)="setView('divulgacion')">
+          <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+          Siguiente: Divulgación
+        </button>
+      </div>
+
+    </div>
+  </div>
+  </div>
+</section>
+
+
+<section *ngSwitchCase="'divulgacion'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img src="assets/img/communicate_connection_propaganda_announce_news_icon_143344.png" alt="Divulgación científica" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Divulgación científica</h1>
+        <p class="section-subtitle">Actividades de divulgación</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('divulgacion') }}%</span>
+      </div>
+    </div>
+  </div>
+  <div class="main-wrapper">
+    <div class="content-container">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h2 class="text-borgona mb-0">Actividades de divulgación</h2>
+        <button type="button" class="btn btn-outline-success" (click)="agregarDivulgacionCientifica()">
+          <i class="fas fa-plus me-1"></i>
+          {{ editingDivulgacionIndex !== null ? 'Guardar edición de divulgación' : 'Agregar divulgación' }}
+        </button>
+      </div>
+
+      <div class="row">
+        
+        <div class="col-lg-4 mb-4">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Clasificación</div>
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <img src="assets/img/communicate_connection_propaganda_announce_news_icon_143344.png" alt="Divulgación" style="width: 64px;">
+              </div>
+              <div class="text-start">
+                <label class="form-label fw-bold small" for="divulg_tipo_div_nombre">Tipo de divulgación</label>
+                <select id="divulg_tipo_div_nombre" formControlName="divulg_tipo_div_nombre" 
+                        class="form-select input-custom mb-2"
+                        [class.is-invalid]="isFieldInvalid('divulg_tipo_div_nombre')">
+                  <option value="">Selecciona...</option>
+                  <option value="Científica">Científica</option>
+                  <option value="Tecnológica">Tecnológica</option>
+                  <option value="Humanista">Humanista</option>
+                  <option value="Otro">Otro</option>
+                </select>
+                <input *ngIf="esValorOtro(f['divulg_tipo_div_nombre'].value)" type="text" [(ngModel)]="divulgTipoManual" [ngModelOptions]="{ standalone: true }"
+                       class="form-control input-custom mb-3" placeholder="Especifica el tipo de divulgación">
+                <div class="invalid-feedback">Seleccione el tipo.</div>
+
+                <label class="form-label fw-bold small" for="divulg_medio_nombre">Medio de comunicación</label>
+                <select id="divulg_medio_nombre" formControlName="divulg_medio_nombre" 
+                        class="form-select input-custom mb-2"
+                        [class.is-invalid]="isFieldInvalid('divulg_medio_nombre')">
+                  <option value="">Selecciona medio...</option>
+                  <option value="Televisión">Televisión</option>
+                  <option value="Radio">Radio</option>
+                  <option value="Prensa Escrita">Prensa escrita</option>
+                  <option value="Redes Sociales">Redes sociales</option>
+                  <option value="Otro">Otro</option>
+                </select>
+                <input *ngIf="esValorOtro(f['divulg_medio_nombre'].value)" type="text" [(ngModel)]="divulgMedioManual" [ngModelOptions]="{ standalone: true }"
+                       class="form-control input-custom" placeholder="Especifica el medio de comunicación">
+                <div class="invalid-feedback">Seleccione el medio.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Alcance y fecha</div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label small fw-bold" for="divulg_dirigido_a">Público dirigido</label>
+                <select id="divulg_dirigido_a" formControlName="divulg_dirigido_a" class="form-select input-custom mb-2">
+                  <option value="">Selecciona público...</option>
+                  <option value="Público general">Público general</option>
+                  <option value="Estudiantes">Estudiantes</option>
+                  <option value="Especialistas">Especialistas</option>
+                  <option value="Otro">Otro</option>
+                </select>
+                <input *ngIf="esValorOtro(f['divulg_dirigido_a'].value)" type="text" [(ngModel)]="divulgDirigidoManual" [ngModelOptions]="{ standalone: true }"
+                       class="form-control input-custom" placeholder="Especifica el público dirigido">
+              </div>
+              <div class="mb-0">
+                <label class="form-label small fw-bold" for="divulg_fecha">Fecha de realización</label>
+                <input type="date" id="divulg_fecha" formControlName="divulg_fecha" 
+                       class="form-control input-custom"
+                       [class.is-invalid]="isFieldInvalid('divulg_fecha')">
+                <div class="invalid-feedback">La fecha es obligatoria.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Detalles de la actividad</div>
+            <div class="card-body row g-3">
+              <div class="col-md-12">
+                <label class="form-label fw-bold small" for="divulg_titulo">Título del trabajo</label>
+                <textarea id="divulg_titulo" formControlName="divulg_titulo" 
+                          class="form-control input-custom" rows="3" 
+                          [class.is-invalid]="isFieldInvalid('divulg_titulo')"
+                          placeholder="Nombre de la charla, artículo de blog, entrevista, etc."></textarea>
+                <div class="invalid-feedback">El título de la actividad es obligatorio.</div>
+              </div>
+
+              <div class="col-md-12">
+                <label class="form-label fw-bold small">Institución organizadora / medio</label>
+                <input type="text" id="divulg_institucion_organizadora" formControlName="divulg_institucion_organizadora" class="form-control input-custom" 
+                       placeholder="Nombre del organismo o medio de comunicación">
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Productos obtenidos</div>
+            <div class="card-body">
+              <label class="form-label fw-bold small" for="divulg_prod_obtenido_nombre">Resultado principal</label>
+              <select id="divulg_prod_obtenido_nombre" formControlName="divulg_prod_obtenido_nombre" class="form-select input-custom mb-2">
+                <option value="">Selecciona el producto principal...</option>
+                <option value="Video / Grabación">Video / Grabación</option>
+                <option value="Reseña Escrita">Reseña escrita</option>
+                <option value="Material Didáctico">Material didáctico</option>
+                <option value="Constancia de Participación">Constancia de participación</option>
+                <option value="Entrevista Publicada">Entrevista publicada</option>
+                <option value="Otro">Otro</option>
+              </select>
+              <input *ngIf="esValorOtro(f['divulg_prod_obtenido_nombre'].value)" type="text" [(ngModel)]="divulgProductoManual" [ngModelOptions]="{ standalone: true }"
+                     class="form-control input-custom" placeholder="Especifica el producto obtenido">
+              
+              <div *ngIf="f['divulg_prod_obtenido_nombre'].value && f['divulg_prod_obtenido_nombre'].value !== ''" class="mt-3">
+                <ng-container *ngIf="esProductoConEvidenciaLink(f['divulg_prod_obtenido_nombre'].value); else evidenciaPdfTpl">
+                  <label class="form-label fw-bold small" for="divulg_evidencia_link">Link de evidencia *</label>
+                  <input type="url" id="divulg_evidencia_link" formControlName="divulg_evidencia_link"
+                         class="form-control input-custom"
+                         placeholder="https://..."
+                         [class.is-invalid]="isFieldInvalid('divulg_evidencia_link')">
+                  <div class="form-text small text-muted">
+                    Para video / grabación y entrevista publicada se requiere un enlace público.
+                  </div>
+                  <div class="invalid-feedback">Ingresa un enlace válido (http/https).</div>
+                </ng-container>
+                <ng-template #evidenciaPdfTpl>
+                  <label class="form-label fw-bold small" for="divulg_archivo">Documento probatorio (PDF) *</label>
+                  <input type="file" id="divulg_archivo" (change)="onFileChange($event, 'divulg_archivo')"
+                         class="form-control form-control-sm input-custom"
+                         accept=".pdf,application/pdf">
+                  <div class="form-text small text-muted">Carga un archivo PDF que corrobore el producto obtenido.</div>
+                  <div *ngIf="f['divulg_archivo'].value" class="text-success small mt-1">
+                    <i class="fas fa-check-circle"></i> Archivo cargado: {{ f['divulg_archivo'].value?.name }}
+                  </div>
+                </ng-template>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-end d-flex gap-2 justify-content-end mb-3">
+            <button type="button" class="btn btn-outline-success" (click)="agregarDivulgacionCientifica()">
+              <i class="fas fa-plus me-1"></i>
+              {{ editingDivulgacionIndex !== null ? 'Guardar edición' : 'Agregar divulgación' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    (click)="cancelarEdicionDivulgacionCientifica()"
+                    *ngIf="editingDivulgacionIndex !== null">
+              <i class="fas fa-times me-1"></i>
+              Cancelar edición
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-borgona mb-3 shadow-sm">
+        <div class="card-header bg-light text-borgona fw-bold d-flex justify-content-between align-items-center">
+          <span>Divulgaciones capturadas</span>
+          <span class="badge bg-secondary">{{ divulgacionesCientificasList.length }}</span>
+        </div>
+        <div class="card-body">
+          <div *ngIf="divulgacionesCientificasList.length === 0" class="alert alert-warning mb-0">
+            Aún no agregas divulgaciones. Captura los datos y presiona <strong>Agregar divulgación</strong>.
+          </div>
+
+          <div *ngFor="let divulgacion of divulgacionesCientificasList; let i = index; trackBy: trackByDivulgacionCientificaIndex"
+               class="divulgacion-cientifica-item"
+               [class.mb-3]="i < divulgacionesCientificasList.length - 1">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <h6 class="mb-1 text-borgona">{{ divulgacion.titulo }}</h6>
+                <div class="small text-muted">
+                  <span>Tipo: {{ divulgacion.tipoDivulgacionNombre || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Medio: {{ divulgacion.medioNombre || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Fecha: {{ divulgacion.fecha || 'N/D' }}</span>
+                </div>
+                <div class="small text-muted">
+                  <span>Producto: {{ divulgacion.productoObtenidoNombre || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span *ngIf="divulgacion.evidenciaTipo === 'LINK'">Evidencia: Link</span>
+                  <span *ngIf="divulgacion.evidenciaTipo === 'PDF'">Evidencia: PDF</span>
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="editarDivulgacionCientifica(i)">
+                  <i class="fas fa-edit me-1"></i> Editar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminarDivulgacionCientifica(i)">
+                  <i class="fas fa-trash me-1"></i> Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
+                (click)="setView('logros')">
+          <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+          Siguiente: Logros
+        </button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+
+<section *ngSwitchCase="'logros'">
+  <div class="section-container">
+    <div class="section-header">
+      <div class="section-header-icon">
+        <img src="assets/img/4230509-achievement-trophy_114984.png" alt="Logros y reconocimientos" style="width: 48px; height: 48px; object-fit: contain;">
+      </div>
+      <div>
+        <h1 class="section-title">Logros y reconocimientos</h1>
+        <p class="section-subtitle">Premios y distinciones</p>
+      </div>
+      <div class="section-progress-badge">
+        <span>{{ getSectionProgress('logros') }}%</span>
+      </div>
+    </div>
+  </div>
+  <div class="main-wrapper">
+    <div class="content-container">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h2 class="text-borgona mb-0">Logros y reconocimientos</h2>
+        <button type="button" class="btn btn-outline-success" (click)="agregarLogroReconocimiento()">
+          <i class="fas fa-plus me-1"></i>
+          {{ editingLogroIndex !== null ? 'Guardar edición de logro' : 'Agregar logro o reconocimiento' }}
+        </button>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Reconocimiento</div>
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <img src="assets/img/4230509-achievement-trophy_114984.png" alt="Logro" style="width: 64px;">
+              </div>
+              <div class="text-start">
+                <label class="form-label fw-bold small" for="logro_tipo">Tipo de organismo</label>
+                <input type="text" id="logro_tipo" formControlName="logro_tipo" 
+                       class="form-control input-custom" placeholder="Ej. SECIHTI">
+                <div class="form-text small mt-1">
+                  Un <strong>organismo</strong> es la institución, entidad o asociación que otorga el reconocimiento
+                  (por ejemplo: universidad, dependencia pública, sociedad científica o empresa).
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-borgona shadow-sm">
+            <div class="card-body py-2">
+              <label class="form-label small text-muted mb-0">ID Perfil: </label>
+              <span class="small fw-bold ms-1">{{ f['uuid_interno'].value }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div class="card border-borgona mb-3 shadow-sm">
+            <div class="card-header bg-light text-borgona fw-bold">Detalles del mérito</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-12">
+                  <label class="form-label fw-bold small" for="logro_nombre">Nombre del logro *</label>
+                  <input type="text" id="logro_nombre" formControlName="logro_nombre" 
+                         class="form-control input-custom"
+                         [class.is-invalid]="isFieldInvalid('logro_nombre')">
+                  <div class="invalid-feedback">El nombre del logro es obligatorio.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="logro_anio">Año de obtención *</label>
+                  <input type="number" id="logro_anio" formControlName="logro_anio" 
+                         class="form-control input-custom"
+                         [class.is-invalid]="isFieldInvalid('logro_anio')"
+                         min="0"
+                         placeholder="AAAA">
+                  <div class="invalid-feedback">Año inválido. No se permiten valores negativos.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-end d-flex gap-2 justify-content-end mb-3">
+            <button type="button" class="btn btn-outline-success" (click)="agregarLogroReconocimiento()">
+              <i class="fas fa-plus me-1"></i>
+              {{ editingLogroIndex !== null ? 'Guardar edición' : 'Agregar logro' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    (click)="cancelarEdicionLogroReconocimiento()"
+                    *ngIf="editingLogroIndex !== null">
+              <i class="fas fa-times me-1"></i>
+              Cancelar edición
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-borgona mb-3 shadow-sm">
+        <div class="card-header bg-light text-borgona fw-bold d-flex justify-content-between align-items-center">
+          <span>Logros capturados</span>
+          <span class="badge bg-secondary">{{ logrosReconocimientosList.length }}</span>
+        </div>
+        <div class="card-body">
+          <div *ngIf="logrosReconocimientosList.length === 0" class="alert alert-warning mb-0">
+            Aún no agregas logros. Captura los datos y presiona <strong>Agregar logro</strong>.
+          </div>
+
+          <div *ngFor="let logro of logrosReconocimientosList; let i = index; trackBy: trackByLogroReconocimientoIndex"
+               class="logro-reconocimiento-item"
+               [class.mb-3]="i < logrosReconocimientosList.length - 1">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <h6 class="mb-1 text-borgona">{{ logro.nombre }}</h6>
+                <div class="small text-muted">
+                  <span>Organismo: {{ logro.tipo || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Año: {{ logro.anio ?? 'N/D' }}</span>
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="editarLogroReconocimiento(i)">
+                  <i class="fas fa-edit me-1"></i> Editar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminarLogroReconocimiento(i)">
+                  <i class="fas fa-trash me-1"></i> Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
+                (click)="submitFinal($event)" [disabled]="submitting()">
+          <span *ngIf="!submitting()">
+            <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+            COMPLETAR REGISTRO
+          </span>
+          <span *ngIf="submitting()">
+            <i class="fas fa-cloud-upload-alt"></i> GUARDANDO {{ submitProgress() }}%
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+      <!-- Sección de Migración SECIHTI -->
+      <section *ngSwitchCase="'documentos'">
+        <div class="section-container">
+          <div class="section-header">
+            <div class="section-header-icon">
+              <img src="assets/img/documentos.png" alt="Migración SECIHTI" style="width: 48px; height: 48px; object-fit: contain;">
+            </div>
+            <div>
+              <h1 class="section-title">Migración SECIHTI</h1>
+              <p class="section-subtitle">Importa tus datos históricos del sistema anterior</p>
+            </div>
+            <div class="section-progress-badge">
+              <span>Opcional</span>
+            </div>
+          </div>
+        </div>
+        <div class="welcome-section">
+            <div class="info-cards mb-4">
+              <div class="info-card">
+                <div class="info-icon">
+                  <img src="assets/img/documentos.png" alt="Migración" style="width: 48px; height: 48px; object-fit: contain;">
+                </div>
+                <h3 class="info-title">El registro es ágil y sencillo</h3>
+                <p class="info-text">
+                  Si ya cuentas con un perfil en la Secretaría de Ciencia, Humanidades, Tecnología e Innovación (SECIHTI),
+                  el proceso de registro al SIIMEX es más rápido y sencillo, ya que podrás exportar tu información mediante un clic.
+                </p>
+                <div class="info-details" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                  <p style="font-weight: 600; margin-bottom: 10px; color: #800020;">La migración incluye:</p>
+                  <ul style="list-style: none; padding: 0; margin: 0;">
+                    <li style="margin-bottom: 8px;"><i class="fas fa-check-circle" style="color: #28a745; margin-right: 8px;"></i>Trayectorias académicas y profesionales</li>
+                    <li style="margin-bottom: 8px;"><i class="fas fa-check-circle" style="color: #28a745; margin-right: 8px;"></i>Producción científica y artículos</li>
+                    <li style="margin-bottom: 8px;"><i class="fas fa-check-circle" style="color: #28a745; margin-right: 8px;"></i>Logros, becas y distinciones</li>
+                    <li style="margin-bottom: 8px;"><i class="fas fa-check-circle" style="color: #28a745; margin-right: 8px;"></i>Idiomas registrados</li>
+                    <li style="margin-bottom: 8px;"><i class="fas fa-check-circle" style="color: #28a745; margin-right: 8px;"></i>Estancias y congresos</li>
+                    <li><i class="fas fa-check-circle" style="color: #28a745; margin-right: 8px;"></i>Divulgación científica</li>
+                  </ul>
+                </div>
+                <div class="info-note" style="margin-top: 15px; padding: 12px; background-color: #f8f9fa; border-radius: 6px; border-left: 3px solid #800020;">
+                  <p style="margin: 0; font-size: 14px;"><strong>¿Eres persona usuaria nueva?</strong> Puedes omitir este paso y comenzar a llenar tu perfil desde cero.</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="migracionForm" class="migration-form">
+              <div class="row justify-content-center">
+                <div class="col-lg-5 col-md-6 mb-4">
+                  <div class="help-card">
+                    <div class="help-icon">
+                      <img src="assets/img/documentos.png" alt="Migración" style="width: 48px; height: 48px; object-fit: contain;">
+                    </div>
+                    <h3 class="help-title">¿Qué es la migración?</h3>
+                    <p class="help-text">
+                      Si ya cuentas con un perfil en la Secretaría de Ciencia, Humanidades, Tecnología e Innovación (SECIHTI),
+                      puedes importar tu información al SIIMEX usando el archivo JSON correspondiente.
+                    </p>
+                    <div class="help-benefits">
+                      <h4 class="benefits-title" style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #800020;">La migración incluye:</h4>
+                      <div class="benefit-item">
+                        <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                        <span><strong>Trayectorias académicas y profesionales:</strong> Grados, estudios, experiencia laboral</span>
+                      </div>
+                      <div class="benefit-item">
+                        <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                        <span><strong>Producción científica y artículos:</strong> Publicaciones, investigaciones y trabajos académicos</span>
+                      </div>
+                      <div class="benefit-item">
+                        <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                        <span><strong>Logros, becas y distinciones:</strong> Premios, reconocimientos y logros obtenidos</span>
+                      </div>
+                      <div class="benefit-item">
+                        <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                        <span><strong>Idiomas registrados:</strong> Dominio de idiomas y certificaciones</span>
+                      </div>
+                      <div class="benefit-item">
+                        <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                        <span><strong>Estancias y congresos:</strong> Participación en eventos académicos</span>
+                      </div>
+                      <div class="benefit-item">
+                        <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                        <span><strong>Divulgación científica:</strong> Actividades de divulgación y comunicación</span>
+                      </div>
+                    </div>
+                    <div class="help-note">
+                      <i class="fas fa-info-circle"></i>
+                      <p><strong>¿Eres persona usuaria nueva?</strong> Puedes omitir este paso y comenzar a llenar tu perfil desde cero.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-lg-7 col-md-6">
+                  <div class="migration-card">
+                    <div class="migration-header">
+                      <h3 class="migration-title">Vinculación de datos históricos</h3>
+                      <p class="migration-subtitle">Ingresa tus datos de migración para importar tu información</p>
+                    </div>
+                    <div class="migration-body">
+                      <div class="form-group-custom">
+                      </div>
+
+                      <div class="form-group-custom">
+                        <label class="form-label-custom" for="migracion_json">
+                          <i class="fas fa-file-code"></i>
+                          Archivo JSON para Migración *
+                        </label>
+                        <div class="file-upload-area" 
+                             [class.drag-over]="isDraggingJson"
+                             (click)="triggerFileInput()"
+                             (dragover)="onDragOverJson($event)"
+                             (dragleave)="onDragLeaveJson($event)"
+                             (drop)="onDropJson($event)">
+                          <input type="file" id="migracion_json" name="migracion_json"
+                            class="file-input" accept=".json"
+                            (change)="onFileSelectedJson($event)">
+                          <div class="file-upload-content" *ngIf="!jsonFileName">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Haz clic para seleccionar o arrastra tu archivo JSON aquí</p>
+                            <small>Formato: .json</small>
+                          </div>
+                          <div class="file-selected-content" *ngIf="jsonFileName">
+                            <i class="fas fa-file-code text-success"></i>
+                            <p class="mb-1"><strong>{{ jsonFileName }}</strong></p>
+                            <button type="button" class="btn btn-sm btn-outline-danger mt-2" 
+                                    (click)="clearJsonFile($event)">
+                              <i class="fas fa-times"></i> Eliminar archivo
+                            </button>
+                          </div>
+                        </div>
+                        <small class="form-help">Selecciona el archivo JSON que recibiste del sistema anterior</small>
+                      </div>
+
+                      <div class="form-check-custom">
+                        <input class="form-check-input-custom" type="checkbox" id="acepto_politicas" 
+                          name="acepto_politicas" required>
+                        <label class="form-check-label-custom" for="acepto_politicas">
+                          He leído y acepto el
+                          <a href="https://comecyt.edomex.gob.mx/node/278" target="_blank" rel="noopener noreferrer">
+                            Aviso de Privacidad del SIIMEX
+                          </a>
+                        </label>
+                      </div>
+
+                      <div class="alert-custom">
+                        <i class="fas fa-shield-alt"></i>
+                        <div>
+                          <strong>Aviso de privacidad:</strong> Por este medio se hace constar que la persona solicitante del apoyo a registrar ha sido debidamente informada sobre la existencia del Aviso de Privacidad para el manejo de datos personales del SIIMEX, por lo que conoce su contenido y alcance legal. Se le invita a consultar el Aviso de Privacidad en el enlace anterior.
+                        </div>
+                      </div>
+
+                      <div class="alert-custom">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <div>
+                          <strong>Importante:</strong> Antes de iniciar la importación de datos, deberá asegurarse que su perfil de rizoma este completo.
+                        </div>
+                      </div>
+
+                      <div class="alert alert-warning mt-2 py-2 px-3 small" role="alert">
+                        <i class="fas fa-triangle-exclamation me-2"></i>
+                        <strong>Importante:</strong> Se importarán únicamente los datos requisitados en la plataforma rizoma. Una vez que actualice su perfil en rizoma podrá realizar una nueva importación.
+                      </div>
+
+                      <div class="migration-actions">
+                        <button type="button" class="btn-primary-custom" (click)="procesarMigracion()">
+                          <i class="fas fa-upload"></i>
+                          Iniciar vinculación de datos
+                        </button>
+                        <button type="button" class="btn-secondary-custom" (click)="setView('personaPrincipal')">
+                          <i class="fas fa-arrow-right"></i>
+                          Continuar sin migración
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+      </section>
+
+    </ng-container>
+  </main>
+
+<datalist id="catalogoNacionalidadesList">
+  <option *ngFor="let nacionalidad of catalogoVisibleSinOtro(catalogoNacionalidades)" [value]="nacionalidad.nombre"></option>
+</datalist>
+
+<datalist id="catalogoRedesSocialesList">
+  <option *ngFor="let red of catalogoVisibleSinOtro(catalogoRedesSociales)" [value]="red.clave">{{ red.nombre }}</option>
+</datalist>
+
+<datalist id="catalogoMunicipiosList">
+  <option *ngFor="let municipio of catalogoVisibleSinOtro(catalogoMunicipios)" [value]="municipio.nombre"></option>
+</datalist>
+
+<datalist id="catalogoLocalidadesList">
+  <option *ngFor="let localidad of catalogoVisibleSinOtro(catalogoLocalidadesFiltradas)" [value]="localidad.nombre"></option>
+</datalist>
+
+<datalist id="catalogoEntidadesClaveList">
+  <option *ngFor="let entidad of catalogoEntidadesFederativas" [value]="entidad.clave">{{ entidad.nombre }}</option>
+</datalist>
+<datalist id="catalogoInstitucionesEducativasList">
+  <option *ngFor="let institucion of catalogoInstitucionesEducativas" [value]="institucion.nombre"></option>
+</datalist>
+
+<datalist id="catalogoCarrerasList">
+  <option *ngFor="let carrera of catalogoVisibleSinOtro(catalogoCarreras)" [value]="carrera.nombre"></option>
+</datalist>
+
+<datalist id="catalogoGradosEstudioList">
+  <option *ngFor="let grado of catalogoVisibleSinOtro(catalogoGradosEstudio)" [value]="grado.nombre"></option>
+</datalist>
+</div>

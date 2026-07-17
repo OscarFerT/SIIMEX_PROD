@@ -1,0 +1,305 @@
+<div class="audit-page">
+  <header class="audit-header">
+    <div>
+      <h1 class="audit-title">
+        <i class="fas fa-clipboard-list"></i> Auditoría y seguridad
+      </h1>
+      <p class="audit-subtitle">Historial de actividades, accesos e información de seguridad del sistema.</p>
+    </div>
+    <div class="audit-header-actions">
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="exportarExcel()" [disabled]="items.length === 0">
+        <i class="fas fa-file-excel me-1"></i>Exportar Excel
+      </button>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="audit-tabs">
+    <button class="audit-tab" [class.active]="vista === 'logs'" (click)="cambiarVista('logs')">
+      <i class="fas fa-list me-1"></i>Registro de actividad
+    </button>
+    <button class="audit-tab" [class.active]="vista === 'stats'" (click)="cambiarVista('stats')">
+      <i class="fas fa-chart-bar me-1"></i>Estadísticas
+    </button>
+  </div>
+
+  <!-- =================== VISTA: LOGS =================== -->
+  <div *ngIf="vista === 'logs'">
+    <div class="audit-card">
+      <!-- Filtros -->
+      <div class="audit-filtros">
+        <div class="audit-filtros-row">
+          <div class="audit-filtro">
+            <label class="audit-filtro-label">Categoría</label>
+            <select class="form-select form-select-sm" [(ngModel)]="filtroCategoria">
+              <option value="">Todas</option>
+              <option *ngFor="let c of CATEGORIAS" [value]="c.value">{{ c.label }}</option>
+            </select>
+          </div>
+          <div class="audit-filtro audit-filtro-grow">
+            <label class="audit-filtro-label">Email</label>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="filtroEmail" placeholder="Buscar por email..." />
+          </div>
+          <div class="audit-filtro">
+            <label class="audit-filtro-label">Acción</label>
+            <input type="text" class="form-control form-control-sm" [(ngModel)]="filtroAccion" placeholder="Ej: LOGIN, CREAR..." />
+          </div>
+          <div class="audit-filtro">
+            <label class="audit-filtro-label">Desde</label>
+            <input type="date" class="form-control form-control-sm" [(ngModel)]="filtroDesde" />
+          </div>
+          <div class="audit-filtro">
+            <label class="audit-filtro-label">Hasta</label>
+            <input type="date" class="form-control form-control-sm" [(ngModel)]="filtroHasta" />
+          </div>
+          <div class="audit-filtro-btns">
+            <button class="btn btn-borgona btn-sm" (click)="aplicarFiltros()">
+              <i class="fas fa-search me-1"></i>Buscar
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" (click)="limpiarFiltros()" [disabled]="!tieneFiltrosActivos()">
+              <i class="fas fa-eraser me-1"></i>Limpiar
+            </button>
+          </div>
+        </div>
+        <div class="audit-filtros-meta">
+          <span class="audit-count"><strong>{{ totalElements }}</strong> evento(s)</span>
+          <span *ngIf="totalPages > 1" class="audit-page-info">Página {{ page + 1 }} de {{ totalPages }}</span>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="loading" class="audit-loading">
+        <div class="spinner-border text-borgona" role="status"></div>
+        <p class="text-muted mt-2 mb-0">Cargando registros de auditoría...</p>
+      </div>
+
+      <!-- Error -->
+      <div *ngIf="error" class="alert alert-danger m-3">
+        <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+      </div>
+
+      <!-- Tabla -->
+      <div *ngIf="!loading && !error" class="audit-tabla-wrap">
+        <table class="audit-table" *ngIf="items.length > 0">
+          <thead>
+            <tr>
+              <th style="width: 160px;">Fecha</th>
+              <th style="width: 130px;">Categoría</th>
+              <th style="width: 180px;">Acción</th>
+              <th>Usuario</th>
+              <th>Detalle</th>
+              <th style="width: 110px;">IP</th>
+              <th style="width: 50px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of items" class="audit-row" (click)="verDetalle(item)">
+              <td class="audit-fecha">{{ formatFechaCorta(item.fecha) }}</td>
+              <td>
+                <span class="audit-cat-badge" [style.background]="getCategoriaInfo(item.categoria).color + '18'" [style.color]="getCategoriaInfo(item.categoria).color">
+                  <i class="fas {{ getCategoriaInfo(item.categoria).icon }} me-1"></i>{{ getCategoriaInfo(item.categoria).label }}
+                </span>
+              </td>
+              <td>
+                <span class="audit-accion" [ngClass]="getAccionClase(item.accion)">{{ item.accion }}</span>
+              </td>
+              <td class="audit-email">{{ item.usuarioEmail || '—' }}</td>
+              <td class="audit-detalle-cell">{{ item.detalle || '—' }}</td>
+              <td class="audit-ip"><code>{{ item.ipAddress || '—' }}</code></td>
+              <td class="text-center">
+                <button class="btn btn-sm btn-outline-secondary btn-icon" (click)="verDetalle(item); $event.stopPropagation()" title="Ver detalle">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div *ngIf="items.length === 0" class="audit-empty">
+          <i class="fas fa-clipboard-check fa-2x text-muted mb-2"></i>
+          <p class="text-muted mb-0">No se encontraron eventos de auditoría.</p>
+        </div>
+
+        <!-- Paginación -->
+        <div *ngIf="totalPages > 1" class="audit-pagination">
+          <button class="btn btn-sm btn-outline-secondary" [disabled]="page === 0" (click)="irPagina(0)">
+            <i class="fas fa-angle-double-left"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" [disabled]="page === 0" (click)="irPagina(page - 1)">
+            <i class="fas fa-angle-left"></i>
+          </button>
+          <button *ngFor="let p of paginas" class="btn btn-sm" [class.btn-borgona]="p === page" [class.btn-outline-secondary]="p !== page" (click)="irPagina(p)">
+            {{ p + 1 }}
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" [disabled]="page >= totalPages - 1" (click)="irPagina(page + 1)">
+            <i class="fas fa-angle-right"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" [disabled]="page >= totalPages - 1" (click)="irPagina(totalPages - 1)">
+            <i class="fas fa-angle-double-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== VISTA: ESTADÍSTICAS =================== -->
+  <div *ngIf="vista === 'stats'">
+    <div *ngIf="statsLoading" class="audit-loading">
+      <div class="spinner-border text-borgona" role="status"></div>
+      <p class="text-muted mt-2 mb-0">Cargando estadísticas...</p>
+    </div>
+
+    <div *ngIf="stats && !statsLoading">
+      <!-- KPI Cards -->
+      <div class="audit-stats-kpis">
+        <div class="audit-kpi">
+          <div class="audit-kpi-icon" style="background: #fef3c7; color: #d97706;">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="audit-kpi-body">
+            <div class="audit-kpi-value">{{ stats.total24h }}</div>
+            <div class="audit-kpi-label">Últimas 24 horas</div>
+          </div>
+        </div>
+        <div class="audit-kpi">
+          <div class="audit-kpi-icon" style="background: #dbeafe; color: #2563eb;">
+            <i class="fas fa-calendar-week"></i>
+          </div>
+          <div class="audit-kpi-body">
+            <div class="audit-kpi-value">{{ stats.total7d }}</div>
+            <div class="audit-kpi-label">Últimos 7 días</div>
+          </div>
+        </div>
+        <div class="audit-kpi">
+          <div class="audit-kpi-icon" style="background: #f3e8ff; color: #7c3aed;">
+            <i class="fas fa-calendar-alt"></i>
+          </div>
+          <div class="audit-kpi-body">
+            <div class="audit-kpi-value">{{ stats.total30d }}</div>
+            <div class="audit-kpi-label">Últimos 30 días</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4 mt-0">
+        <!-- Por categoría -->
+        <div class="col-12 col-md-6">
+          <div class="audit-card">
+            <h6 class="audit-card-title"><i class="fas fa-layer-group me-2"></i>Eventos por categoría (30 días)</h6>
+            <div class="audit-bars">
+              <div *ngFor="let cat of stats.porCategoria" class="audit-bar-row">
+                <span class="audit-bar-label">
+                  <span class="audit-cat-badge" [style.background]="getCategoriaInfo(cat.categoria).color + '18'" [style.color]="getCategoriaInfo(cat.categoria).color">
+                    <i class="fas {{ getCategoriaInfo(cat.categoria).icon }} me-1"></i>{{ getCategoriaInfo(cat.categoria).label }}
+                  </span>
+                </span>
+                <div class="audit-bar-track">
+                  <div class="audit-bar-fill" [style.width.%]="stats.total30d > 0 ? (cat.total / stats.total30d * 100) : 0" [style.background]="getCategoriaInfo(cat.categoria).color"></div>
+                </div>
+                <span class="audit-bar-count">{{ cat.total }}</span>
+              </div>
+              <div *ngIf="stats.porCategoria.length === 0" class="text-muted text-center py-3">Sin datos</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Por acción -->
+        <div class="col-12 col-md-6">
+          <div class="audit-card">
+            <h6 class="audit-card-title"><i class="fas fa-bolt me-2"></i>Acciones más frecuentes (30 días)</h6>
+            <div class="audit-bars">
+              <div *ngFor="let a of stats.porAccion; let i = index" class="audit-bar-row">
+                <span class="audit-bar-label audit-bar-label-accion">
+                  <span class="audit-accion" [ngClass]="getAccionClase(a.accion)">{{ a.accion }}</span>
+                </span>
+                <div class="audit-bar-track">
+                  <div class="audit-bar-fill" [style.width.%]="stats.total30d > 0 ? (a.total / stats.total30d * 100) : 0" style="background: #6a0032;"></div>
+                </div>
+                <span class="audit-bar-count">{{ a.total }}</span>
+              </div>
+              <div *ngIf="stats.porAccion.length === 0" class="text-muted text-center py-3">Sin datos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Últimos eventos -->
+      <div class="audit-card mt-4">
+        <h6 class="audit-card-title"><i class="fas fa-history me-2"></i>Últimos 10 eventos</h6>
+        <div class="audit-timeline">
+          <div *ngFor="let ev of stats.ultimosEventos" class="audit-timeline-item">
+            <div class="audit-timeline-dot" [style.background]="getCategoriaInfo(ev.categoria).color"></div>
+            <div class="audit-timeline-content">
+              <div class="audit-timeline-top">
+                <span class="audit-cat-badge audit-cat-badge-sm" [style.background]="getCategoriaInfo(ev.categoria).color + '18'" [style.color]="getCategoriaInfo(ev.categoria).color">
+                  {{ getCategoriaInfo(ev.categoria).label }}
+                </span>
+                <span class="audit-accion audit-accion-sm" [ngClass]="getAccionClase(ev.accion)">{{ ev.accion }}</span>
+                <span class="audit-timeline-date">{{ formatFechaCorta(ev.fecha) }}</span>
+              </div>
+              <div class="audit-timeline-detail">
+                <span *ngIf="ev.usuarioEmail" class="audit-timeline-user"><i class="fas fa-user me-1"></i>{{ ev.usuarioEmail }}</span>
+                <span class="audit-timeline-msg">{{ ev.detalle || '—' }}</span>
+              </div>
+            </div>
+          </div>
+          <div *ngIf="stats.ultimosEventos.length === 0" class="text-muted text-center py-3">Sin eventos recientes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal detalle -->
+<div class="modal fade admin-detalle-usuario-modal" [class.show]="detalleVisible" [style.display]="detalleVisible ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-borgona text-white">
+        <h5 class="modal-title"><i class="fas fa-clipboard-list me-2"></i>Detalle del evento</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="cerrarDetalle()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" *ngIf="detalleItem">
+        <div class="audit-detail-grid">
+          <div class="audit-detail-field">
+            <label>ID</label>
+            <span>{{ detalleItem.id }}</span>
+          </div>
+          <div class="audit-detail-field">
+            <label>Fecha y hora</label>
+            <span>{{ formatFecha(detalleItem.fecha) }}</span>
+          </div>
+          <div class="audit-detail-field">
+            <label>Categoría</label>
+            <span class="audit-cat-badge" [style.background]="getCategoriaInfo(detalleItem.categoria).color + '18'" [style.color]="getCategoriaInfo(detalleItem.categoria).color">
+              <i class="fas {{ getCategoriaInfo(detalleItem.categoria).icon }} me-1"></i>{{ getCategoriaInfo(detalleItem.categoria).label }}
+            </span>
+          </div>
+          <div class="audit-detail-field">
+            <label>Acción</label>
+            <span class="audit-accion" [ngClass]="getAccionClase(detalleItem.accion)">{{ detalleItem.accion }}</span>
+          </div>
+          <div class="audit-detail-field audit-detail-full">
+            <label>Usuario</label>
+            <span>{{ detalleItem.usuarioEmail || '—' }} <small class="text-muted" *ngIf="detalleItem.usuarioNombre">({{ detalleItem.usuarioNombre }})</small></span>
+          </div>
+          <div class="audit-detail-field audit-detail-full">
+            <label>Detalle</label>
+            <span>{{ detalleItem.detalle || '—' }}</span>
+          </div>
+          <div class="audit-detail-field">
+            <label>Dirección IP</label>
+            <code>{{ detalleItem.ipAddress || '—' }}</code>
+          </div>
+          <div class="audit-detail-field">
+            <label>Entidad</label>
+            <span>{{ detalleItem.entidadTipo || '—' }} <small *ngIf="detalleItem.entidadId">(ID: {{ detalleItem.entidadId }})</small></span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="cerrarDetalle()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop fade" [class.show]="detalleVisible" (click)="cerrarDetalle()"></div>
+</div>

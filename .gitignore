@@ -1,0 +1,43 @@
+# Secretos y configuración local
+env.properties
+**/.env
+**/.env.properties
+**/application-local.properties
+
+# Artefactos y respaldos
+inetpub.rar
+*.log
+*.out.log
+*.err.log
+*.zip
+
+# Git anidado respaldado
+**/.git.backup/
+
+# Backend
+back/Siimex/target/
+back/Siimex/usuarios/
+back/Siimex/uploads/
+back/Siimex/logs/
+
+# Frontend
+front/Siimex/node_modules/
+front/Siimex/dist/
+front/Siimex/.angular/
+
+# IDE / editor
+**/.idea/
+**/.vscode/
+**/.settings/
+**/.sts4-cache/
+**/.classpath
+**/.factorypath
+**/.project
+**/*.iml
+**/*.ipr
+**/*.iws
+
+# Temporales
+**/.tmp_*
+**/tmp_test_write.txt
+**/tmp_root_file.txt

@@ -1,0 +1,66 @@
+<div class="admin-login-page">
+  <div class="admin-login-card">
+    <div class="admin-login-header">
+      <i class="fas fa-user-shield fa-3x text-borgona mb-3"></i>
+      <h1 class="h4 mb-1">Acceso administrador</h1>
+      <p class="text-muted small mb-0">SIIMEX · Panel de control con verificación por código</p>
+    </div>
+
+    <form *ngIf="step === 1" [formGroup]="form" (ngSubmit)="submitStep1()" class="admin-login-form">
+      <div class="mb-3">
+        <label for="adminEmail" class="form-label">Correo electrónico</label>
+        <input id="adminEmail" type="email" class="form-control" formControlName="email"
+               placeholder="admin@comecyt.gob.mx" autocomplete="username" />
+        <div class="invalid-feedback d-block" *ngIf="form.get('email')?.touched && form.get('email')?.invalid">
+          Correo requerido y válido
+        </div>
+      </div>
+      <div class="mb-3">
+        <label for="adminPassword" class="form-label">Contraseña</label>
+        <input id="adminPassword" type="password" class="form-control" formControlName="password"
+               placeholder="••••••••" autocomplete="current-password" />
+        <div class="invalid-feedback d-block" *ngIf="form.get('password')?.touched && form.get('password')?.invalid">
+          Contraseña requerida
+        </div>
+      </div>
+
+      <div class="alert alert-danger py-2 small" *ngIf="errorMsg" role="alert">
+        <i class="fas fa-exclamation-circle me-1"></i>{{ errorMsg }}
+      </div>
+
+      <button type="submit" class="btn btn-borgona w-100" [disabled]="loading || form.invalid">
+        <span *ngIf="!loading"><i class="fas fa-paper-plane me-2"></i>Enviar código</span>
+        <span *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Enviando...</span>
+      </button>
+    </form>
+
+    <form *ngIf="step === 2" [formGroup]="codeForm" (ngSubmit)="submitStep2()" class="admin-login-form">
+      <div class="alert alert-light border py-2 small mb-3">
+        <i class="fas fa-envelope-open-text me-1"></i>
+        Código enviado a <strong>{{ pendingEmail }}</strong>
+      </div>
+
+      <div class="mb-3">
+        <label for="adminCode" class="form-label">Código de verificación</label>
+        <input id="adminCode" type="text" class="form-control text-center" formControlName="code"
+               placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" />
+        <div class="invalid-feedback d-block" *ngIf="codeForm.get('code')?.touched && codeForm.get('code')?.invalid">
+          Ingresa el código de 6 dígitos
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-borgona w-100" [disabled]="loading || codeForm.invalid">
+        <span *ngIf="!loading"><i class="fas fa-check me-2"></i>Verificar y entrar</span>
+        <span *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Verificando...</span>
+      </button>
+      <button type="button" class="btn btn-link btn-sm w-100 mt-2 text-muted" (click)="volverPaso1()">
+        <i class="fas fa-arrow-left me-1"></i>Usar otro correo
+      </button>
+    </form>
+
+    <hr class="my-3" />
+    <a routerLink="/login" class="btn btn-outline-secondary btn-sm w-100">
+      <i class="fas fa-arrow-left me-2"></i>Volver al login normal
+    </a>
+  </div>
+</div>

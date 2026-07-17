@@ -1,0 +1,100 @@
+<div class="evaluador-postulaciones">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h4 mb-1 text-borgona">
+        <i class="fas fa-clipboard-check me-2"></i>Postulaciones asignadas
+      </h1>
+      <p class="text-muted small mb-0">Vista de solo lectura para evaluación.</p>
+    </div>
+    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cargarAsignadas()">
+      <i class="fas fa-rotate me-1"></i>Actualizar
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="mt-2 text-muted">Cargando postulaciones asignadas...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error" class="admin-card">
+    <div class="admin-card-header">
+      <span class="text-muted small">{{ postulaciones.length }} postulación(es) asignada(s)</span>
+    </div>
+    <div class="admin-card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Convocatoria</th>
+              <th>Folio</th>
+              <th>Postulante</th>
+              <th>Solicitud</th>
+              <th>Tipo de apoyo</th>
+              <th>Evento</th>
+              <th>Estado</th>
+              <th>Asignación</th>
+              <th>Resultado</th>
+              <th>Puntaje</th>
+              <th>Fecha evaluación</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of postulaciones">
+              <td class="small">
+                <div class="fw-semibold">{{ p.convocatoriaTitulo || '—' }}</div>
+                <div class="text-muted">ID: {{ p.convocatoriaId || '—' }}</div>
+              </td>
+              <td class="small fw-semibold">{{ p.folio || ('SOL-' + p.id) }}</td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="post-avatar">
+                    <img *ngIf="p.fotoUrl" [src]="getFotoUrl(p)" alt="" class="post-avatar-img" />
+                    <span *ngIf="!p.fotoUrl" class="post-avatar-inicial">{{ getInicial(p) }}</span>
+                  </div>
+                  <div>
+                    <span class="fw-medium">{{ p.nombre || '—' }}</span>
+                    <span class="d-block small text-muted">{{ p.correo || '—' }}</span>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge bg-light text-dark border">{{ p.tipoSolicitud || 'NACIONAL' }}</span></td>
+              <td><span class="badge bg-info-subtle text-dark border">{{ p.tipoApoyo || 'No especificado' }}</span></td>
+              <td class="small">{{ formatearFechaSimple(p.fechaEvento) }}</td>
+              <td>
+                <span class="badge" [ngClass]="getEstadoBadgeClass(p.estado)">
+                  {{ p.estado }}
+                </span>
+              </td>
+              <td class="small">{{ formatearFecha(p.fechaAsignacionEvaluador) }}</td>
+              <td>
+                <span class="badge" [ngClass]="getResultadoBadgeClass(p.resultadoEvaluacion)">
+                  {{ p.resultadoEvaluacion || 'Pendiente' }}
+                </span>
+              </td>
+              <td class="small">{{ p.puntajeEvaluacion ?? '—' }}</td>
+              <td class="small">{{ formatearFecha(p.fechaEvaluacion) }}</td>
+              <td class="text-end">
+                <button type="button" class="btn btn-outline-secondary btn-sm" (click)="verDetalle(p)">
+                  <i class="fas fa-eye"></i> Detalle
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm ms-1" (click)="evaluar(p)">
+                  <i class="fas fa-pen-to-square"></i> Evaluar
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="postulaciones.length === 0" class="text-center py-5 text-muted">
+        <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
+        No tienes postulaciones asignadas por el momento.
+      </div>
+    </div>
+  </div>
+</div>

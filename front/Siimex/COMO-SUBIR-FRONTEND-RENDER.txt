@@ -1,0 +1,96 @@
+================================================================================
+  CÓMO SUBIR EL FRONTEND (Angular) A RENDER.COM
+================================================================================
+
+Requisitos previos
+-----------------
+- Cuenta en https://render.com
+- Repositorio Git con el código del frontend (carpeta Front/front-comecyt o la raíz del front)
+- URL del backend ya desplegado (ej. https://comecyt-api.onrender.com) para configurar la API
+
+
+PASO 1: Configurar la URL del API para producción
+--------------------------------------------------
+El proyecto ya incluye:
+  - src/environments/environment.production.ts (con apiBaseUrl para producción)
+  - angular.json configurado para usar ese archivo en "production"
+
+Solo debes editar environment.production.ts y poner la URL real de tu backend:
+
+  apiBaseUrl: 'https://TU-BACKEND.onrender.com'
+
+(Sustituye TU-BACKEND.onrender.com por la URL que te dé Render al crear el Web Service del backend.)
+
+
+PASO 2: Crear Static Site en Render (Frontend)
+----------------------------------------------
+1. Entra a https://dashboard.render.com
+2. Clic en "New +" → "Static Site".
+3. Conecta tu repositorio (GitHub/GitLab).
+4. Configuración:
+
+   - Name: ej. comecyt-portal o front-comecyt
+   - Branch: main (o la rama que uses)
+
+   Root Directory (importante):
+   - Si el front está en una subcarpeta (ej. Front/front-comecyt):
+     Root Directory: Front/front-comecyt
+   - Si el repo es solo el front: deja en blanco.
+
+   Build Command:
+     npm install
+     npm run build
+
+   (O si usas ci para builds más rápidos y reproducibles: npm ci && npm run build)
+
+   Publish Directory:
+     dist/comecyt-portal
+
+   (En Angular 18 con angular.json por defecto, la salida suele ser dist/comecyt-portal.
+    Si tu outputPath en angular.json es otro, usa esa ruta.)
+
+   Environment variables (opcional para este flujo):
+   - No necesarias si usaste environment.production.ts con la URL fija.
+   - Si en el futuro usas API_BASE_URL para generar el env en build, añádela aquí.
+
+
+PASO 3: Desplegar
+-----------------
+1. Clic en "Create Static Site".
+2. Render instalará dependencias, ejecutará npm run build y publicará
+   el contenido de dist/comecyt-portal.
+3. La URL del frontend será algo como: https://comecyt-portal.onrender.com
+
+
+PASO 4: Probar
+--------------
+- Abre la URL del Static Site.
+- Prueba login, registro y que las llamadas al API vayan a la URL del backend.
+- Revisa la consola del navegador (F12) por errores CORS o 404; si hay CORS,
+  configura el backend para permitir el origen del front (ej. https://comecyt-portal.onrender.com).
+
+
+Errores frecuentes
+------------------
+- "Build failed" / "npm run build failed":
+  - Revisa Root Directory.
+  - Asegúrate de que existe environment.production.ts y fileReplacements en production.
+
+- "404 al cargar rutas" (ej. al recargar en /login):
+  - En Static Site, en Render, añade en "Redirects / Rewrites" una regla:
+    Rewrite: /*  /index.html   (o la opción que Render ofrezca para SPA:
+    "Redirect all requests to index.html" / "Single Page Application").
+  Así todas las rutas sirven el index.html y Angular las resuelve.
+
+- Llamadas al API fallan o CORS:
+  - Verifica apiBaseUrl en environment.production.ts.
+  - Configura CORS en el backend para el origen del front (https://tu-front.onrender.com).
+
+
+Resumen de URLs
+---------------
+- Backend (Web Service): https://comecyt-api.onrender.com
+- Frontend (Static Site): https://comecyt-portal.onrender.com
+- En environment.production.ts: apiBaseUrl = URL del backend.
+
+================================================================================

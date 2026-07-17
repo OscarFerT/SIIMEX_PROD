@@ -1,0 +1,122 @@
+<div class="admin-reportes">
+  <h1 class="h4 mb-2 text-borgona">
+    <i class="fas fa-id-card-clip me-2"></i>Padrón de beneficiarios
+  </h1>
+  <p class="text-muted small mb-3">Consulta y exporta las personas aprobadas del programa SIIMEX.</p>
+
+  <div class="report-card mb-3">
+    <div class="report-card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold mb-1">Convocatoria</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroConvocatoriaId">
+            <option value="">Todas</option>
+            <option *ngFor="let c of convocatorias" [value]="c.id">{{ c.titulo }}</option>
+          </select>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label small fw-semibold mb-1">Búsqueda</label>
+          <input type="search" class="form-control form-control-sm" [(ngModel)]="filtroQ" placeholder="Folio, nombre, correo, CURP..." />
+        </div>
+        <div class="col-md-3 d-flex gap-2 justify-content-md-end">
+          <button class="btn btn-borgona btn-sm" (click)="buscar()">
+            <i class="fas fa-search me-1"></i>Buscar
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" (click)="limpiarFiltros()">
+            <i class="fas fa-eraser me-1"></i>Limpiar
+          </button>
+          <button class="btn btn-outline-success btn-sm" (click)="exportarExcel()" [disabled]="items.length === 0">
+            <i class="fas fa-file-excel me-1"></i>Excel
+          </button>
+          <button class="btn btn-outline-success btn-sm" (click)="exportarExcelMachoteDicyfrh()" [disabled]="items.length === 0" title="Exportar con columnas del machote DICyFRH">
+            <i class="fas fa-file-excel me-1"></i>DICyFRH
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-4">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="small text-muted mt-2 mb-0">Cargando padrón...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <div *ngIf="!loading && !error" class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+      <div class="kpi-card">
+        <span class="kpi-label">Beneficiarios</span>
+        <span class="kpi-value">{{ total }}</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card">
+        <span class="kpi-label">Monto aprobado</span>
+        <span class="kpi-value">{{ formatearMoneda(montoTotalAprobado) }}</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card">
+        <span class="kpi-label">Apoyos entregados</span>
+        <span class="kpi-value">{{ apoyosEntregados }}</span>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card">
+        <span class="kpi-label">Recibos validados</span>
+        <span class="kpi-value">{{ recibosValidados }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && !error" class="report-card rep-table-card">
+    <div class="table-responsive">
+      <table class="table rep-table mb-0">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Beneficiario</th>
+            <th>Convocatoria</th>
+            <th>Contacto</th>
+            <th>Monto</th>
+            <th>Entrega</th>
+            <th>Recibo</th>
+            <th>Cotejo</th>
+            <th>Informes</th>
+            <th>Aprobación</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let i of items" class="rep-row">
+            <td class="rep-td fw-semibold text-borgona">{{ i.folio }}</td>
+            <td class="rep-td">
+              <div class="fw-medium">{{ i.beneficiario || '-' }}</div>
+              <small class="text-muted">{{ i.curp || '' }}</small>
+            </td>
+            <td class="rep-td">
+              <div>{{ i.convocatoriaTitulo || '-' }}</div>
+              <small class="text-muted">{{ i.folioConvocatoria || i.area || '' }}</small>
+            </td>
+            <td class="rep-td">
+              <a *ngIf="i.correo" [href]="'mailto:' + i.correo" class="rep-link">{{ i.correo }}</a>
+              <div class="small text-muted">{{ i.telefono || '' }}</div>
+            </td>
+            <td class="rep-td">{{ formatearMoneda(i.montoApoyoAsignado) }}</td>
+            <td class="rep-td">
+              <div>{{ i.estadoEntregaApoyo === 'APOYO_ENTREGADO' ? 'Entregado' : 'Pendiente' }}</div>
+              <small class="text-muted">{{ formatearFecha(i.fechaEntregaApoyo) }}</small>
+            </td>
+            <td class="rep-td">{{ i.estadoReciboPago || '-' }}</td>
+            <td class="rep-td">{{ i.estadoCotejo || '-' }}</td>
+            <td class="rep-td">{{ i.estadoInforme || '-' }}</td>
+            <td class="rep-td rep-td-fecha">{{ formatearFecha(i.fechaAprobacion) }}</td>
+          </tr>
+          <tr *ngIf="items.length === 0">
+            <td colspan="10" class="text-center text-muted py-5">No hay beneficiarios con los filtros seleccionados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

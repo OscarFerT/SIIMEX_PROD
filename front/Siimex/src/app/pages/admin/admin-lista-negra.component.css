@@ -1,0 +1,18 @@
+.admin-lista-negra .text-borgona {
+  color: #6a0032;
+}
+
+.admin-lista-negra .btn-borgona {
+  background: #7a1e48;
+  color: #fff;
+  border-color: #7a1e48;
+}
+
+.admin-lista-negra .btn-borgona:hover {
+  background: #65183c;
+  border-color: #65183c;
+}
+
+.admin-lista-negra .bg-borgona {
+  background: #7a1e48;
+}

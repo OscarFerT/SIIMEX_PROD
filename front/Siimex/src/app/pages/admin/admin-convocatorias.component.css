@@ -1,0 +1,467 @@
+.admin-convocatorias {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.admin-convocatorias .text-borgona {
+  color: #6a0032;
+}
+
+.admin-convocatorias .btn-borgona {
+  background-color: #6a0032;
+  border-color: #6a0032;
+  color: #fff;
+}
+
+.admin-convocatorias .btn-borgona:hover {
+  background-color: #800020;
+  border-color: #800020;
+  color: #fff;
+}
+
+.admin-convocatorias .btn-outline-borgona {
+  border-color: #6a0032;
+  color: #6a0032;
+}
+
+.admin-convocatorias .btn-outline-borgona:hover {
+  background-color: #6a0032;
+  border-color: #6a0032;
+  color: #fff;
+}
+
+.admin-modal-convocatoria .btn-outline-borgona {
+  border-color: #6a0032;
+  color: #6a0032;
+}
+
+.admin-modal-convocatoria .btn-outline-borgona:hover {
+  background-color: #6a0032;
+  border-color: #6a0032;
+  color: #fff;
+}
+
+.admin-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #eee;
+  overflow: hidden;
+}
+
+.admin-card-header {
+  padding: 1rem 1.25rem;
+  background: #fafafa;
+  border-bottom: 1px solid #eee;
+}
+
+.admin-filtros {
+  background: #fff;
+}
+
+.admin-card-body .table thead th {
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #555;
+  padding: 1rem 0.75rem;
+}
+
+.admin-card-body .table tbody td {
+  padding: 0.85rem 0.75rem;
+  vertical-align: middle;
+}
+
+/* Cupo / barra de progreso en tabla admin */
+.admin-cupo-cell {
+  min-width: 90px;
+}
+
+.admin-cupo-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6a0032;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.admin-cupo-bar {
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.admin-cupo-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6a0032 0%, #8b1a4b 100%);
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+/* Avatares aceptados en tabla admin */
+.admin-avatars-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.admin-avatar-cell {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(145deg, #6a0032 0%, #8b1a4b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-avatar-inicial {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+/* Modal crear/editar convocatoria - display controlado por [style.display] en el template */
+.admin-modal-convocatoria {
+  --modal-safe-top: 84px;
+  position: fixed;
+  z-index: 2147483000 !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: auto;
+  padding: 0.75rem 1rem 1rem;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.admin-modal-convocatoria .modal-backdrop {
+  position: fixed !important;
+  z-index: 2147483001 !important;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 1;
+}
+
+.admin-modal-convocatoria .modal-dialog {
+  position: relative;
+  z-index: 2147483002 !important;
+  margin: calc(var(--modal-safe-top) + 0.35rem) auto 1rem !important;
+  max-width: 920px;
+  width: 90%;
+  height: calc(100vh - var(--modal-safe-top) - 1.35rem);
+  min-height: 520px;
+  max-height: calc(100vh - var(--modal-safe-top) - 1.35rem);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.admin-modal-convocatoria .modal-content {
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.32);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 500px;
+  overflow: hidden;
+}
+
+.admin-modal-convocatoria .modal-content form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.admin-modal-convocatoria .modal-header {
+  border-radius: 16px 16px 0 0;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #6a0032 0%, #8a1648 100%) !important;
+  color: #fff;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.admin-modal-convocatoria .modal-header .modal-title {
+  color: #fff;
+  font-size: 1.15rem;
+  margin-bottom: 0.2rem;
+}
+
+.admin-modal-convocatoria .modal-title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-modal-convocatoria .modal-subtitle {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.admin-modal-convocatoria .modal-body {
+  padding: 0.9rem 1.1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 0;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(180deg, #fcfbfd 0%, #f8f9fb 100%);
+}
+
+.admin-modal-convocatoria .modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e8ee;
+  background: #fff;
+  border-radius: 0 0 16px 16px;
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.admin-modal-convocatoria .modal-footer .btn {
+  min-width: 110px;
+  font-weight: 600;
+}
+
+.admin-modal-convocatoria .modal-footer .btn-borgona {
+  background: #6a0032;
+  border-color: #6a0032;
+  color: #fff !important;
+}
+
+.admin-modal-convocatoria .modal-footer .btn-borgona:hover:not(:disabled) {
+  background: #800020;
+  border-color: #800020;
+  color: #fff !important;
+}
+
+.admin-modal-convocatoria .form-label {
+  color: #333;
+}
+
+.admin-modal-convocatoria .form-control,
+.admin-modal-convocatoria .form-select {
+  border-radius: 10px;
+  border: 1px solid #d7dde8;
+  background: #fff;
+  min-height: 42px;
+}
+
+.admin-modal-convocatoria textarea.form-control {
+  min-height: auto;
+}
+
+.admin-modal-convocatoria .form-control:focus,
+.admin-modal-convocatoria .form-select:focus {
+  border-color: #6a0032;
+  box-shadow: 0 0 0 0.2rem rgba(106, 0, 50, 0.15);
+}
+
+.admin-modal-convocatoria .form-label {
+  font-size: 0.86rem;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.35rem;
+}
+
+.conv-modal-body .row.g-3 > [class*="col-"] {
+  background: #fff;
+  border: 1px solid #edf0f5;
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+}
+
+.conv-modal-body .row.g-3 > .col-12.mt-2,
+.conv-modal-body .row.g-3 > .col-12.mt-4 {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.conv-section-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #f2e8ee;
+  color: #6a0032;
+  border: 1px solid #e6d5df;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.reglas-resumen-panel {
+  border: 1px solid #dfe8f4;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-radius: 14px;
+  padding: 0.8rem 0.9rem;
+}
+
+.reglas-resumen-panel.alerta {
+  border-color: #f2d39c;
+  background: linear-gradient(180deg, #fff9ee 0%, #fffdf8 100%);
+}
+
+.reglas-resumen-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.65rem;
+}
+
+.reglas-resumen-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.reglas-resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.resumen-item {
+  border: 1px solid #e5edf7;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.55rem 0.65rem;
+}
+
+.resumen-item.estado-ok {
+  border-left: 4px solid #198754;
+}
+
+.resumen-item.estado-warn {
+  border-left: 4px solid #f59e0b;
+}
+
+.resumen-item.estado-info {
+  border-left: 4px solid #64748b;
+}
+
+.resumen-etiqueta {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.resumen-valor {
+  font-size: 0.88rem;
+  color: #1f2937;
+  margin-top: 0.15rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 992px) {
+  .admin-modal-convocatoria .modal-dialog {
+    width: 95%;
+    max-width: 95%;
+    margin: calc(var(--modal-safe-top) + 0.15rem) auto 0.75rem !important;
+    height: calc(100vh - var(--modal-safe-top) - 1rem);
+    max-height: calc(100vh - var(--modal-safe-top) - 1rem);
+    min-height: auto;
+  }
+
+  .admin-modal-convocatoria {
+    --modal-safe-top: 68px;
+  }
+
+  .reglas-resumen-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reglas-resumen-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .reglas-resumen-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.iconos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.6rem;
+}
+
+.icono-option {
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.55rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s ease;
+}
+
+.icono-option img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.icono-option span {
+  font-size: 0.75rem;
+  color: #444;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.icono-option:hover {
+  border-color: #6a0032;
+  transform: translateY(-1px);
+}
+
+.icono-option.activo {
+  border-color: #6a0032;
+  box-shadow: 0 0 0 0.2rem rgba(106, 0, 50, 0.12);
+  background: #faf3f7;
+}
+
+.icono-preview {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icono-preview img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}

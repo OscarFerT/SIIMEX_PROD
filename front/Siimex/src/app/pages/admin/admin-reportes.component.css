@@ -1,0 +1,251 @@
+.admin-reportes .text-borgona {
+  color: #6a0032;
+}
+
+.admin-reportes .btn-borgona {
+  background-color: #6a0032;
+  border-color: #6a0032;
+  color: #fff;
+}
+
+.admin-reportes .btn-borgona:hover {
+  background-color: #800020;
+  border-color: #800020;
+  color: #fff;
+}
+
+.report-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.report-card-body {
+  padding: 1rem;
+}
+
+/* KPIs modernos */
+.kpi-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.kpi-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.kpi-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Tabla */
+.rep-table-card {
+  overflow: hidden;
+}
+
+.rep-table {
+  font-size: 0.9rem;
+}
+
+.rep-table thead th {
+  border: none;
+  background: #f8fafc;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #4b5563;
+  padding: 1rem 0.75rem;
+}
+
+.rep-th-sort {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.rep-th-sort:hover {
+  background: #f1f5f9 !important;
+  color: #7A1E48 !important;
+}
+
+.rep-th-sort i {
+  opacity: 0.5;
+  font-size: 0.7rem;
+}
+
+.rep-th-sort:hover i {
+  opacity: 1;
+}
+
+.rep-row:hover {
+  background: #fafbfc !important;
+}
+
+.rep-td {
+  padding: 0.85rem 0.75rem;
+  vertical-align: middle;
+}
+
+.rep-td-id {
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.rep-td-fecha {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.rep-link {
+  color: #7A1E48;
+  text-decoration: none;
+}
+
+.rep-link:hover {
+  text-decoration: underline;
+}
+
+/* Avatar */
+.rep-avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #7A1E48 0%, #9b2d5a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rep-avatar-inicial {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Badges estado */
+.rep-badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.rep-badge-ok {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.rep-badge-no {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+  .rep-badge-pend {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .rep-badge-info {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+/* Barra compatibilidad */
+.rep-compat-wrap {
+  min-width: 90px;
+}
+
+.rep-compat-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.2rem;
+}
+
+.rep-compat-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.rep-compat-fill-high {
+  background: linear-gradient(90deg, #198754 0%, #20c997 100%);
+}
+
+.rep-compat-fill-medium {
+  background: linear-gradient(90deg, #fd7e14 0%, #ffc107 100%);
+}
+
+.rep-compat-fill-low {
+  background: linear-gradient(90deg, #6c757d 0%, #adb5bd 100%);
+}
+
+.rep-compat-valor {
+  font-size: 0.85rem;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 768px) {
+  .kpi-card {
+    padding: 0.85rem;
+  }
+
+  .kpi-value {
+    font-size: 1.2rem;
+  }
+
+  .rep-table {
+    font-size: 0.82rem;
+  }
+
+  .rep-table thead th {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.68rem;
+  }
+
+  .rep-td {
+    padding: 0.65rem 0.5rem;
+  }
+
+  .rep-avatar {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .rep-avatar-inicial {
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .kpi-value {
+    font-size: 1rem;
+  }
+
+  .kpi-label {
+    font-size: 0.62rem;
+  }
+
+  .rep-table thead th,
+  .rep-td {
+    padding: 0.5rem 0.35rem;
+  }
+}

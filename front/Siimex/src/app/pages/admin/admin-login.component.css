@@ -1,0 +1,41 @@
+.admin-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 1rem;
+}
+
+.admin-login-card {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(106, 0, 50, 0.15);
+  padding: 2rem;
+}
+
+.admin-login-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.admin-login-form .form-control:focus {
+  border-color: #6a0032;
+  box-shadow: 0 0 0 0.2rem rgba(106, 0, 50, 0.25);
+}
+
+.btn-borgona {
+  background: #6a0032;
+  border-color: #6a0032;
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-borgona:hover {
+  background: #5a002a;
+  border-color: #5a002a;
+  color: #fff;
+}

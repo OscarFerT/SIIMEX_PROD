@@ -1,0 +1,663 @@
+<div class="admin-convocatorias">
+  <a routerLink="/admin/convocatorias" class="btn btn-outline-secondary btn-sm mb-2">
+    <i class="fas fa-arrow-left me-1"></i>Volver a gestión modular
+  </a>
+  <h1 class="h4 mb-4 text-borgona">
+    <i class="fas fa-bullhorn me-2"></i>Convocatorias
+  </h1>
+  <p class="text-muted small mb-3">Gestiona las convocatorias que verán los usuarios. Las convocatorias vigentes se muestran en la sección pública.</p>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="mt-2 text-muted">Cargando convocatorias...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error" class="admin-card">
+    <div class="admin-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span class="text-muted small">{{ convocatoriasFiltradas.length }} de {{ convocatorias.length }} convocatoria(s)</span>
+      <button type="button" class="btn btn-borgona btn-sm" (click)="abrirCrear()">
+        <i class="fas fa-plus me-1"></i>Nueva convocatoria
+      </button>
+    </div>
+    <div class="admin-filtros p-3 border-bottom">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+          <label class="form-label small fw-semibold mb-1">Buscar</label>
+          <input type="search" class="form-control form-control-sm" [(ngModel)]="filtroTexto" placeholder="Título, descripción, área, keywords" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold mb-1">Área</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroArea">
+            <option value="">Todas</option>
+            <option *ngFor="let a of AREAS" [value]="a.value">{{ a.label }}</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold mb-1">Estado</label>
+          <select class="form-select form-select-sm" [(ngModel)]="filtroEstado">
+            <option value="">Todos</option>
+            <option value="vigente">Vigente</option>
+            <option value="inactiva">Inactiva</option>
+            <option value="borrador">Borrador</option>
+            <option value="programada">Programada</option>
+            <option value="publicada">Publicada</option>
+            <option value="cerrada">Cerrada</option>
+            <option value="retirada">Retirada</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-grid">
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="limpiarFiltros()">
+            <i class="fas fa-eraser me-1"></i>Limpiar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="admin-card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Folio</th>
+              <th>Título</th>
+              <th>Área</th>
+              <th>Límite / Cupo</th>
+              <th>Aceptados</th>
+              <th>Apertura</th>
+              <th>Cierre</th>
+              <th>Publicación</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of convocatoriasFiltradas; trackBy: trackById">
+              <td class="small fw-semibold">{{ c.folioConvocatoria || ('CONV-' + c.id) }}</td>
+              <td class="fw-medium">{{ c.titulo }}</td>
+              <td><span class="badge bg-secondary">{{ c.area || '—' }}</span></td>
+              <td>
+                <div *ngIf="c.limiteAceptados !== null && c.limiteAceptados !== undefined && c.limiteAceptados > 0" class="admin-cupo-cell">
+                  <span class="admin-cupo-text">{{ c.cantidadAceptados ?? 0 }} / {{ c.limiteAceptados }}</span>
+                  <div class="admin-cupo-bar">
+                    <div class="admin-cupo-fill" [style.width.%]="getProgresoCupo(c) ?? 0"></div>
+                  </div>
+                </div>
+                <span *ngIf="!c.limiteAceptados || c.limiteAceptados <= 0" class="text-muted small">Sin límite</span>
+              </td>
+              <td>
+                <div *ngIf="c.aceptados && c.aceptados.length" class="admin-avatars-row">
+                  <div *ngFor="let a of c.aceptados" class="admin-avatar-cell" [title]="a.nombre">
+                    <img *ngIf="a.fotoUrl" [src]="getFotoUrlAceptado(a)" alt="" class="admin-avatar-img" />
+                    <span *ngIf="!a.fotoUrl" class="admin-avatar-inicial">{{ getInicialAceptado(a) }}</span>
+                  </div>
+                </div>
+                <span *ngIf="!c.aceptados || !c.aceptados.length" class="text-muted small">—</span>
+              </td>
+              <td class="small">{{ formatearFecha(c.fechaApertura) }}</td>
+              <td class="small">
+                <div>{{ formatearFecha(c.fechaCierre) }}</div>
+                <div class="text-muted" *ngIf="(c.diasNaturalesVigencia || 0) > 0">
+                  {{ c.diasSinFeriadosVigencia || c.diasNaturalesVigencia }} día(s) sin feriados
+                </div>
+              </td>
+              <td>
+                <span class="badge me-1" [ngClass]="getEstadoPublicacionClass(c)">
+                  {{ getEstadoPublicacionLabel(c) }}
+                </span>
+                <span class="badge me-1" [class.bg-success]="c.vigente" [class.bg-secondary]="!c.vigente">
+                  {{ c.vigente ? 'Vigente' : 'Inactiva' }}
+                </span>
+                <span class="badge" [class.bg-primary]="c.visibilidadPublica !== false" [class.bg-dark]="c.visibilidadPublica === false">
+                  {{ c.visibilidadPublica === false ? 'No visible' : 'Pública' }}
+                </span>
+                <div class="text-muted small mt-1" *ngIf="c.fechaPublicacion">
+                  Publicada: {{ formatearFecha(c.fechaPublicacion) }}
+                </div>
+              </td>
+              <td class="text-end">
+                <a [routerLink]="['/admin/convocatorias', c.id, 'gestion']" class="btn btn-outline-primary btn-sm me-1" title="Gestión modular">
+                  <i class="fas fa-sitemap"></i>
+                </a>
+                <a [routerLink]="['/admin/convocatorias', c.id, 'postulaciones']" class="btn btn-outline-secondary btn-sm me-1" title="Ver postulaciones">
+                  <i class="fas fa-users"></i>
+                </a>
+                <a [routerLink]="['/admin/convocatorias', c.id, 'evaluacion']" class="btn btn-outline-success btn-sm me-1" title="Evaluación">
+                  <i class="fas fa-clipboard-check"></i>
+                </a>
+                <button type="button" class="btn btn-outline-secondary btn-sm me-1" (click)="duplicarConvocatoria(c)" title="Duplicar convocatoria">
+                  <i class="fas fa-copy"></i>
+                </button>
+                <button *ngIf="c.visibilidadPublica === false" type="button" class="btn btn-outline-success btn-sm me-1" (click)="publicarConvocatoria(c)" title="Publicar convocatoria">
+                  <i class="fas fa-upload"></i>
+                </button>
+                <button *ngIf="c.visibilidadPublica !== false" type="button" class="btn btn-outline-dark btn-sm me-1" (click)="retirarPublicacion(c)" title="Retirar del micrositio">
+                  <i class="fas fa-eye-slash"></i>
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm me-1" (click)="abrirEditar(c)" title="Editar">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" (click)="confirmarEliminar(c)" title="Eliminar">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div *ngIf="convocatoriasFiltradas.length === 0" class="text-center py-5 text-muted">
+        <i class="fas fa-bullhorn fa-2x mb-2 d-block opacity-50"></i>
+        No hay convocatorias que coincidan con el filtro.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal formulario -->
+<div class="modal fade admin-modal-convocatoria" [class.show]="modalVisible" [style.display]="modalVisible ? 'flex' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-borgona text-white">
+        <div class="modal-title-wrap">
+          <h5 class="modal-title">
+            <i class="fas fa-bullhorn me-2"></i>{{ editando ? 'Editar convocatoria' : 'Nueva convocatoria' }}
+          </h5>
+          <p class="modal-subtitle mb-0">
+            Configura datos generales, recursos visuales y criterios de postulación.
+          </p>
+        </div>
+        <button type="button" class="btn-close btn-close-white" (click)="cerrarModal()" aria-label="Cerrar"></button>
+      </div>
+      <form [formGroup]="formModal" (ngSubmit)="guardar()">
+        <div class="modal-body conv-modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="conv-section-banner">
+                <i class="fas fa-pen-to-square me-2"></i>
+                <span>Información general</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Título <span class="text-danger">*</span></label>
+              <input type="text" formControlName="titulo" class="form-control" placeholder="Ej. Convocatoria de investigación 2025" maxlength="200" />
+              <div *ngIf="formModal.get('titulo')?.touched && formModal.get('titulo')?.errors?.['required']" class="invalid-feedback d-block">El título es obligatorio.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Descripción (corta, para la tarjeta)</label>
+              <textarea formControlName="descripcion" class="form-control" rows="2" placeholder="Breve descripción que aparece en la tarjeta de la convocatoria" maxlength="500"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Resumen (detallado, para el modal)</label>
+              <textarea formControlName="resumen" class="form-control" rows="4" placeholder="Resumen completo que verán los usuarios al hacer clic en requisitos"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Requisitos</label>
+              <textarea formControlName="requisitos" class="form-control" rows="4" placeholder="Lista los requisitos, uno por línea o en párrafos"></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Fecha de apertura</label>
+              <input type="date" formControlName="fechaApertura" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Fecha de cierre <span class="text-danger">*</span></label>
+              <input type="date" formControlName="fechaCierre" class="form-control" />
+              <div *ngIf="formModal.get('fechaCierre')?.touched && formModal.get('fechaCierre')?.errors?.['required']" class="invalid-feedback d-block">La fecha de cierre es obligatoria.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Área</label>
+              <select formControlName="area" class="form-select">
+                <option value="">Seleccionar...</option>
+                <option *ngFor="let a of AREAS" [value]="a.value">{{ a.label }}</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Folio de convocatoria</label>
+              <input type="text" formControlName="folioConvocatoria" class="form-control" placeholder="Ej. CONV-2026-001" maxlength="40" />
+              <div class="form-text">Opcional. Si lo dejas vacío se genera automáticamente.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Prefijo de folio (Revisión)</label>
+              <input type="text" formControlName="folioPrefijo" class="form-control" placeholder="Ej. EST, PROF, INT" maxlength="30" />
+              <div class="form-text">Opcional. Se usa para generar folios únicos tipo <code>PREFIJO-000123</code>.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Palabras clave (para búsqueda)</label>
+              <input type="text" formControlName="keywords" class="form-control" placeholder="Separadas por espacios" maxlength="300" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Límite de aceptados</label>
+              <input type="number" formControlName="limiteAceptados" class="form-control" placeholder="Vacío = sin límite" min="1" />
+              <div class="form-text">Máximo de postulaciones que se pueden aceptar. Dejar vacío para sin límite.</div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Puntaje máximo evaluación</label>
+              <input type="number" formControlName="puntajeMaximoEvaluacion" class="form-control" min="1" />
+              <div class="form-text">Escala del puntaje para evaluadores (mínimo 1).</div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Días mínimos (evento)</label>
+              <input type="number" formControlName="diasMinAnticipacion" class="form-control" min="0" />
+              <div class="form-text">Anticipación mínima para fecha de evento (configurable, puede ser 0).</div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Días máximos (evento)</label>
+              <input type="number" formControlName="diasMaxAnticipacion" class="form-control" min="0" />
+              <div class="form-text">Anticipación máxima para fecha de evento (configurable, puede ser 0).</div>
+            </div>
+            <div class="col-12 mt-2">
+              <div class="conv-section-banner">
+                <i class="fas fa-user-shield me-2"></i>
+                <span>Aviso de privacidad</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input type="checkbox" formControlName="avisoPrivacidadObligatorio" class="form-check-input" id="avisoPrivacidadObligatorioCheck" />
+                <label class="form-check-label" for="avisoPrivacidadObligatorioCheck">Solicitar aceptación obligatoria en postulación</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Texto de aviso de privacidad</label>
+              <textarea formControlName="avisoPrivacidadTexto" class="form-control" rows="3" placeholder="Texto breve del aviso que verá el postulante antes de enviar su solicitud"></textarea>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">URL de aviso de privacidad (opcional)</label>
+              <input type="url" formControlName="avisoPrivacidadUrl" class="form-control" placeholder="https://..." maxlength="500" />
+            </div>
+            <div class="col-12 mt-2">
+              <div class="conv-section-banner">
+                <i class="fas fa-image me-2"></i>
+                <span>Recursos visuales</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Imagen (opcional)</label>
+              <div class="d-flex flex-wrap align-items-center gap-3">
+                <input #fileImagen type="file" accept="image/*" class="form-control form-control-sm" style="max-width: 280px" (change)="onImagenSeleccionada($event)" [disabled]="subiendoImagen" />
+                <span *ngIf="subiendoImagen" class="text-muted small"><i class="fas fa-spinner fa-spin me-1"></i>Subiendo...</span>
+                <button *ngIf="formModal.get('imagenUrl')?.value && !subiendoImagen" type="button" class="btn btn-outline-secondary btn-sm" (click)="quitarImagen(); fileImagen.value = ''" title="Quitar imagen">
+                  <i class="fas fa-times me-1"></i>Quitar
+                </button>
+              </div>
+              <div *ngIf="errorImagen" class="mt-2 px-3 py-2 rounded" style="background-color:#fff3cd;border:1px solid #ffc107;color:#856404;font-size:0.85rem;">
+                <i class="fas fa-exclamation-triangle me-1"></i>{{ errorImagen }}
+              </div>
+              <div *ngIf="formModal.get('imagenUrl')?.value" class="mt-2">
+                <img [src]="obtenerImagenSrc(formModal.get('imagenUrl')?.value)" alt="Vista previa" class="rounded border" style="max-height: 80px; max-width: 120px; object-fit: contain;" onerror="this.style.display='none'" />
+              </div>
+              <div class="form-text">Esta imagen se mostrará como fondo del encabezado de la tarjeta pública.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Ícono de la convocatoria</label>
+              <div class="iconos-grid">
+                <button
+                  *ngFor="let icono of ICONOS_DISPONIBLES"
+                  type="button"
+                  class="icono-option"
+                  [class.activo]="esIconoSeleccionado(icono.url)"
+                  (click)="seleccionarIcono(icono.url)"
+                  [title]="icono.label"
+                >
+                  <img [src]="obtenerImagenSrc(icono.url)" [alt]="icono.label" />
+                  <span>{{ icono.label }}</span>
+                </button>
+              </div>
+              <div class="d-flex align-items-center gap-2 mt-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" (click)="limpiarIcono()">
+                  <i class="fas fa-eraser me-1"></i>Sin ícono personalizado
+                </button>
+                <div *ngIf="formModal.get('iconoUrl')?.value" class="icono-preview">
+                  <img [src]="obtenerImagenSrc(formModal.get('iconoUrl')?.value)" alt="Ícono seleccionado" />
+                </div>
+              </div>
+            </div>
+            <div class="col-12 mt-2">
+              <div class="conv-section-banner">
+                <i class="fas fa-file-arrow-down me-2"></i>
+                <span>Formatos descargables para solicitud</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <p class="text-muted small mb-3">
+                Adjunta formatos oficiales de la convocatoria. Las personas postulantes podrán descargarlos, llenarlos y subirlos como parte de su solicitud en los documentos requeridos.
+              </p>
+              <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+                <input
+                  #fileFormatos
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  multiple
+                  class="form-control form-control-sm"
+                  style="max-width: 360px"
+                  (change)="onFormatosSeleccionados($event)"
+                  [disabled]="guardando || subiendoFormatos" />
+                <span *ngIf="subiendoFormatos" class="text-muted small"><i class="fas fa-spinner fa-spin me-1"></i>Subiendo formatos...</span>
+              </div>
+              <div class="form-text mb-2">Formatos permitidos: PDF, Word y Excel. Máximo 10 MB por archivo.</div>
+              <div *ngIf="errorFormato" class="mt-2 px-3 py-2 rounded" style="background-color:#fff3cd;border:1px solid #ffc107;color:#856404;font-size:0.85rem;">
+                <i class="fas fa-exclamation-triangle me-1"></i>{{ errorFormato }}
+              </div>
+
+              <div *ngIf="formatosExistentes.length" class="mt-3">
+                <div class="small fw-semibold text-muted mb-2">Formatos cargados</div>
+                <div class="req-docs-list">
+                  <div *ngFor="let formato of formatosExistentes" class="req-doc-item mb-2 p-3 border rounded bg-light">
+                    <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+                      <div>
+                        <div class="fw-semibold">{{ formato.nombre || formato.nombreArchivo }}</div>
+                        <div class="text-muted small">{{ formato.nombreArchivo }} · {{ formatearPeso(formato.sizeBytes) }}</div>
+                        <div *ngIf="formato.descripcion" class="small mt-1">{{ formato.descripcion }}</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" (click)="descargarFormato(formato)" title="Descargar formato">
+                          <i class="fas fa-download"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" (click)="eliminarFormatoExistente(formato)" title="Eliminar formato">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div *ngIf="formatosPendientes.length" class="mt-3">
+                <div class="small fw-semibold text-muted mb-2">Formatos por subir al guardar</div>
+                <div class="req-docs-list">
+                  <div *ngFor="let formato of formatosPendientes; let i = index; trackBy: trackByIndex" class="req-doc-item mb-3 p-3 border rounded bg-light">
+                    <div class="row g-2 align-items-start">
+                      <div class="col-md-4">
+                        <label class="form-label small mb-1">Nombre visible</label>
+                        <input type="text" class="form-control form-control-sm" [(ngModel)]="formato.nombre" [ngModelOptions]="{standalone: true}" maxlength="180" />
+                      </div>
+                      <div class="col-md-5">
+                        <label class="form-label small mb-1">Descripción opcional</label>
+                        <input type="text" class="form-control form-control-sm" [(ngModel)]="formato.descripcion" [ngModelOptions]="{standalone: true}" maxlength="500" placeholder="Ej. Formato de solicitud requisitado" />
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-1">Archivo</label>
+                        <div class="small text-muted">{{ formato.file.name }}</div>
+                        <div class="small text-muted">{{ formatearPeso(formato.file.size) }}</div>
+                      </div>
+                      <div class="col-md-1 text-end">
+                        <button type="button" class="btn btn-outline-danger btn-sm mt-4" (click)="quitarFormatoPendiente(i)" title="Quitar">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input type="checkbox" formControlName="vigente" class="form-check-input" id="vigenteCheck" />
+                <label class="form-check-label" for="vigenteCheck">Vigente (convocatoria activa para operaciones)</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input type="checkbox" formControlName="visibilidadPublica" class="form-check-input" id="visiblePublicoCheck" />
+                <label class="form-check-label" for="visiblePublicoCheck">Publicación pública (visible en el micrositio)</label>
+              </div>
+            </div>
+
+            <!-- Tipos de apoyo por convocatoria -->
+            <div class="col-12 mt-4">
+              <div class="conv-section-banner mb-2">
+                <i class="fas fa-layer-group me-2"></i>Tipos de apoyo (modular por convocatoria)
+              </div>
+              <p class="text-muted small mb-3">Estos son los valores que verá el usuario al capturar su solicitud. Configura aquí las opciones permitidas.</p>
+              <div formArrayName="tiposApoyo" class="req-docs-list">
+                <div *ngFor="let ta of tiposApoyo.controls; let i = index; trackBy: trackByIndex" [formGroupName]="i" class="req-doc-item mb-3 p-3 border rounded bg-light">
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-11">
+                      <label class="form-label small mb-1">Tipo de apoyo</label>
+                      <input type="text" formControlName="nombre" class="form-control form-control-sm" placeholder="Ej. Profesor participante" maxlength="120" />
+                    </div>
+                    <div class="col-md-1 text-end">
+                      <button type="button" class="btn btn-outline-danger btn-sm" (click)="quitarTipoApoyo(i)" title="Quitar">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-outline-borgona btn-sm" (click)="agregarTipoApoyo()">
+                  <i class="fas fa-plus me-1"></i>Agregar tipo de apoyo
+                </button>
+              </div>
+            </div>
+
+            <!-- Reglas operativas guiadas -->
+            <div class="col-12 mt-4">
+              <div class="conv-section-banner mb-2">
+                <i class="fas fa-sliders me-2"></i>Reglas operativas (guiadas)
+              </div>
+              <p class="text-muted small mb-3">Configura reglas clave sin escribir clave/valor manual. Estos datos se guardan automáticamente dentro de reglas configurables.</p>
+              <div class="mb-3 p-3 border rounded bg-light">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                  <div class="fw-semibold small text-uppercase text-muted">
+                    <i class="fas fa-list-check me-1"></i>Checklist de módulos de convocatoria
+                  </div>
+                  <span class="badge text-bg-secondary">{{ MODULOS_CONVOCATORIA_OPTIONS.length }} módulos configurables</span>
+                </div>
+                <div class="row g-2">
+                  <div class="col-md-6" *ngFor="let modulo of MODULOS_CONVOCATORIA_OPTIONS">
+                    <div class="form-check form-switch border rounded px-3 py-2 h-100 bg-white">
+                      <input
+                        type="checkbox"
+                        class="form-check-input"
+                        [id]="'modulo_' + modulo.control"
+                        [formControlName]="modulo.control"
+                      />
+                      <label class="form-check-label fw-semibold" [for]="'modulo_' + modulo.control">{{ modulo.etiqueta }}</label>
+                      <div class="small text-muted mt-1">{{ modulo.descripcion }}</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-text small mt-2">
+                  Activa solo los módulos que se utilizarán en esta convocatoria. Por ejemplo, si ocupa evaluadores, deja activo el módulo de evaluadores.
+                </div>
+              </div>
+              <div class="reglas-resumen-panel mb-3" [class.alerta]="reglaResumenConAlertas">
+                <div class="reglas-resumen-head">
+                  <div class="fw-semibold">
+                    <i class="fas fa-clipboard-check me-1"></i>Resumen de reglas activas
+                  </div>
+                  <div class="reglas-resumen-actions">
+                    <span class="badge rounded-pill" [ngClass]="reglaResumenConAlertas ? 'text-bg-warning' : 'text-bg-success'">
+                      {{ reglaResumenConAlertas ? 'Revisar configuración' : 'Configuración consistente' }}
+                    </span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="autocorregirReglasGuiadas()">
+                      <i class="fas fa-wand-magic-sparkles me-1"></i>Autocorregir
+                    </button>
+                  </div>
+                </div>
+                <div class="reglas-resumen-grid">
+                  <div class="resumen-item" *ngFor="let item of resumenReglasOperativas" [ngClass]="'estado-' + item.estado">
+                    <div class="resumen-etiqueta">{{ item.etiqueta }}</div>
+                    <div class="resumen-valor">{{ item.valor }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold mb-1">Inicio de postulación</label>
+                  <input type="date" formControlName="reglaPostulacionFechaInicio" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold mb-1">Cierre de postulación</label>
+                  <input type="date" formControlName="reglaPostulacionFechaFin" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-semibold mb-1">Informes requeridos</label>
+                  <select formControlName="reglaInformesRequeridos" class="form-select form-select-sm">
+                    <option *ngFor="let item of INFORMES_REQUERIDOS_OPTIONS" [value]="item.value">{{ item.label }}</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-semibold mb-1">Plazo corrección por defecto (horas)</label>
+                  <input type="number" formControlName="reglaPlazoCorreccionHorasDefault" min="1" max="720" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small fw-semibold mb-1">Mínimo (horas)</label>
+                  <input type="number" formControlName="reglaPlazoCorreccionHorasMin" min="1" max="720" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small fw-semibold mb-1">Máximo (horas)</label>
+                  <input type="number" formControlName="reglaPlazoCorreccionHorasMax" min="1" max="720" class="form-control form-control-sm" />
+                </div>
+                <div class="col-12">
+                  <label class="form-label small fw-semibold mb-1">Estados editables de postulación</label>
+                  <select formControlName="reglaEstadosEditables" class="form-select form-select-sm" multiple size="4">
+                    <option *ngFor="let item of ESTADOS_EDITABLES_OPTIONS" [value]="item.value">{{ item.label }}</option>
+                  </select>
+                  <div class="form-text muted-small mt-1">Mantén presionada la tecla Ctrl/Cmd para selección múltiple.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Reglas personalizadas -->
+            <div class="col-12 mt-4">
+              <div class="conv-section-banner mb-2">
+                <i class="fas fa-sliders-h me-2"></i>Reglas personalizadas de convocatoria
+              </div>
+              <p class="text-muted small mb-3">
+                Agrega reglas libres para esta convocatoria (clave/valor). Puedes editarlas, eliminarlas y crear las que necesiten.
+                Para control operativo usa, por ejemplo: <code>postulacion_fecha_inicio</code>, <code>postulacion_fecha_fin</code>, <code>postulacion_estados_editables</code>, <code>plazo_correccion_horas_default</code> e <code>informes_requeridos</code> (NINGUNO, PARCIAL, FINAL, AMBOS).
+              </p>
+              <div class="mb-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cargarPlantillaReglasBase()">
+                  <i class="fas fa-magic me-1"></i>Cargar plantilla base de reglas
+                </button>
+              </div>
+              <div formArrayName="reglasConfigurables" class="req-docs-list">
+                <div *ngFor="let regla of reglasConfigurables.controls; let i = index; trackBy: trackByIndex" [formGroupName]="i" class="req-doc-item mb-3 p-3 border rounded bg-light">
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-3">
+                      <label class="form-label small mb-1">Clave</label>
+                      <input type="text" formControlName="clave" class="form-control form-control-sm" placeholder="Ej. min_integrantes" maxlength="80" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Valor</label>
+                      <input type="text" formControlName="valor" class="form-control form-control-sm" placeholder="Ej. 3" maxlength="240" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Descripción (opcional)</label>
+                      <input type="text" formControlName="descripcion" class="form-control form-control-sm" placeholder="Ej. Número mínimo de integrantes por equipo" maxlength="240" />
+                    </div>
+                    <div class="col-md-1 text-end">
+                      <button type="button" class="btn btn-outline-danger btn-sm" (click)="quitarReglaConfigurable(i)" title="Quitar">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-outline-borgona btn-sm" (click)="agregarReglaConfigurable()">
+                  <i class="fas fa-plus me-1"></i>Agregar regla personalizada
+                </button>
+              </div>
+            </div>
+
+            <!-- Criterios del formulario de postulación -->
+            <div class="col-12 mt-4">
+              <div class="conv-section-banner mb-2">
+                <i class="fas fa-list-check me-2"></i>Criterios del formulario de postulación
+              </div>
+              <p class="text-muted small mb-3">Define los campos que verán los usuarios al postularse. El <strong>peso</strong> (1-100) se usa para calcular el % de compatibilidad. Usa claves como <code>grado_academico</code>, <code>tipo_perfil</code>, <code>anios_experiencia</code>, <code>area_conocimiento</code>, <code>idiomas</code> para que coincidan con el perfil del usuario.</p>
+              <div formArrayName="criterios" class="criterios-list">
+                <div *ngFor="let crit of criterios.controls; let i = index; trackBy: trackByIndex" [formGroupName]="i" class="criterio-item mb-3 p-3 border rounded bg-light">
+                  <div class="row g-2 align-items-start">
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Etiqueta</label>
+                      <input type="text" formControlName="etiqueta" class="form-control form-control-sm" placeholder="Ej. Grado académico" />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-1">Clave (ID)</label>
+                      <input type="text" formControlName="clave" class="form-control form-control-sm" placeholder="grado_academico" />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-1">Tipo</label>
+                      <select formControlName="tipo" class="form-select form-select-sm">
+                        <option *ngFor="let t of TIPOS_CRITERIO" [value]="t.value">{{ t.label }}</option>
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-1">Peso (1-100)</label>
+                      <input type="number" formControlName="peso" class="form-control form-control-sm" min="1" max="100" />
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                      <div class="form-check mb-2">
+                        <input type="checkbox" formControlName="requerido" class="form-check-input" [id]="'req_' + i" />
+                        <label class="form-check-label small" [for]="'req_' + i">Requerido</label>
+                      </div>
+                    </div>
+                    <div class="col-md-1 text-end">
+                      <button type="button" class="btn btn-outline-danger btn-sm" (click)="quitarCriterio(i)" title="Quitar">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                    <div *ngIf="necesitaOpciones(crit.get('tipo')?.value)" class="col-12">
+                      <label class="form-label small mb-1">Opciones (separadas por comas)</label>
+                      <input type="text" formControlName="opciones" class="form-control form-control-sm" placeholder="Ej. Licenciatura, Maestría, Doctorado" />
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-outline-borgona btn-sm" (click)="agregarCriterio()">
+                  <i class="fas fa-plus me-1"></i>Agregar criterio
+                </button>
+              </div>
+            </div>
+
+            <!-- Requisitos de documentos -->
+            <div class="col-12 mt-4">
+              <div class="conv-section-banner mb-2">
+                <i class="fas fa-paperclip me-2"></i>Requisitos de documentos
+              </div>
+              <p class="text-muted small mb-3">Define qué documentos deben adjuntar los postulantes. Cada apartado será un campo de carga de archivo (solo PDF).</p>
+              <div formArrayName="requisitosDocumentos" class="req-docs-list">
+                <div *ngFor="let req of requisitosDocs.controls; let i = index; trackBy: trackByIndex" [formGroupName]="i" class="req-doc-item mb-3 p-3 border rounded bg-light">
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Clave (ID)</label>
+                      <input type="text" formControlName="clave" class="form-control form-control-sm" placeholder="identificacion_oficial" />
+                    </div>
+                    <div class="col-md-5">
+                      <label class="form-label small mb-1">Etiqueta</label>
+                      <input type="text" formControlName="etiqueta" class="form-control form-control-sm" placeholder="Identificación oficial" />
+                    </div>
+                    <div class="col-md-2">
+                      <div class="form-check mt-4">
+                        <input type="checkbox" formControlName="requerido" class="form-check-input" [id]="'reqDocReq_' + i" />
+                        <label class="form-check-label small" [for]="'reqDocReq_' + i">Requerido</label>
+                      </div>
+                    </div>
+                    <div class="col-md-1 text-end">
+                      <button type="button" class="btn btn-outline-danger btn-sm" (click)="quitarRequisitoDoc(i)" title="Quitar">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-outline-borgona btn-sm" (click)="agregarRequisitoDoc()">
+                  <i class="fas fa-plus me-1"></i>Agregar documento requerido
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">
+            <i class="fas fa-xmark me-1"></i>Cancelar
+          </button>
+          <button type="submit" class="btn btn-borgona" [disabled]="guardando">
+            <span *ngIf="guardando" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!guardando" class="fas fa-floppy-disk me-1"></i>{{ editando ? 'Actualizar convocatoria' : 'Crear convocatoria' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-backdrop fade" [class.show]="modalVisible" (click)="cerrarModal()"></div>
+</div>

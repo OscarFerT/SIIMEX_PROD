@@ -1,0 +1,130 @@
+<div class="admin-layout">
+  <!-- Overlay for mobile sidebar -->
+  <div class="admin-overlay" [class.admin-overlay--visible]="sidebarOpen" (click)="sidebarOpen = false"></div>
+
+  <aside class="admin-sidebar" [class.admin-sidebar--open]="sidebarOpen">
+    <div class="admin-sidebar-brand">
+      <div class="admin-brand-icon">
+        <i class="fas fa-shield-alt"></i>
+      </div>
+      <div class="admin-brand-text">
+        <span class="admin-brand-title">Panel admin</span>
+        <span class="admin-brand-sub">SIIMEX</span>
+      </div>
+      <button class="admin-sidebar-close" (click)="sidebarOpen = false" aria-label="Cerrar menú">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <nav class="admin-nav">
+      <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-chart-pie"></i>
+        <span>Dashboard</span>
+      </a>
+      <a routerLink="/admin/registros" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-users"></i>
+        <span>Registros</span>
+      </a>
+      <a routerLink="/admin/convocatorias" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-bullhorn"></i>
+        <span>Gestión modular</span>
+      </a>
+      <a routerLink="/admin/instituciones-educativas" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-school"></i>
+        <span>Instituciones educativas</span>
+      </a>
+      <a routerLink="/admin/feriados" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-calendar-xmark"></i>
+        <span>Días feriados</span>
+      </a>
+      <a routerLink="/admin/lista-negra" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-user-slash"></i>
+        <span>Lista negra</span>
+      </a>
+      <a routerLink="/admin/configuracion-folios" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-hashtag"></i>
+        <span>Folios de registro</span>
+      </a>
+      <a routerLink="/admin/reportes" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-file-export"></i>
+        <span>Consultas y reportes</span>
+      </a>
+      <a routerLink="/admin/padron-beneficiarios" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-id-card-clip"></i>
+        <span>Padrón beneficiarios</span>
+      </a>
+      <a routerLink="/admin/auditoria" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-clipboard-list"></i>
+        <span>Auditoría</span>
+      </a>
+      <a routerLink="/admin/notificaciones" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-bell"></i>
+        <span>Notificaciones</span>
+      </a>
+    </nav>
+    <div class="admin-sidebar-footer">
+      <a routerLink="/landing" class="admin-nav-link admin-nav-link-footer" target="_blank">
+        <i class="fas fa-external-link-alt"></i>
+        <span>Ir al sitio</span>
+      </a>
+      <a routerLink="/folios-aprobados" class="admin-nav-link admin-nav-link-footer" target="_blank">
+        <i class="fas fa-list-check"></i>
+        <span>Folios aprobados</span>
+      </a>
+      <button type="button" class="admin-btn-logout" (click)="logout()">
+        <i class="fas fa-sign-out-alt"></i>
+        <span>Cerrar sesión</span>
+      </button>
+    </div>
+  </aside>
+  <main class="admin-main">
+    <!-- Top bar -->
+    <div class="admin-topbar">
+      <button class="admin-hamburger" (click)="sidebarOpen = !sidebarOpen" aria-label="Abrir menú">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div class="admin-topbar-right">
+        <div class="admin-notif-wrapper">
+          <button class="admin-notif-bell" (click)="toggleNotifPanel(); $event.stopPropagation()" title="Notificaciones">
+            <i class="fa-solid fa-bell"></i>
+            <span class="admin-notif-badge" *ngIf="notifCount > 0">{{ notifCount > 99 ? '99+' : notifCount }}</span>
+          </button>
+          <div class="admin-notif-dropdown" *ngIf="notifPanelOpen" (click)="$event.stopPropagation()">
+            <div class="admin-notif-dropdown-header">
+              <span class="admin-notif-dropdown-title">Notificaciones</span>
+              <button class="admin-notif-mark-all" (click)="marcarTodasLeidas()" *ngIf="notifCount > 0">Marcar todas leídas</button>
+            </div>
+            <div class="admin-notif-dropdown-body">
+              <div *ngIf="notificaciones.length === 0" class="admin-notif-empty">
+                <i class="fa-regular fa-bell-slash"></i>
+                <p>No hay notificaciones</p>
+              </div>
+              <div *ngFor="let n of notificaciones"
+                   class="admin-notif-item"
+                   [class.admin-notif-item--unread]="!n.leida"
+                   (click)="marcarLeida(n)">
+                <div class="admin-notif-item-icon">
+                  <i class="fa-solid" [ngClass]="getNotifIcon(n.tipo)"></i>
+                </div>
+                <div class="admin-notif-item-content">
+                  <div class="admin-notif-item-title">{{ n.titulo }}</div>
+                  <div class="admin-notif-item-msg">{{ n.mensaje }}</div>
+                  <div class="admin-notif-item-time">{{ n.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</div>
+                </div>
+                <div class="admin-notif-item-dot" *ngIf="!n.leida"></div>
+              </div>
+            </div>
+            <div class="admin-notif-dropdown-footer">
+              <a routerLink="/admin/notificaciones" class="admin-notif-see-all" (click)="notifPanelOpen = false">
+                Ver todas las notificaciones
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="admin-main-inner">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>
+

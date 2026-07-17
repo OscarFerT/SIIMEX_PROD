@@ -1,0 +1,763 @@
+<main class="postulacion-container">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-10 col-xl-9">
+        <header class="postulacion-header text-center mb-5">
+          <div class="header-icon mb-3">
+            <i class="fas fa-file-alt"></i>
+          </div>
+          <h1 class="postulacion-title">Completa tu Postulación</h1>
+          <p class="postulacion-subtitle" *ngIf="convocatoria">
+            Postulándote a: <strong>{{ convocatoria.titulo }}</strong>
+          </p>
+          <p class="postulacion-subtitle" *ngIf="!convocatoriaId">
+            Selecciona una convocatoria para postularte desde el listado de convocatorias.
+          </p>
+          <p class="postulacion-subtitle text-muted" *ngIf="loadingConv && convocatoriaId">
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>Cargando datos de la convocatoria...
+          </p>
+        </header>
+
+        <div *ngIf="errorConv" class="alert alert-danger mb-4">
+          <i class="fas fa-exclamation-triangle me-2"></i>{{ errorConv }}
+          <a routerLink="/app/convocatorias" class="alert-link ms-2">Volver a convocatorias</a>
+        </div>
+
+        <div *ngIf="!errorConv && miPostulacion" class="alert postulacion-estado-alert mb-4"
+             [class.alert-warning]="miPostulacion.estado !== 'CON_OBSERVACIONES' && miPostulacion.estado !== 'SUBSANADA'"
+             [class.alert-danger]="miPostulacion.estado === 'CON_OBSERVACIONES' && plazoCorreccionVencido"
+             [class.alert-info]="(miPostulacion.estado === 'CON_OBSERVACIONES' && !plazoCorreccionVencido) || miPostulacion.estado === 'SUBSANADA'">
+          <div class="d-flex align-items-start gap-2">
+            <i class="fas fa-hourglass-half mt-1"></i>
+            <div>
+              <strong>{{ modoEdicion ? 'Editando solicitud en revisión' : ('Solicitud registrada (' + miPostulacion.estado + ')') }}</strong>
+              <div class="small mt-1">
+                <span *ngIf="!modoEdicion && miPostulacion.estado !== 'SUBSANADA'">Tu postulación para esta convocatoria fue enviada y está siendo revisada por el área administrativa.</span>
+                <span *ngIf="!modoEdicion && miPostulacion.estado === 'SUBSANADA'">Tus correcciones fueron recibidas y la solicitud está lista para una nueva revisión administrativa.</span>
+                <span *ngIf="modoEdicion">Puedes actualizar tus datos antes de que el área administrativa emita una resolución.</span>
+              </div>
+              <div *ngIf="miPostulacion.estado === 'CON_OBSERVACIONES'" class="small mt-2">
+                <strong>Fecha límite para editar:</strong> {{ fechaLimiteCorreccionTexto }}
+                <br />
+                <strong>{{ mensajeTiempoCorreccion }}</strong>
+              </div>
+              <div *ngIf="miPostulacion.observacionesRevision" class="small mt-2">
+                <strong>Observaciones de revisión:</strong> {{ miPostulacion.observacionesRevision }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!errorConv && miPostulacion" class="postulacion-card mb-4">
+          <div class="card-body">
+            <h5 class="section-title mb-3">
+              <i class="fas fa-scale-balanced me-2"></i>Comité e información bancaria
+            </h5>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="small text-muted">Estado comité</div>
+                <div class="fw-semibold">{{ miPostulacion.estadoComite || 'Sin dictamen' }}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="small text-muted">Monto asignado</div>
+                <div class="fw-semibold">{{ miPostulacion.montoApoyoAsignado ?? 'No asignado' }}</div>
+              </div>
+              <div class="col-12" *ngIf="miPostulacion.observacionesComite">
+                <div class="small text-muted">Observaciones comité</div>
+                <div>{{ miPostulacion.observacionesComite }}</div>
+              </div>
+              <div class="col-12"><hr class="my-2"></div>
+              <div class="col-md-6">
+                <div class="small text-muted mb-1">Oficio de aprobación</div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <button *ngIf="miPostulacion.oficioAprobacionDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.oficioAprobacionDocumentoId)">
+                    <i class="fas fa-download me-1"></i>{{ miPostulacion.oficioAprobacionNombreArchivo || 'Descargar oficio' }}
+                  </button>
+                  <span *ngIf="!miPostulacion.oficioAprobacionDocumentoId" class="text-muted">Pendiente de emisión</span>
+                </div>
+                <div class="form-text">{{ fechaOficioAprobacionTexto }}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="small text-muted mb-1">Nombramiento</div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <button *ngIf="miPostulacion.nombramientoDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.nombramientoDocumentoId)">
+                    <i class="fas fa-download me-1"></i>{{ miPostulacion.nombramientoNombreArchivo || 'Descargar nombramiento' }}
+                  </button>
+                  <span *ngIf="!miPostulacion.nombramientoDocumentoId" class="text-muted">Pendiente de emisión</span>
+                </div>
+                <div class="form-text">{{ fechaNombramientoTexto }}</div>
+              </div>
+              <div class="col-12"><hr class="my-2"></div>
+              <div class="col-md-6">
+                <div class="small text-muted">Estatus bancaria</div>
+                <div class="fw-semibold">{{ tieneBancariaCapturada ? 'Capturada' : 'Pendiente' }}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="small text-muted">Última actualización bancaria</div>
+                <div class="fw-semibold">{{ fechaActualizacionBancariaTexto }}</div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="abrirModalBancaria()" [disabled]="!puedeCapturarBancaria">
+                <i class="fas fa-building-columns me-1"></i>{{ tieneBancariaCapturada ? 'Editar información bancaria' : 'Capturar información bancaria' }}
+              </button>
+              <div *ngIf="!puedeCapturarBancaria" class="form-text text-muted mt-1">
+                Se habilita únicamente cuando tu solicitud esté aprobada.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!errorConv && miPostulacion" class="postulacion-card mb-4">
+          <div class="card-body">
+            <h5 class="section-title mb-3">
+              <i class="fas fa-receipt me-2"></i>Recibo de pago
+            </h5>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="small text-muted">Estado</div>
+                <div class="fw-semibold">{{ miPostulacion.estadoReciboPago || 'Sin cargar' }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Fecha de carga</div>
+                <div class="fw-semibold">{{ fechaReciboPagoTexto }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Fecha de validación</div>
+                <div class="fw-semibold">{{ fechaValidacionReciboPagoTexto }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Entrega del apoyo</div>
+                <div class="fw-semibold">{{ apoyoEntregado ? 'Registrada' : 'Pendiente' }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Fecha de entrega</div>
+                <div class="fw-semibold">{{ fechaEntregaApoyoTexto }}</div>
+              </div>
+              <div class="col-12" *ngIf="miPostulacion.observacionesReciboPago">
+                <div class="small text-muted">Observaciones administrativas</div>
+                <div>{{ miPostulacion.observacionesReciboPago }}</div>
+              </div>
+              <div class="col-12" *ngIf="miPostulacion.observacionesEntregaApoyo">
+                <div class="small text-muted">Observaciones de entrega</div>
+                <div>{{ miPostulacion.observacionesEntregaApoyo }}</div>
+              </div>
+              <div class="col-12">
+                <button *ngIf="miPostulacion.reciboPagoDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.reciboPagoDocumentoId)">
+                  <i class="fas fa-download me-1"></i>{{ miPostulacion.reciboPagoNombreArchivo || 'Descargar recibo' }}
+                </button>
+              </div>
+            </div>
+            <div class="mt-3">
+              <input #reciboPagoInput type="file" accept=".pdf,application/pdf" class="d-none" (change)="onReciboPagoSeleccionado($event)" />
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="seleccionarArchivoReciboPago(reciboPagoInput)" [disabled]="!puedeCargarReciboPago || subiendoReciboPago">
+                <span *ngIf="subiendoReciboPago" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                <i *ngIf="!subiendoReciboPago" class="fas fa-file-upload me-1"></i>{{ miPostulacion.reciboPagoDocumentoId ? 'Reemplazar recibo' : 'Cargar recibo' }}
+              </button>
+              <div *ngIf="!puedeCargarReciboPago" class="form-text text-muted mt-1">
+                Se habilita cuando tu solicitud esté aprobada, el nombramiento haya sido emitido y COMECYT registre la entrega del apoyo económico.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!errorConv && miPostulacion" class="postulacion-card mb-4">
+          <div class="card-body">
+            <h5 class="section-title mb-3">
+              <i class="fas fa-file-signature me-2"></i>Informes y evidencias
+            </h5>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="small text-muted">Estado de informes</div>
+                <div class="fw-semibold">{{ estadoInformeTexto }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Límite informe parcial</div>
+                <div class="fw-semibold">{{ fechaLimiteInformeParcialTexto }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Límite informe final</div>
+                <div class="fw-semibold">{{ fechaLimiteInformeFinalTexto }}</div>
+              </div>
+              <div class="col-12" *ngIf="miPostulacion.observacionesInforme">
+                <div class="small text-muted">Indicaciones de informes</div>
+                <div>{{ miPostulacion.observacionesInforme }}</div>
+              </div>
+              <div class="col-12" *ngIf="miPostulacion.motivoIncumplimientoInforme">
+                <div class="alert alert-danger py-2 px-3 mb-0">
+                  <strong>Incumplimiento:</strong> {{ miPostulacion.motivoIncumplimientoInforme }}
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="small text-muted mb-1">Informe parcial</div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <button *ngIf="requiereInformeParcial && miPostulacion.informeParcialDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.informeParcialDocumentoId)">
+                    <i class="fas fa-download me-1"></i>{{ miPostulacion.informeParcialNombreArchivo || 'Descargar' }}
+                  </button>
+                  <span *ngIf="!requiereInformeParcial" class="text-muted">No requerido</span>
+                  <span *ngIf="requiereInformeParcial && !miPostulacion.informeParcialDocumentoId" class="text-muted">Sin cargar</span>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="small text-muted mb-1">Informe final</div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <button *ngIf="requiereInformeFinal && miPostulacion.informeFinalDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.informeFinalDocumentoId)">
+                    <i class="fas fa-download me-1"></i>{{ miPostulacion.informeFinalNombreArchivo || 'Descargar' }}
+                  </button>
+                  <span *ngIf="!requiereInformeFinal" class="text-muted">No requerido</span>
+                  <span *ngIf="requiereInformeFinal && !miPostulacion.informeFinalDocumentoId" class="text-muted">Sin cargar</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 d-flex flex-wrap gap-2">
+              <input #informeParcialInput type="file" accept=".pdf,application/pdf" class="d-none" (change)="onInformeParcialSeleccionado($event)" />
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="seleccionarArchivoInformeParcial(informeParcialInput)" [disabled]="!puedeGestionarInformes || !requiereInformeParcial || subiendoInformeParcial">
+                <span *ngIf="subiendoInformeParcial" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                <i *ngIf="!subiendoInformeParcial" class="fas fa-file-upload me-1"></i>Subir informe parcial
+              </button>
+
+              <input #informeFinalInput type="file" accept=".pdf,application/pdf" class="d-none" (change)="onInformeFinalSeleccionado($event)" />
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="seleccionarArchivoInformeFinal(informeFinalInput)" [disabled]="!puedeGestionarInformes || !requiereInformeFinal || subiendoInformeFinal">
+                <span *ngIf="subiendoInformeFinal" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                <i *ngIf="!subiendoInformeFinal" class="fas fa-file-upload me-1"></i>Subir informe final
+              </button>
+            </div>
+            <div *ngIf="!puedeGestionarInformes" class="form-text text-muted mt-1">
+              {{ (!requiereInformeParcial && !requiereInformeFinal) ? 'Esta convocatoria no solicita informes.' : 'La carga de informes se habilita cuando la solicitud esté aprobada.' }}
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!errorConv && miPostulacion" class="postulacion-card mb-4">
+          <div class="card-body">
+            <h5 class="section-title mb-3">
+              <i class="fas fa-file-circle-xmark me-2"></i>Renuncia del apoyo
+            </h5>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="small text-muted mb-1">Estado de renuncia</div>
+                <span
+                  class="badge px-3 py-2"
+                  [ngClass]="{
+                    'bg-warning text-dark': miPostulacion.estadoRenuncia === 'SOLICITADA',
+                    'bg-success': miPostulacion.estadoRenuncia === 'ACEPTADA',
+                    'bg-danger': miPostulacion.estadoRenuncia === 'RECHAZADA',
+                    'bg-secondary': !miPostulacion.estadoRenuncia
+                  }">
+                  {{ miPostulacion.estadoRenuncia || 'Sin solicitud' }}
+                </span>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Fecha de solicitud</div>
+                <div class="fw-semibold">{{ fechaSolicitudRenunciaTexto }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Fecha de resolución</div>
+                <div class="fw-semibold">{{ fechaResolucionRenunciaTexto }}</div>
+              </div>
+              <div class="col-12" *ngIf="miPostulacion.motivoRenuncia">
+                <div class="small text-muted">Motivo registrado</div>
+                <div>{{ miPostulacion.motivoRenuncia }}</div>
+              </div>
+              <div class="col-12" *ngIf="miPostulacion.observacionesRenuncia">
+                <div class="small text-muted">Observaciones administrativas</div>
+                <div>{{ miPostulacion.observacionesRenuncia }}</div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button
+                type="button"
+                class="btn btn-outline-danger btn-sm"
+                (click)="solicitarRenunciaApoyo()"
+                [disabled]="!puedeSolicitarRenuncia">
+                <i class="fas fa-triangle-exclamation me-1"></i>Solicitar renuncia del apoyo
+              </button>
+              <div *ngIf="!puedeSolicitarRenuncia && miPostulacion.estadoRenuncia === 'SOLICITADA'" class="form-text text-muted mt-1">
+                Tu solicitud de renuncia está en revisión.
+              </div>
+              <div *ngIf="!puedeSolicitarRenuncia && miPostulacion.estadoRenuncia === 'ACEPTADA'" class="form-text text-muted mt-1">
+                La renuncia ya fue aceptada.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card principal: solo cuando hay convocatoria seleccionada -->
+        <div class="postulacion-card" *ngIf="!errorConv && convocatoriaId">
+          <div class="card-body">
+            <form id="postulacionForm" class="needs-validation" novalidate aria-describedby="formHelp">
+              <div id="formHelp" class="form-help-text mb-4">
+                <i class="fas fa-info-circle me-2"></i>
+                Los campos marcados con <span class="text-danger">*</span> son obligatorios.
+              </div>
+
+              <div *ngIf="reglasConfigurables.length" class="alert alert-light border mb-4">
+                <div class="fw-semibold mb-2">
+                  <i class="fas fa-sliders-h me-2 text-muted"></i>Reglas configuradas para esta convocatoria
+                </div>
+                <ul class="mb-0 ps-3">
+                  <li *ngFor="let r of reglasConfigurables">
+                    <strong>{{ r.clave }}:</strong> {{ r.valor }}
+                    <span *ngIf="r.descripcion"> - {{ r.descripcion }}</span>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Sección identificación -->
+              <section class="form-section mb-5">
+                <h5 class="section-title">
+                  <i class="fas fa-id-card me-2"></i>
+                  Identificación
+                </h5>
+
+                <div class="row g-4">
+                  <div class="col-md-6">
+                    <label for="cedula" class="form-label">
+                      Número de cédula profesional <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                      <div class="input-group has-icon">
+                        <span class="input-group-text">
+                          <i class="fas fa-id-badge"></i>
+                        </span>
+                        <input 
+                          type="text" 
+                          id="cedula" 
+                          name="cedula"
+                          class="form-control input-custom" 
+                          placeholder="Ej. 1234567" 
+                          aria-describedby="icon-cedula"
+                          required 
+                          pattern="^[0-9A-Za-z\-]+$">
+                        <span class="validation-icon"></span>
+                      </div>
+                      <div class="invalid-feedback">Ingresa tu número de cédula profesional válido.</div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label for="curp" class="form-label">
+                      CURP <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                      <div class="input-group has-icon">
+                        <span class="input-group-text">
+                          <i class="fas fa-id-card"></i>
+                        </span>
+                        <input 
+                          type="text" 
+                          id="curp" 
+                          name="curp"
+                          class="form-control input-custom text-uppercase" 
+                          placeholder="Ej. GARC850101HDFABC09"
+                          aria-describedby="icon-curp" 
+                          required 
+                          maxlength="18" 
+                          pattern="^[A-Z0-9]{18}$">
+                        <span class="validation-icon"></span>
+                      </div>
+                      <div class="invalid-feedback">
+                        CURP inválida. Debe tener 18 caracteres alfanuméricos en mayúsculas.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Sección contacto -->
+              <section class="form-section mb-5">
+                <h5 class="section-title">
+                  <i class="fas fa-envelope me-2"></i>
+                  Contacto
+                </h5>
+
+                <div class="row g-4">
+                  <div class="col-md-6">
+                    <label for="correo" class="form-label">
+                      Correo electrónico <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                      <div class="input-group has-icon">
+                        <span class="input-group-text">
+                          <i class="fas fa-envelope"></i>
+                        </span>
+                        <input 
+                          type="email" 
+                          id="correo" 
+                          name="correo"
+                          class="form-control input-custom" 
+                          placeholder="correo@dominio.com"
+                          aria-describedby="icon-correo" 
+                          required>
+                        <span class="validation-icon"></span>
+                      </div>
+                      <div class="invalid-feedback">Introduce un correo válido.</div>
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label for="correoConfirm" class="form-label">
+                      Confirmar correo electrónico <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                      <div class="input-group has-icon">
+                        <span class="input-group-text">
+                          <i class="fas fa-envelope"></i>
+                        </span>
+                        <input 
+                          type="email" 
+                          id="correoConfirm" 
+                          name="correoConfirm"
+                          class="form-control input-custom" 
+                          placeholder="Confirma tu correo"
+                          aria-describedby="icon-correo-confirm" 
+                          required>
+                        <span class="validation-icon"></span>
+                      </div>
+                      <div class="invalid-feedback">Los correos no coinciden.</div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label for="telefono" class="form-label">
+                      Número telefónico <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                      <div class="input-group has-icon">
+                        <span class="input-group-text">
+                          <i class="fas fa-phone"></i>
+                        </span>
+                        <input 
+                          type="tel" 
+                          id="telefono" 
+                          name="telefono"
+                          class="form-control input-custom" 
+                          placeholder="(55) 1234 5678" 
+                          aria-describedby="icon-tel"
+                          required
+                          minlength="7"
+                          maxlength="20">
+                        <span class="validation-icon"></span>
+                      </div>
+                      <div class="invalid-feedback">
+                        Introduce un teléfono válido (solo números y símbolos permitidos).
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Sección tipo de apoyo -->
+              <section class="form-section mb-5">
+                <h5 class="section-title">
+                  <i class="fas fa-layer-group me-2"></i>
+                  Clasificación de solicitud
+                </h5>
+                <div class="row g-4">
+                  <div class="col-md-6">
+                    <label for="tipoSolicitud" class="form-label">
+                      Tipo de solicitud <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                      <div class="input-group has-icon">
+                        <span class="input-group-text">
+                          <i class="fas fa-globe-americas"></i>
+                        </span>
+                        <select
+                          id="tipoSolicitud"
+                          name="tipoSolicitud"
+                          class="form-control input-custom"
+                          required>
+                          <option value="">Selecciona una opción...</option>
+                          <option value="NACIONAL">Nacional</option>
+                          <option value="INTERNACIONAL">Internacional</option>
+                        </select>
+                        <span class="validation-icon"></span>
+                      </div>
+                      <div class="invalid-feedback">
+                        Selecciona el tipo de solicitud.
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="fechaEvento" class="form-label">
+                      Fecha del evento <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                      <div class="input-group has-icon">
+                        <span class="input-group-text">
+                          <i class="fas fa-calendar-day"></i>
+                        </span>
+                        <input
+                          type="date"
+                          id="fechaEvento"
+                          name="fechaEvento"
+                          class="form-control input-custom"
+                          required />
+                        <span class="validation-icon"></span>
+                      </div>
+                      <div class="invalid-feedback">
+                        Captura la fecha del evento.
+                      </div>
+                      <div class="form-text muted-small mt-1">Solo se permiten eventos entre {{ diasMinAnticipacion }} y {{ diasMaxAnticipacion }} días a partir de hoy.</div>
+                    </div>
+                  </div>
+                  <div class="col-md-8">
+                    <label for="tipoApoyo" class="form-label">
+                      Clasificación de tu solicitud <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                      <div class="input-group has-icon">
+                        <span class="input-group-text">
+                          <i class="fas fa-tags"></i>
+                        </span>
+                        <select
+                          id="tipoApoyo"
+                          name="tipoApoyo"
+                          class="form-control input-custom"
+                          [disabled]="!tiposApoyoDisponibles.length"
+                          required>
+                          <option value="">{{ tiposApoyoDisponibles.length ? 'Selecciona una opción...' : 'No hay tipos configurados' }}</option>
+                          <option *ngFor="let t of tiposApoyoDisponibles" [value]="t">{{ t }}</option>
+                        </select>
+                        <span class="validation-icon"></span>
+                      </div>
+                      <div class="invalid-feedback">
+                        Selecciona el tipo de apoyo para clasificar tu solicitud.
+                      </div>
+                      <div *ngIf="!tiposApoyoDisponibles.length" class="form-text text-danger mt-1">
+                        Esta convocatoria no tiene tipos de apoyo configurados por el administrador.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Sección información del proyecto -->
+              <section class="form-section mb-5">
+                <h5 class="section-title">
+                  <i class="fas fa-diagram-project me-2"></i>
+                  Información del proyecto
+                </h5>
+                <div class="row g-4">
+                  <div class="col-12">
+                    <label for="tituloProyecto" class="form-label">
+                      Título del proyecto <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                      <input
+                        type="text"
+                        id="tituloProyecto"
+                        name="tituloProyecto"
+                        class="form-control input-custom"
+                        maxlength="220"
+                        required />
+                      <div class="invalid-feedback">Captura el título del proyecto.</div>
+                    </div>
+                  </div>
+                  <div class="col-12">
+                    <label for="descripcionProyecto" class="form-label">
+                      Descripción del proyecto <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                      <textarea
+                        id="descripcionProyecto"
+                        name="descripcionProyecto"
+                        class="form-control input-custom"
+                        rows="4"
+                        required></textarea>
+                      <div class="invalid-feedback">Captura la descripción del proyecto.</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Sección criterios dinámicos de la convocatoria -->
+              <section class="form-section mb-5" *ngIf="convocatoriaId">
+                <h5 class="section-title">
+                  <i class="fas fa-list-check me-2"></i>
+                  Criterios específicos
+                </h5>
+                <p class="text-muted small mb-3">Responde los criterios definidos para esta convocatoria. Estos datos se usan para calcular tu compatibilidad.</p>
+                <div *ngIf="loadingConv" class="text-muted py-3">
+                  <span class="spinner-border spinner-border-sm me-2"></span>Cargando criterios...
+                </div>
+                <div class="row g-4" *ngIf="!loadingConv && criterios.length">
+                  <div *ngFor="let c of criterios" class="col-12">
+                    <label [for]="'criterio_' + c.clave" class="form-label">
+                      {{ c.etiqueta }} <span class="text-danger" *ngIf="c.requerido">*</span>
+                    </label>
+                    <div *ngIf="isSelect(c)" class="input-wrapper">
+                      <select [id]="'criterio_' + c.clave" [name]="getInputName(c)" class="form-control input-custom" [required]="c.requerido">
+                        <option value="">Seleccionar...</option>
+                        <option *ngFor="let opt of (c.opciones || [])" [value]="opt">{{ opt }}</option>
+                      </select>
+                    </div>
+                    <div *ngIf="isCheckbox(c)" class="form-check">
+                      <input type="checkbox" [id]="'criterio_' + c.clave" [name]="getInputName(c)" class="form-check-input" />
+                      <label class="form-check-label" [for]="'criterio_' + c.clave">Sí</label>
+                    </div>
+                    <div *ngIf="isTextarea(c)" class="input-wrapper">
+                      <textarea [id]="'criterio_' + c.clave" [name]="getInputName(c)" class="form-control input-custom" rows="3" [required]="c.requerido"></textarea>
+                    </div>
+                    <div *ngIf="!isSelect(c) && !isCheckbox(c) && !isTextarea(c)" class="input-wrapper">
+                      <input [type]="isNumero(c) ? 'number' : 'text'" [id]="'criterio_' + c.clave" [name]="getInputName(c)" class="form-control input-custom" [required]="c.requerido" />
+                    </div>
+                  </div>
+                </div>
+                <p *ngIf="!loadingConv && !criterios.length" class="text-muted small">Esta convocatoria no tiene criterios específicos configurados.</p>
+              </section>
+
+              <!-- Sección documentos -->
+              <section class="form-section mb-5">
+                <h5 class="section-title">
+                  <i class="fas fa-file-pdf me-2"></i>
+                  Documentos
+                </h5>
+
+                <div *ngIf="formatosConvocatoria.length" class="alert alert-light border mb-4">
+                  <div class="fw-semibold mb-2">
+                    <i class="fas fa-file-arrow-down me-2 text-muted"></i>Formatos de la convocatoria
+                  </div>
+                  <p class="text-muted small mb-3">
+                    Descarga los formatos oficiales, llénalos y súbelos en el apartado de documentos requeridos que corresponda.
+                  </p>
+                  <div class="d-grid gap-2">
+                    <div *ngFor="let formato of formatosConvocatoria" class="d-flex align-items-start justify-content-between gap-2 flex-wrap p-2 border rounded bg-white">
+                      <div>
+                        <div class="fw-semibold">{{ formato.nombre || formato.nombreArchivo }}</div>
+                        <div class="text-muted small">{{ formato.nombreArchivo }} · {{ formatearPeso(formato.sizeBytes) }}</div>
+                        <div *ngIf="formato.descripcion" class="small mt-1">{{ formato.descripcion }}</div>
+                      </div>
+                      <button type="button" class="btn btn-outline-primary btn-sm" (click)="descargarFormatoConvocatoria(formato)">
+                        <i class="fas fa-download me-1"></i>Descargar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div *ngIf="requisitosDocs.length" class="mb-4">
+                  <p class="text-muted small mb-3">Documentos requeridos por esta convocatoria. Formatos permitidos: PDF, Word y Excel. Máx. 10 MB cada uno.</p>
+                  <div class="row g-4">
+                    <div *ngFor="let r of requisitosDocs" class="col-12">
+                      <label [for]="'doc_' + r.clave" class="form-label">
+                        {{ r.etiqueta }} <span class="text-danger" *ngIf="r.requerido">*</span>
+                      </label>
+                      <input
+                        type="file"
+                        [id]="'doc_' + r.clave"
+                        [name]="'doc_' + r.clave"
+                        class="form-control input-custom file-input"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        [required]="r.requerido && !modoEdicion"
+                        [attr.aria-describedby]="'docHelp_' + r.clave" />
+                      <div [id]="'docHelp_' + r.clave" class="form-text muted-small mt-1">PDF, Word o Excel</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="file-upload-wrapper">
+                  <label for="cv" class="form-label">
+                    <i class="fas fa-file-pdf me-2"></i>
+                    Currículum (PDF) <span class="text-danger">*</span>
+                  </label>
+                  <div class="input-wrapper">
+                    <div class="file-input-group">
+                      <input 
+                        type="file" 
+                        id="cv" 
+                        name="cv"
+                        class="form-control input-custom file-input" 
+                        accept=".pdf,application/pdf" 
+                        [required]="!modoEdicion"
+                        aria-describedby="cvHelp">
+                      <div class="invalid-feedback">{{ modoEdicion ? 'Si deseas reemplazar CV, adjunta un PDF válido.' : 'Adjunta tu currículum en formato PDF.' }}</div>
+                    </div>
+                    <div id="cvHelp" class="form-text muted-small mt-2">
+                      <i class="fas fa-info-circle me-1"></i>
+                      {{ modoEdicion ? 'Opcional al editar. Máx. 5 MB. Nombre del archivo sin caracteres especiales.' : 'Máx. 5 MB. Nombre del archivo sin caracteres especiales.' }}
+                    </div>
+                    <div id="cvAlert" class="alert alert-danger mt-2" style="display:none;" role="alert"></div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Sección observaciones -->
+              <section class="form-section mb-5">
+                <h5 class="section-title">
+                  <i class="fas fa-comment-alt me-2"></i>
+                  Observaciones
+                </h5>
+                <div class="input-wrapper">
+                  <label for="observaciones" class="form-label">
+                    Observaciones adicionales
+                  </label>
+                  <textarea 
+                    id="observaciones" 
+                    name="observaciones" 
+                    class="form-control input-custom" 
+                    rows="5"
+                    placeholder="Añade información relevante sobre tu experiencia o disponibilidad."
+                    aria-describedby="obsHelp"></textarea>
+                  <div id="obsHelp" class="form-text muted-small mt-2">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Opcional. Máx. 500 caracteres.
+                  </div>
+                </div>
+              </section>
+
+              <section class="form-section mb-5" *ngIf="avisoPrivacidadObligatorio">
+                <h5 class="section-title">
+                  <i class="fas fa-user-shield me-2"></i>
+                  Aviso de privacidad
+                </h5>
+                <p class="text-muted small mb-2">
+                  {{ convocatoria?.avisoPrivacidadTexto || 'Debes aceptar el aviso de privacidad para enviar tu postulación.' }}
+                </p>
+                <a *ngIf="convocatoria?.avisoPrivacidadUrl" [href]="convocatoria?.avisoPrivacidadUrl || '#'" target="_blank" rel="noopener noreferrer" class="small">
+                  Ver aviso completo
+                </a>
+                <div class="form-check mt-3">
+                  <input class="form-check-input" type="checkbox" id="aceptaAvisoPrivacidad" name="aceptaAvisoPrivacidad" [checked]="miPostulacion?.avisoPrivacidadAceptado === true" required>
+                  <label class="form-check-label" for="aceptaAvisoPrivacidad">
+                    Acepto el aviso de privacidad para el tratamiento de mis datos.
+                  </label>
+                </div>
+              </section>
+
+              <!-- Acciones -->
+              <div class="form-actions">
+                <button 
+                  type="submit"
+                  class="btn btn-primary-postulacion" 
+                  id="submitBtn"
+                  [disabled]="(!!miPostulacion && !modoEdicion) || (miPostulacion?.estado === 'CON_OBSERVACIONES' && plazoCorreccionVencido)">
+                  <i class="fas fa-paper-plane me-2"></i>
+                  {{ modoEdicion ? 'Actualizar postulación' : (miPostulacion ? 'Solicitud registrada' : 'Enviar postulación') }}
+                </button>
+                <a 
+                  routerLink="/app/convocatorias" 
+                  class="btn btn-secondary-postulacion">
+                  <i class="fas fa-arrow-left me-2"></i>
+                  Volver a Convocatorias
+                </a>
+              </div>
+
+              <!-- Placeholder para mensajes de éxito/error (controlado por JS) -->
+              <div id="formMessage" class="form-message mt-4" role="status" aria-live="polite" style="display:none;"></div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Sin convocatoria seleccionada -->
+        <div *ngIf="!errorConv && !convocatoriaId" class="postulacion-card text-center py-5">
+          <i class="fas fa-bullhorn fa-3x text-muted mb-3 opacity-50"></i>
+          <p class="text-muted mb-3">Debes seleccionar una convocatoria para postularte.</p>
+          <a routerLink="/app/convocatorias" class="btn btn-primary">Ver convocatorias</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+

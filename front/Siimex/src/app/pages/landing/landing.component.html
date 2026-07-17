@@ -1,0 +1,237 @@
+<div class="landing-wrap">
+  <!-- ===== HERO SECTION ===== -->
+  <section class="hero-section">
+    <div class="hero-background">
+      <div class="hero-gradient"></div>
+      <div class="hero-pattern"></div>
+    </div>
+    
+    <div class="container">
+      <div class="hero-content">
+        <!-- Hero Text -->
+        <div class="hero-text">
+          <div class="hero-badge">
+            <i class="fas fa-certificate me-2"></i>
+            <span>COMECyT · Estado de México</span>
+          </div>
+
+          <h1 class="hero-title">
+            <span class="hero-title-main">SIIMEX</span>
+            <span class="hero-title-sub">Sistema de investigadoras e innovadoras mexiquenses</span>
+          </h1>
+
+          <p class="hero-description">
+            Conecta con personas investigadoras e innovadoras, arma alianzas y construye conocimiento nuevo.
+            La plataforma oficial para la gestión y seguimiento de personas investigadoras e innovadoras.
+          </p>
+
+          <!-- CTA Buttons -->
+          <div class="hero-actions">
+            <a *ngIf="!isLoggedIn()" routerLink="/registro" class="btn btn-primary-hero">
+              <i class="fas fa-user-plus me-2"></i>
+              Crear cuenta
+            </a>
+            <a *ngIf="isLoggedIn()" routerLink="/app/convocatorias" class="btn btn-primary-hero">
+              <i class="fas fa-graduation-cap me-2"></i>
+              Ver convocatorias
+            </a>
+            <a *ngIf="!isLoggedIn()" routerLink="/login" class="btn btn-secondary-hero">
+              <i class="fas fa-sign-in-alt me-2"></i>
+              Iniciar sesión
+            </a>
+            <a routerLink="/folios-aprobados" class="btn btn-secondary-hero">
+              <i class="fas fa-list-check me-2"></i>
+              Folios aprobados
+            </a>
+          </div>
+
+          <!-- Trust Indicators -->
+          <div class="trust-indicators">
+            <div class="trust-item">
+              <div class="trust-icon">
+                <i class="fas fa-check-circle"></i>
+              </div>
+              <span>Convocatorias oficiales</span>
+            </div>
+            <div class="trust-item">
+              <div class="trust-icon">
+                <i class="fas fa-network-wired"></i>
+              </div>
+              <span>Redes y colaboración</span>
+            </div>
+            <div class="trust-item">
+              <div class="trust-icon">
+                <i class="fas fa-chart-line"></i>
+              </div>
+              <span>Seguimiento centralizado</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hero Visual -->
+        <div class="hero-visual">
+          <div class="hero-visual-stage">
+            <div class="hero-image-wrapper">
+              <div class="hero-image-glow"></div>
+              <img
+                src="assets/img/logo.png"
+                alt="SIIMEX - Sistema de personas investigadoras e innovadoras Mexiquenses"
+                class="hero-image"
+                loading="eager"
+              />
+            </div>
+            <div class="hero-floating-elements" aria-hidden="true">
+              <div class="floating-element element-1">
+                <i class="fas fa-microscope"></i>
+              </div>
+              <div class="floating-element element-2">
+                <i class="fas fa-flask"></i>
+              </div>
+              <div class="floating-element element-3">
+                <i class="fas fa-book-open"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== OBJECTIVE SECTION ===== -->
+  <section class="objective-section">
+    <div class="container">
+      <div class="objective-layout">
+        <div class="objective-copy">
+          <h2 class="objective-title">Integrar, reconocer y fortalecer el talento mexiquense</h2>
+          <p class="objective-text">
+            El SIIMEX tiene como objetivo integrar, reconocer y fortalecer a las personas que realizan
+            actividades de investigación científica, desarrollo tecnológico e innovación en el Estado de México.
+          </p>
+        </div>
+        <div class="objective-incentive">
+          <i class="fas fa-file-import"></i>
+          <div>
+            <h3>¡El registro es ágil y sencillo!</h3>
+            <p>
+              Si ya cuentas con un perfil en la Secretaría de Ciencia, Humanidades, Tecnología e Innovación (SECIHTI),
+              el proceso de registro al SIIMEX es más rápido y sencillo, ya que podrás exportar tu información mediante un clic.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== BENEFITS SECTION ===== -->
+  <section class="benefits-section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-award me-2"></i>
+          Beneficios de formar parte del SIIMEX
+        </h2>
+        <p class="section-subtitle">
+          Participa en una plataforma institucional diseñada para visibilizar y acompañar tu trayectoria.
+        </p>
+      </div>
+
+      <div class="benefits-grid">
+        <a [routerLink]="isLoggedIn() ? '/app/convocatorias' : '/registro'" class="benefit-card benefit-card--link text-decoration-none" data-aos="fade-up" data-aos-delay="0">
+          <div class="benefit-icon">
+            <i class="fas fa-certificate"></i>
+          </div>
+          <h3 class="benefit-title">Reconocimiento institucional</h3>
+          <p class="benefit-text">
+            Emisión de un nombramiento para reconocer formalmente tu participación dentro del SIIMEX.
+          </p>
+          <div class="benefit-link">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </a>
+
+        <a [routerLink]="isLoggedIn() ? '/app/convocatorias' : '/registro'" class="benefit-card benefit-card--link text-decoration-none" data-aos="fade-up" data-aos-delay="100">
+          <div class="benefit-icon icon-knowledge">
+            <i class="fas fa-hand-holding-dollar"></i>
+          </div>
+          <h3 class="benefit-title">Apoyos económicos</h3>
+          <p class="benefit-text">
+            Acceso a apoyos de acuerdo con la categoría de participación y la disponibilidad presupuestal.
+          </p>
+          <div class="benefit-link">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </a>
+
+        <a [routerLink]="isLoggedIn() ? '/app/convocatorias' : '/registro'" class="benefit-card benefit-card--link text-decoration-none" data-aos="fade-up" data-aos-delay="200">
+          <div class="benefit-icon icon-announcement">
+            <i class="fas fa-bullhorn"></i>
+          </div>
+          <h3 class="benefit-title">Prioridad en convocatorias</h3>
+          <p class="benefit-text">
+            Prioridad en convocatorias y programas impulsados por el COMECyT.
+          </p>
+          <div class="benefit-link">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </a>
+
+        <a routerLink="/investigadores" class="benefit-card benefit-card--link text-decoration-none" data-aos="fade-up" data-aos-delay="300">
+          <div class="benefit-icon icon-organization">
+            <i class="fas fa-users"></i>
+          </div>
+          <h3 class="benefit-title">Vinculación científica</h3>
+          <p class="benefit-text">
+            Vinculación con la comunidad científica y tecnológica del Estado de México.
+          </p>
+          <div class="benefit-link">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </a>
+
+        <a [routerLink]="isLoggedIn() ? '/app/convocatorias' : '/registro'" class="benefit-card benefit-card--link text-decoration-none" data-aos="fade-up" data-aos-delay="400">
+          <div class="benefit-icon icon-knowledge">
+            <i class="fas fa-chalkboard-user"></i>
+          </div>
+          <h3 class="benefit-title">Actividades académicas</h3>
+          <p class="benefit-text">
+            Participación en actividades académicas, de divulgación e innovación.
+          </p>
+          <div class="benefit-link">
+            <i class="fas fa-arrow-right"></i>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA SECTION ===== -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-card">
+        <div class="cta-content">
+          <h2 class="cta-title">
+            <i class="fas fa-rocket me-2"></i>
+            ¿Todo listo para comenzar?
+          </h2>
+          <p class="cta-text">
+            Únete a la comunidad de personas investigadoras e innovadoras mexiquenses y comienza a construir tu red profesional hoy mismo.
+          </p>
+        </div>
+        <div class="cta-actions">
+          <a *ngIf="!isLoggedIn()" routerLink="/registro" class="btn btn-cta-primary">
+            <i class="fas fa-user-plus me-2"></i>
+            Registrarse ahora
+          </a>
+          <a *ngIf="isLoggedIn()" routerLink="/app/convocatorias" class="btn btn-cta-primary">
+            <i class="fas fa-graduation-cap me-2"></i>
+            Ver convocatorias
+          </a>
+          <a routerLink="/investigadores" class="btn btn-cta-secondary">
+            <i class="fas fa-users me-2"></i>
+            Ver personas investigadoras e innovadoras
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

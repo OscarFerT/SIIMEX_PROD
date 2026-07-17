@@ -1,0 +1,154 @@
+<div class="col-lg-4 mb-4">
+  <div class="card border-borgona shadow-sm mb-3">
+    <div class="card-header bg-light text-borgona fw-bold text-center">Identificación</div>
+    <div class="card-body text-center">
+      <div class="mb-3">
+        <img src="assets/img/perfil-id.png" alt="ID" style="width: 50px; opacity: 0.7;">
+      </div>
+      <div class="text-start">
+        <label class="form-label small text-muted fw-bold">ID Interno (UUID)</label>
+        <input type="text" id="id_perfil" name="id_perfil" class="form-control form-control-sm text-center" 
+               disabled value="550e8400-e29b-41d4-a716-446655440000">
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-borgona shadow-sm">
+    <div class="card-header bg-light text-borgona fw-bold text-center">Enlaces académicos</div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label small fw-bold" for="orcid_url">ORCID URL</label>
+        <div class="input-group">
+          <span class="input-group-text bg-light border-borgona">
+            <img src="assets/img/link.png" style="width:16px;height:16px;">
+          </span>
+          <input type="url" id="orcid_url" name="orcid_url" class="form-control input-custom" placeholder="[https://orcid.org/](https://orcid.org/)...">
+        </div>
+      </div>
+      <div class="mb-0">
+        <label class="form-label small fw-bold" for="scholar_url">Google Scholar URL</label>
+        <div class="input-group">
+          <span class="input-group-text bg-light border-borgona">
+            <img src="assets/img/link.png" style="width:16px;height:16px;">
+          </span>
+          <input type="url" id="scholar_url" name="scholar_url" class="form-control input-custom" placeholder="[https://scholar.google.com/](https://scholar.google.com/)...">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="col-lg-8">
+  
+  <div class="card border-borgona mb-3 shadow-sm">
+    <div class="card-header bg-light text-borgona fw-bold">Datos de identidad</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label fw-bold small" for="nombre">Nombre(s) *</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light border-borgona">
+              <img src="assets/img/user.png" style="width:18px;height:18px;">
+            </span>
+            <input type="text" id="nombre" name="nombre" class="form-control input-custom" required placeholder="Nombre(s)">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-bold small" for="primer_apellido">Primer apellido *</label>
+          <input type="text" id="primer_apellido" name="primer_apellido" class="form-control input-custom" required placeholder="Apellido paterno">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-bold small" for="segundo_apellido">Segundo apellido</label>
+          <input type="text" id="segundo_apellido" name="segundo_apellido" class="form-control input-custom" placeholder="Apellido materno">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-borgona mb-3 shadow-sm">
+    <div class="card-header bg-light text-borgona fw-bold">Información oficial y demográfica</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-bold small" for="curp">CURP</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light border-borgona">
+              <img src="assets/img/key.png" style="width:18px;height:18px;">
+            </span>
+            <input type="text" id="curp" name="curp" class="form-control input-custom" placeholder="CURP">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold small" for="rfc">RFC</label>
+          <input type="text" id="rfc" name="rfc" class="form-control input-custom" placeholder="RFC">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold small" for="fecha_nacimiento">Fecha de nacimiento</label>
+          <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" class="form-control input-custom">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold small" for="sexo_id">Sexo</label>
+          <select id="sexo_id" name="sexo_id" class="form-select input-custom">
+            <option value="">Selecciona...</option>
+            <option value="M">Mujer</option>
+            <option value="H">Hombre</option>
+            <option value="O">Otro</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-borgona mb-3 shadow-sm">
+    <div class="card-header bg-light text-borgona fw-bold">Lugar de nacimiento y estado civil</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-bold small" for="pais_nacimiento_id">País de nacimiento</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light border-borgona">
+              <img src="assets/img/institucion.png" style="width:18px;height:18px;">
+            </span>
+            <input type="text" id="pais_nacimiento_nombre" name="pais_nacimiento_nombre" class="form-control input-custom" placeholder="País">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold small" for="entidad_nombre">Entidad federativa</label>
+          <input type="text" id="entidad_nombre" name="entidad_nombre" class="form-control input-custom" placeholder="Estado/Provincia">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold small" for="nacionalidad_nombre">Nacionalidad</label>
+          <input type="text" id="nacionalidad_nombre" name="nacionalidad_nombre" class="form-control input-custom" placeholder="Ej. Mexicana">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold small" for="estado_civil_id">Estado civil</label>
+          <select id="estado_civil_id" name="estado_civil_id" class="form-select input-custom">
+            <option value="">Selecciona...</option>
+            <option value="S">Soltero(a)</option>
+            <option value="C">Casado(a)</option>
+            <option value="D">Divorciado(a)</option>
+            <option value="V">Viudo(a)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-borgona mb-3 shadow-sm">
+    <div class="card-header bg-light text-borgona fw-bold">Semblanza profesional</div>
+    <div class="card-body">
+      <label class="form-label fw-bold small" for="semblanza">Resumen de trayectoria</label>
+      <textarea id="semblanza" name="semblanza" class="form-control input-custom" rows="5" placeholder="Escribe tu semblanza aquí..."></textarea>
+    </div>
+  </div>
+
+  <div class="text-center mt-4">
+    <button type="submit" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto" id="submitBtn">
+      <img src="assets/img/guardar.png" alt="" style="width:18px;height:18px;"> 
+      Guardar datos personales
+    </button>
+  </div>
+
+</div>
+
+

@@ -1,0 +1,169 @@
+<main class="contact-page">
+  <!-- Hero -->
+  <section class="contact-hero">
+    <div class="contact-hero-bg"></div>
+    <div class="container contact-hero-content">
+      <span class="contact-badge" id="openStatus" aria-live="polite">Cargando horario…</span>
+      <h1 class="contact-title">Contáctanos</h1>
+      <p class="contact-subtitle">
+        Aclaramos dudas, proponemos colaboraciones y brindamos asesoría sobre programas y servicios de apoyo a la investigación e innovación.
+      </p>
+    </div>
+  </section>
+
+  <div class="container contact-main">
+    <div class="row g-4 g-lg-5">
+      <!-- Formulario -->
+      <section class="col-lg-7" aria-labelledby="contactFormHeading">
+        <div class="contact-form-card" id="contactFormHeading">
+          <div class="contact-form-header">
+            <span class="contact-form-icon"><i class="fas fa-paper-plane"></i></span>
+            <h2 class="contact-form-title">Envíanos un mensaje</h2>
+            <p class="contact-form-desc">Completa el formulario y te responderemos a la brevedad.</p>
+          </div>
+
+          <div class="chip-group" role="group" aria-label="Motivos rápidos">
+            <button type="button" class="chip" data-subject="general"><i class="fas fa-info-circle me-1"></i>Información</button>
+            <button type="button" class="chip" data-subject="colaboracion"><i class="fas fa-handshake me-1"></i>Colaboración</button>
+            <button type="button" class="chip" data-subject="publicacion"><i class="fas fa-newspaper me-1"></i>Publicación</button>
+            <button type="button" class="chip" data-subject="convocatoria"><i class="fas fa-bullhorn me-1"></i>Convocatoria</button>
+            <button type="button" class="chip" data-subject="soporte"><i class="fas fa-headset me-1"></i>Soporte</button>
+            <button type="button" class="chip" data-subject="otro"><i class="fas fa-ellipsis-h me-1"></i>Otro</button>
+          </div>
+
+          <form id="contactForm" class="needs-validation contact-form-body" novalidate method="post" action="/api/contacto">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="contactName" class="form-label">Nombre completo <span class="text-danger">*</span></label>
+                <input type="text" id="contactName" name="name" class="form-control input-modern"
+                       placeholder="Tu nombre" required maxlength="120" aria-required="true" />
+                <div class="invalid-feedback">Introduce tu nombre.</div>
+              </div>
+              <div class="col-md-6">
+                <label for="contactEmail" class="form-label">Correo electrónico <span class="text-danger">*</span></label>
+                <input type="email" id="contactEmail" name="email" class="form-control input-modern"
+                       placeholder="correo@dominio.com" required aria-required="true" />
+                <div class="invalid-feedback">Introduce un correo válido.</div>
+              </div>
+              <div class="col-md-6">
+                <label for="contactEmailConfirm" class="form-label">Confirmar correo <span class="text-danger">*</span></label>
+                <input type="email" id="contactEmailConfirm" name="emailConfirm" class="form-control input-modern"
+                       placeholder="correo@dominio.com" required aria-required="true" />
+                <div class="invalid-feedback">Los correos deben coincidir.</div>
+              </div>
+              <div class="col-md-6">
+                <label for="contactSubject" class="form-label">Asunto <span class="text-danger">*</span></label>
+                <select id="contactSubject" name="subject" class="form-select input-modern"
+                        required aria-required="true" aria-describedby="subjectHint">
+                  <option value="">Selecciona un motivo...</option>
+                  <option value="general">Consulta general</option>
+                  <option value="colaboracion">Colaboración</option>
+                  <option value="publicacion">Publicación / Divulgación</option>
+                  <option value="convocatoria">Convocatoria</option>
+                  <option value="soporte">Soporte técnico</option>
+                  <option value="otro">Otro</option>
+                </select>
+                <div id="subjectHint" class="form-text contact-hint" aria-live="polite">Elige un motivo para ver recomendaciones.</div>
+                <div class="invalid-feedback">Selecciona un asunto.</div>
+              </div>
+              <div class="col-md-6">
+                <label for="contactPhone" class="form-label">Teléfono <span class="text-muted">(opcional)</span></label>
+                <input type="tel" id="contactPhone" name="phone" class="form-control input-modern"
+                       placeholder="(55) 1234 5678" pattern="^[0-9()+\-\s]{7,20}$" aria-describedby="phoneHelp" />
+                <div id="phoneHelp" class="form-text contact-hint">Formato: +52 (55) 1234 5678</div>
+              </div>
+            </div>
+
+            <div class="contact-message-wrap">
+              <label for="contactMessage" class="form-label">Mensaje <span class="text-danger">*</span></label>
+              <textarea id="contactMessage" name="message" class="form-control input-modern"
+                        rows="5" required maxlength="5000"
+                        placeholder="Comparte el contexto, objetivo y datos útiles para responder."></textarea>
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2">
+                <small class="contact-hint">Ej: "Fallo al adjuntar PDF en Solicitudes (ID 2314), Chrome 128"</small>
+                <span id="msgCounter" class="contact-counter" aria-live="polite">0 / 5000</span>
+              </div>
+              <div class="invalid-feedback">Escribe tu mensaje.</div>
+            </div>
+
+            <div class="contact-consent">
+              <input id="contactConsent" name="consent" class="form-check-input" type="checkbox" required />
+              <label for="contactConsent" class="form-check-label">
+                Acepto el uso de mis datos para responder esta consulta
+              </label>
+              <div class="invalid-feedback">Debes aceptar para enviar.</div>
+            </div>
+
+            <div class="contact-form-actions">
+              <button type="reset" class="btn btn-contact-outline">Limpiar</button>
+              <button type="button" class="btn btn-contact-primary" id="contactSubmitBtn">
+                <i class="fas fa-paper-plane me-2"></i><span class="btn-label">Enviar mensaje</span>
+              </button>
+            </div>
+            <div id="contactFormMessage" class="mt-3" role="status" aria-live="polite" style="display:none;"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Sidebar info -->
+      <aside class="col-lg-5" aria-labelledby="infoHeading">
+        <div class="contact-info-card">
+          <div class="contact-info-header">
+            <h3 id="infoHeading" class="contact-info-title">Información institucional</h3>
+            <span class="contact-status-badge" id="openNowPill" aria-hidden="true">—</span>
+          </div>
+          <div class="contact-info-body">
+            <div class="contact-info-item">
+              <div class="contact-info-icon"><i class="fas fa-map-marker-alt"></i></div>
+              <div>
+                <p class="contact-info-label">Dirección</p>
+                <p class="contact-info-value">Av. Principal 123, Col. Centro, Texcoco de Mora, Estado de México</p>
+              </div>
+            </div>
+            <div class="contact-info-item">
+              <div class="contact-info-icon"><i class="fas fa-phone-alt"></i></div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <p class="contact-info-value mb-0" id="instPhone">(55) 1234 5678</p>
+                <button type="button" class="btn btn-contact-copy" id="copyPhone" aria-label="Copiar teléfono"><i class="fas fa-copy"></i> Copiar</button>
+              </div>
+            </div>
+            <div class="contact-info-item">
+              <div class="contact-info-icon"><i class="fas fa-envelope"></i></div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <p class="contact-info-value mb-0" id="instEmail">informes&#64;SIIMEX.mx</p>
+                <button type="button" class="btn btn-contact-copy" id="copyEmail" aria-label="Copiar correo"><i class="fas fa-copy"></i> Copiar</button>
+              </div>
+            </div>
+            <div class="contact-info-item">
+              <div class="contact-info-icon"><i class="fas fa-clock"></i></div>
+              <div>
+                <p class="contact-info-label">Horario</p>
+                <p class="contact-info-value mb-0">Lunes a viernes, 9:00 – 17:00</p>
+              </div>
+            </div>
+            <hr class="contact-info-divider" />
+            <h6 class="contact-info-subtitle">Canales alternos</h6>
+            <ul class="contact-info-list">
+              <li><i class="fas fa-headset me-2 text-borgona"></i>Soporte: soporte&#64;SIIMEX.mx</li>
+              <li><i class="fas fa-bullhorn me-2 text-borgona"></i>Prensa: prensa&#64;SIIMEX.mx</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Modal éxito -->
+  <div class="modal fade" id="contactSuccessModal" tabindex="-1" aria-labelledby="contactSuccessLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-sm">
+      <div class="modal-content contact-success-modal">
+        <div class="modal-body text-center py-5 px-4">
+          <div class="contact-success-icon"><i class="fas fa-check-circle"></i></div>
+          <h5 class="modal-title text-borgona fw-bold mb-2" id="contactSuccessLabel">Mensaje enviado</h5>
+          <p class="mb-0 text-muted">Tu mensaje ha sido recibido correctamente. Nuestro equipo te responderá a la brevedad.</p>
+          <button type="button" class="btn btn-contact-primary mt-4" data-bs-dismiss="modal">Aceptar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>

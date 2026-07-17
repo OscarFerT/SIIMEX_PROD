@@ -1,0 +1,12 @@
+{
+  "/auth": { "target": "http://localhost:8083", "secure": false },
+  "/usuarios": { "target": "http://localhost:8083", "secure": false },
+  "/documentos": { "target": "http://localhost:8083", "secure": false },
+  "/registro1": { "target": "http://localhost:8083", "secure": false },
+  "/migracion": { "target": "http://localhost:8083", "secure": false },
+  "/trayectoria": { "target": "http://localhost:8083", "secure": false },
+  "/postulaciones": { "target": "http://localhost:8083", "secure": false },
+  "/actuator": { "target": "http://localhost:8083", "secure": false },
+  "/convocatorias": { "target": "http://localhost:8083", "secure": false },
+  "/convocatorias-imagenes": { "target": "http://localhost:8083", "secure": false }
+}

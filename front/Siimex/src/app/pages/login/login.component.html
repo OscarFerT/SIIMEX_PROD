@@ -1,0 +1,230 @@
+<div class="login-wrapper">
+  <div class="login-background">
+    <div class="login-gradient"></div>
+    <div class="login-pattern"></div>
+  </div>
+
+  <div class="login-container">
+    <!-- Sección: Login -->
+    <div class="login-left">
+      <div class="login-header">
+        <div class="login-badge">
+          <i class="fas fa-shield-alt me-2"></i>
+          <span>COMECyT · Estado de México</span>
+        </div>
+        <h1 class="login-title">
+          <span class="title-main">SIIMEX</span>
+          <span class="title-sub">Sistema de investigadoras e innovadoras mexiquenses</span>
+        </h1>
+        <p class="login-welcome">
+          Bienvenida o bienvenido de nuevo. Inicia sesión para acceder a tu cuenta.
+        </p>
+      </div>
+
+      <!-- Paso 1: Email + contraseña -->
+      <form *ngIf="step === 1" [formGroup]="form" (ngSubmit)="submitStep1()" class="login-form" novalidate>
+        <!-- Campo correo -->
+        <div class="form-group">
+          <label for="correo" class="form-label">
+            <i class="fas fa-envelope me-2"></i>
+            Correo electrónico
+          </label>
+          <div class="input-wrapper">
+            <div class="input-icon">
+              <img src="assets/img/correo.png" alt="Correo" width="20" height="20" />
+            </div>
+            <input 
+              id="correo" 
+              type="email" 
+              class="form-input" 
+              formControlName="email"
+              placeholder="ejemplo@correo.com" 
+              autocomplete="username"
+              [class.is-invalid]="form.get('email')?.touched && form.get('email')?.invalid"
+              [class.is-valid]="form.get('email')?.touched && form.get('email')?.valid" />
+            <div class="input-feedback" *ngIf="form.get('email')?.touched && form.get('email')?.invalid">
+              <i class="fas fa-exclamation-circle me-1"></i>
+              Correo inválido
+            </div>
+            <div class="input-feedback valid" *ngIf="form.get('email')?.touched && form.get('email')?.valid">
+              <i class="fas fa-check-circle me-1"></i>
+              Correo válido
+            </div>
+          </div>
+        </div>
+
+        <!-- Campo contraseña -->
+        <div class="form-group">
+          <label for="password" class="form-label">
+            <i class="fas fa-lock me-2"></i>
+            Contraseña
+          </label>
+          <div class="input-wrapper">
+            <div class="input-icon">
+              <img src="assets/img/pass.png" alt="Contraseña" width="20" height="20" />
+            </div>
+            <input 
+              id="password" 
+              type="password" 
+              class="form-input" 
+              formControlName="password"
+              placeholder="••••••••" 
+              autocomplete="current-password"
+              [class.is-invalid]="form.get('password')?.touched && form.get('password')?.invalid"
+              [class.is-valid]="form.get('password')?.touched && form.get('password')?.valid" />
+            <div class="input-feedback" *ngIf="form.get('password')?.touched && form.get('password')?.invalid">
+              <i class="fas fa-exclamation-circle me-1"></i>
+              La contraseña es obligatoria
+            </div>
+            <div class="input-feedback valid" *ngIf="form.get('password')?.touched && form.get('password')?.valid">
+              <i class="fas fa-check-circle me-1"></i>
+              Contraseña válida
+            </div>
+          </div>
+        </div>
+
+        <!-- Recordar y recuperar -->
+        <div class="form-options">
+          <div class="form-check-custom">
+            <input class="form-check-input-custom" type="checkbox" id="recordar" formControlName="remember" />
+            <label class="form-check-label-custom" for="recordar">
+              <i class="fas fa-check"></i>
+              Recuérdame
+            </label>
+          </div>
+          <a routerLink="/recuperacion" class="forgot-link">
+            <i class="fas fa-key me-1"></i>
+            ¿Olvidaste tu contraseña?
+          </a>
+        </div>
+
+        <!-- Botón de envío -->
+        <button 
+          type="submit" 
+          class="btn-login-submit"
+          [disabled]="loading || form.invalid">
+          <span *ngIf="!loading">
+            <i class="fas fa-sign-in-alt me-2"></i>
+            ENVIAR CÓDIGO
+          </span>
+          <span *ngIf="loading" class="loading-content">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Enviando código...
+          </span>
+        </button>
+
+        <!-- Mensaje de error -->
+        <div class="alert-error" *ngIf="errorMsg">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          {{ errorMsg }}
+        </div>
+      </form>
+
+      <!-- Paso 2: Código de verificación -->
+      <form *ngIf="step === 2" [formGroup]="codeForm" (ngSubmit)="submitStep2()" class="login-form" novalidate>
+        <p class="text-muted small mb-3">
+          <i class="fas fa-envelope-open-text me-1"></i>
+          Código enviado a <strong>{{ pendingEmail }}</strong>
+        </p>
+        <div class="form-group">
+          <label for="codigo" class="form-label">
+            <i class="fas fa-shield-alt me-2"></i>
+            Código de verificación
+          </label>
+          <div class="input-wrapper">
+            <div class="input-icon">
+              <img src="assets/img/correo.png" alt="Código" width="20" height="20" />
+            </div>
+            <input 
+              id="codigo" 
+              type="text" 
+              class="form-input text-center" 
+              formControlName="code"
+              placeholder="000000" 
+              maxlength="6"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              [class.is-invalid]="codeForm.get('code')?.touched && codeForm.get('code')?.invalid"
+              [class.is-valid]="codeForm.get('code')?.touched && codeForm.get('code')?.valid" />
+            <div class="input-feedback" *ngIf="codeForm.get('code')?.touched && codeForm.get('code')?.invalid">
+              <i class="fas fa-exclamation-circle me-1"></i>
+              Ingresa los 6 dígitos del correo
+            </div>
+            <div class="input-feedback valid" *ngIf="codeForm.get('code')?.touched && codeForm.get('code')?.valid">
+              <i class="fas fa-check-circle me-1"></i>
+              Código válido
+            </div>
+          </div>
+        </div>
+
+        <button 
+          type="submit" 
+          class="btn-login-submit"
+          [disabled]="loading || codeForm.invalid">
+          <span *ngIf="!loading">
+            <i class="fas fa-check me-2"></i>
+            VERIFICAR Y ENTRAR
+          </span>
+          <span *ngIf="loading" class="loading-content">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Verificando...
+          </span>
+        </button>
+
+        <button type="button" class="btn btn-link btn-sm mt-2 text-muted" (click)="volverAlPaso1()">
+          <i class="fas fa-arrow-left me-1"></i> Usar otro correo
+        </button>
+
+        <div class="alert-error mt-2" *ngIf="errorMsg">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          {{ errorMsg }}
+        </div>
+      </form>
+
+      <!-- Divider -->
+      <div class="login-divider">
+        <span>¿No tienes cuenta?</span>
+      </div>
+
+      <!-- Link a registro -->
+      <a routerLink="/registro" class="btn-register-link">
+        <i class="fas fa-user-plus me-2"></i>
+        Crear una cuenta nueva
+      </a>
+
+    </div>
+
+    <!-- Sección: Visual/Logo -->
+    <div class="login-right">
+      <div class="login-visual">
+        <div class="logo-wrapper">
+          <div class="logo-glow"></div>
+          <img src="assets/img/logo.png" alt="Logo COMECyT" class="logo-image" />
+        </div>
+        <div class="login-features">
+          <div class="feature-item">
+            <i class="fas fa-check-circle"></i>
+            <span>Reconocimientos institucionales</span>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-check-circle"></i>
+            <span>Convocatorias COMECyT</span>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-check-circle"></i>
+            <span>Acceso a apoyos</span>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-check-circle"></i>
+            <span>Vinculación científica</span>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-check-circle"></i>
+            <span>Registro ágil con SECIHTI</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
