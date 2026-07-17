@@ -3036,14 +3036,29 @@ export class CompletarRegistroComponent implements OnInit {
           });
         } else {
           // Otros errores
-          const errorMessage = err?.error?.message || err?.error?.error || 'Error al completar el registro. Por favor, intente nuevamente.';
-        Swal.fire({
-          icon: 'error',
-          title: 'Error al registrar',
-          text: errorMessage,
+          const errorPayload = err?.error;
+          const errorMessage =
+            errorPayload?.message ||
+            errorPayload?.error ||
+            errorPayload?.display_message ||
+            err?.message ||
+            'Error al completar el registro. Por favor, intente nuevamente.';
+          const trackingCode =
+            errorPayload?.traceId ||
+            errorPayload?.message_ID ||
+            errorPayload?.messageId ||
+            errorPayload?.attack_ID ||
+            null;
+          const fullErrorMessage = trackingCode
+            ? `${errorMessage}\n\nCódigo de seguimiento: ${trackingCode}`
+            : errorMessage;
+          Swal.fire({
+            icon: 'error',
+            title: 'Error al registrar',
+            text: fullErrorMessage,
             confirmButtonColor: '#800020',
             confirmButtonText: 'Entendido'
-        });
+          });
         }
       }
     });
@@ -5613,4 +5628,6 @@ export class CompletarRegistroComponent implements OnInit {
     return [...items].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
   }
 }
+
+
 

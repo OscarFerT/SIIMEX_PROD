@@ -1,6 +1,8 @@
 package com.example.proyecto.demo.controller;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,7 +58,24 @@ public class PerfilMigracionController {
             @RequestPart(value = "divulg_archivo", required = false) MultipartFile divulgArchivo,
             MultipartHttpServletRequest multipartRequest) {
 
-        log.info(">>> Iniciando creación de PerfilMigracion");
+        String traceId = "MIG-" + UUID.randomUUID().toString().substring(0, 8);
+        log.info(">>> [{}] Iniciando creación de PerfilMigracion", traceId);
+        log.info(">>> [{}] Resumen request multipart: camposForm={}, archivosMultipart={}",
+                traceId,
+                formData != null ? formData.size() : 0,
+                multipartRequest != null ? multipartRequest.getFileMap().size() : 0);
+        log.info(">>> [{}] Archivos recibidos: cvFile={}, fiscalPdf={}, domicilio={}, cert1={}, cert2={}, idioma_cert_documento={}, acad_constancia_snii={}, estancia_documento={}, divulg_archivo={}",
+                traceId,
+                resumirArchivo(cvFile),
+                resumirArchivo(fiscalPdf),
+                resumirArchivo(domicilio),
+                resumirArchivo(cert1),
+                resumirArchivo(cert2),
+                resumirArchivo(idiomaCertDocumento),
+                resumirArchivo(acadConstanciaSnii),
+                resumirArchivo(estanciaDocumento),
+                resumirArchivo(divulgArchivo));
+        log.info(">>> [{}] Llaves multipart detectadas: {}", traceId, resumirLlavesMultipart(multipartRequest));
         try {
             // Obtener el usuario autenticado
             if (auth == null || auth.getPrincipal() == null) {
@@ -150,7 +169,9 @@ public class PerfilMigracionController {
                 }
             }
             
-            log.info(">>> Total de campos procesados: {}", datos.size());
+            datos.put("_traceId", traceId);
+            log.info(">>> [{}] Total de campos procesados: {}", traceId, datos.size());
+            log.info(">>> [{}] Llaves de datos normalizados: {}", traceId, resumirLlavesDatos(datos));
             
             // Generar migracionId si no existe (para PerfilMigracion)
             Object migracionIdObj = datos.getOrDefault("migracionId", "");
@@ -258,22 +279,25 @@ public class PerfilMigracionController {
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
         } catch (IllegalArgumentException e) {
-            log.error(">>> Error de validación al procesar perfil: {}", e.getMessage(), e);
+            log.error(">>> [{}] Error de validación al procesar perfil: {}", traceId, e.getMessage(), e);
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
             errorResponse.put("message", "Error de validación: " + (e.getMessage() != null ? e.getMessage() : "Datos inválidos"));
+            errorResponse.put("traceId", traceId);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         } catch (ResponseStatusException e) {
-            log.error(">>> Error de estado al procesar perfil: {}", e.getMessage(), e);
+            log.error(">>> [{}] Error de estado al procesar perfil: {}", traceId, e.getMessage(), e);
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
             errorResponse.put("message", e.getReason() != null ? e.getReason() : "Error al procesar la solicitud");
+            errorResponse.put("traceId", traceId);
             return ResponseEntity.status(e.getStatusCode()).body(errorResponse);
         } catch (Exception e) {
-            log.error(">>> Error inesperado al procesar perfil: {}", e.getMessage(), e);
+            log.error(">>> [{}] Error inesperado al procesar perfil: {}", traceId, e.getMessage(), e);
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
             errorResponse.put("message", "Error al procesar el perfil");
+            errorResponse.put("traceId", traceId);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
@@ -347,6 +371,39 @@ public class PerfilMigracionController {
         objectMapper.readTree(migracionJson.getBytes());
     }
 
+    private String resumirArchivo(MultipartFile archivo) {
+        if (archivo == null) {
+            return "null";
+        }
+        return String.format("%s (%d bytes, %s, empty=%s)",
+                FileSecurityUtils.sanitizeFilename(archivo.getOriginalFilename(), "archivo_desconocido"),
+                archivo.getSize(),
+                archivo.getContentType(),
+                archivo.isEmpty());
+    }
+
+    private String resumirLlavesMultipart(MultipartHttpServletRequest multipartRequest) {
+        if (multipartRequest == null || multipartRequest.getFileMap().isEmpty()) {
+            return "[]";
+        }
+        List<String> llaves = new ArrayList<>();
+        for (Map.Entry<String, MultipartFile> entry : multipartRequest.getFileMap().entrySet()) {
+            llaves.add(entry.getKey() + "=" + resumirArchivo(entry.getValue()));
+        }
+        return llaves.toString();
+    }
+
+    private String resumirLlavesDatos(Map<String, Object> datos) {
+        if (datos == null || datos.isEmpty()) {
+            return "[]";
+        }
+        List<String> llaves = new ArrayList<>(datos.keySet());
+        llaves.sort(String::compareTo);
+        if (llaves.size() > 60) {
+            return llaves.subList(0, 60) + " ... total=" + llaves.size();
+        }
+        return llaves.toString();
+    }
     /**
      * Endpoint para verificar si el usuario ya tiene un PerfilMigracion guardado
      */
@@ -462,3 +519,7 @@ public class PerfilMigracionController {
         }
     }
 }
+
+
+
+

@@ -44,7 +44,13 @@ public class PerfilCompletoService {
     @Transactional(rollbackFor = {IllegalStateException.class}, noRollbackFor = {IllegalArgumentException.class, NullPointerException.class})
     public PerfilMigracion guardarPerfilCompleto(Map<String, Object> datos) {
         PerfilMigracion perfilMigracion = null; // Declarar fuera del try para acceso en catch
+        String traceId = convertirAString(datos.get("_traceId"));
+        if (traceId == null || traceId.isBlank()) {
+            traceId = "MIG-SVC-" + UUID.randomUUID().toString().substring(0, 8);
+        }
         try {
+            log.info(">>> [{}] guardarPerfilCompleto iniciado con {} campos", traceId, datos != null ? datos.size() : 0);
+            log.info(">>> [{}] Llaves recibidas en service: {}", traceId, resumirLlavesDatos(datos));
             String migracionId = convertirAString(datos.get("migracionId"));
             
             // Si no se proporciona migracionId, generar uno automáticamente
@@ -73,7 +79,7 @@ public class PerfilCompletoService {
                 log.info(">>> migracionId generado automáticamente: {}", migracionId);
             }
             
-            log.info(">>> Iniciando guardado de perfil para migracionId: {}", migracionId);
+            log.info(">>> [{}] Iniciando guardado de perfil para migracionId: {}", traceId, migracionId);
             
             // 1. Buscar o crear PerfilMigracion
             perfilMigracion = perfilMigracionRepository.findByMigracionId(migracionId)
@@ -81,7 +87,7 @@ public class PerfilCompletoService {
                             .migracionId(migracionId)
                             .build());
             
-            log.info(">>> PerfilMigracion {} encontrado/creado", perfilMigracion.getId() != null ? perfilMigracion.getId() : "nuevo");
+            log.info(">>> [{}] PerfilMigracion {} encontrado/creado", traceId, perfilMigracion.getId() != null ? perfilMigracion.getId() : "nuevo");
             
             // Actualizar campos del perfil de migración (tanto si es nuevo como existente)
             if (datos.get("perfilCvu") != null) {
@@ -131,7 +137,7 @@ public class PerfilCompletoService {
                         usuarioFinal = usuarioRepository.findById(finalUsuarioId).orElse(null);
                         if (usuarioFinal != null) {
                             perfilMigracion.setUsuario(usuarioFinal);
-                            log.info(">>> PerfilMigracion vinculado con Usuario: {}", finalUsuarioId);
+                            log.info(">>> [{}] PerfilMigracion vinculado con Usuario: {}", traceId, finalUsuarioId);
                         } else {
                             log.warn(">>> Usuario no encontrado con ID: {}. Continuando sin usuario vinculado.", finalUsuarioId);
                         }
@@ -157,12 +163,12 @@ public class PerfilCompletoService {
             }
             
             perfilMigracion = perfilMigracionRepository.save(perfilMigracion);
-            log.info(">>> PerfilMigracion guardado exitosamente con ID: {}", perfilMigracion.getId());
+            log.info(">>> [{}] PerfilMigracion guardado exitosamente con ID: {}", traceId, perfilMigracion.getId());
             
             // Verificar que el usuario sigue disponible después de guardar (por si acaso)
             if (perfilMigracion.getUsuario() != null && usuarioFinal == null) {
                 usuarioFinal = perfilMigracion.getUsuario();
-                log.info(">>> Usuario obtenido del PerfilMigracion guardado");
+                log.info(">>> [{}] Usuario obtenido del PerfilMigracion guardado", traceId);
             }
 
             // 1.5. Actualizar Registro1 si se proporcionan campos de genero o estadoCivil
@@ -399,25 +405,25 @@ public class PerfilCompletoService {
                 // No propagar la excepción para no marcar la transacción para rollback
             }
 
-            log.info(">>> PerfilMigracion completo guardado exitosamente");
+            log.info(">>> [{}] PerfilMigracion completo guardado exitosamente", traceId);
             
             // Verificar que el perfil se guardó correctamente
             if (perfilMigracion == null || perfilMigracion.getId() == null) {
-                log.error(">>> PerfilMigracion no se guardó correctamente");
+                log.error(">>> [{}] PerfilMigracion no se guardó correctamente", traceId);
                 throw new IllegalStateException("No se pudo guardar el PerfilMigracion");
             }
             
             return perfilMigracion;
         } catch (IllegalStateException e) {
             // Esta excepción SÍ debe causar rollback
-            log.error(">>> Error crítico de estado al guardar perfil completo: {}", e.getMessage(), e);
+            log.error(">>> [{}] Error crítico de estado al guardar perfil completo: {}", traceId, e.getMessage(), e);
             throw e;
         } catch (Exception e) {
             // Otras excepciones no críticas: loguear pero intentar retornar el perfil si existe
-            log.error(">>> Error no crítico al guardar perfil completo: {}", e.getMessage(), e);
+            log.error(">>> [{}] Error no crítico al guardar perfil completo: {}", traceId, e.getMessage(), e);
             // Intentar retornar el perfil si existe, aunque haya habido errores parciales
             if (perfilMigracion != null && perfilMigracion.getId() != null) {
-                log.warn(">>> Retornando PerfilMigracion parcialmente guardado debido a errores no críticos");
+                log.warn(">>> [{}] Retornando PerfilMigracion parcialmente guardado debido a errores no críticos", traceId);
                 return perfilMigracion;
             }
             // Si no hay perfil guardado, lanzar IllegalStateException para rollback
@@ -425,6 +431,17 @@ public class PerfilCompletoService {
         }
     }
 
+    private String resumirLlavesDatos(Map<String, Object> datos) {
+        if (datos == null || datos.isEmpty()) {
+            return "[]";
+        }
+        java.util.List<String> llaves = new java.util.ArrayList<>(datos.keySet());
+        llaves.sort(String::compareTo);
+        if (llaves.size() > 80) {
+            return llaves.subList(0, 80) + " ... total=" + llaves.size();
+        }
+        return llaves.toString();
+    }
     private void guardarAreaConocimiento(Usuario usuario, Map<String, Object> datos) {
         // Eliminar áreas anteriores si existen
         areaConocimientoRepository.findByUsuarioId(usuario.getId()).forEach(areaConocimientoRepository::delete);
@@ -1165,6 +1182,11 @@ public class PerfilCompletoService {
         guardarInteresHabilidad(usuario, datos);
     }
 }
+
+
+
+
+
 
 
 
