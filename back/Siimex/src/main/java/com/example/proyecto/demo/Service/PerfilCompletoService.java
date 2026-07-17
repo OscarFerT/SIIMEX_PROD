@@ -935,18 +935,18 @@ public class PerfilCompletoService {
     }
 
     private void guardarInteresHabilidad(Usuario usuario, Map<String, Object> datos) {
-        // Eliminar interés/habilidad anterior si existe
-        interesHabilidadRepository.findByUsuarioId(usuario.getId())
-                .ifPresent(interesHabilidadRepository::delete);
-
         String interesDescripcion = truncarTextoLargo(datos.get("interesDescripcion"));
-        InteresHabilidad interesHabilidad = InteresHabilidad.builder()
-                .usuario(usuario)
-                .fotoUri(convertirAString(datos.get("fotoUri")))
-                .interesDescripcion(interesDescripcion)
-                .habilidadDescripcion(truncarTextoLargo(datos.get("habilidadDescripcion")))
-                .habilidadNivel(convertirAString(datos.get("habilidadNivel")))
-                .build();
+        InteresHabilidad interesHabilidad = interesHabilidadRepository.findByUsuarioId(usuario.getId())
+                .orElseGet(() -> {
+                    InteresHabilidad nuevo = new InteresHabilidad();
+                    nuevo.setUsuario(usuario);
+                    return nuevo;
+                });
+
+        interesHabilidad.setFotoUri(convertirAString(datos.get("fotoUri")));
+        interesHabilidad.setInteresDescripcion(interesDescripcion);
+        interesHabilidad.setHabilidadDescripcion(truncarTextoLargo(datos.get("habilidadDescripcion")));
+        interesHabilidad.setHabilidadNivel(convertirAString(datos.get("habilidadNivel")));
         interesHabilidadRepository.save(interesHabilidad);
 
         // Sincronizar semblanza en Usuario para que "ver perfil", directorio y CV usen el mismo valor.

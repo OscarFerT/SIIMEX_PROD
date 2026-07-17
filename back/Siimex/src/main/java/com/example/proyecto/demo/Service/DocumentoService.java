@@ -65,27 +65,13 @@ public class DocumentoService {
 
         if (cvFile != null && !cvFile.isEmpty()) {
             validarArchivo(cvFile, Documento.TipoDocumento.CV);
-            // Guardar como CV
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.CV, usuarioDir);
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.CURRICULUM, usuarioDir);
+
             Documento docCV = crearDocumento(usuario, cvFile, Documento.TipoDocumento.CV, usuarioDir);
             documentosGuardados.add(documentoRepository.save(docCV));
             log.info("CV guardado para usuario: {}", usuarioId);
             
-            // También guardar como CURRICULUM para sincronizar con perfil
-            // Eliminar currículum anterior si existe
-            documentoRepository.findByUsuarioIdAndTipo(usuarioId, Documento.TipoDocumento.CURRICULUM)
-                    .ifPresent(docAnterior -> {
-                        try {
-                            Path archivoAnterior = FileSecurityUtils.resolveInside(usuarioDir, docAnterior.getNombreArchivo());
-                            if (Files.exists(archivoAnterior)) {
-                                Files.delete(archivoAnterior);
-                            }
-                        } catch (IOException e) {
-                            log.warn("No se pudo eliminar currículum anterior: {}", e.getMessage());
-                        }
-                        documentoRepository.delete(docAnterior);
-                    });
-            
-            // Crear nuevo documento CURRICULUM con el mismo contenido
             Documento docCurriculum = crearDocumento(usuario, cvFile, Documento.TipoDocumento.CURRICULUM, usuarioDir);
             documentosGuardados.add(documentoRepository.save(docCurriculum));
             log.info("Currículum sincronizado con CV para usuario: {}", usuarioId);
@@ -93,6 +79,7 @@ public class DocumentoService {
 
         if (fiscalPdf != null && !fiscalPdf.isEmpty()) {
             validarArchivo(fiscalPdf, Documento.TipoDocumento.FISCAL_PDF);
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.FISCAL_PDF, usuarioDir);
             Documento doc = crearDocumento(usuario, fiscalPdf, Documento.TipoDocumento.FISCAL_PDF, usuarioDir);
             documentosGuardados.add(documentoRepository.save(doc));
             log.info("Fiscal PDF guardado para usuario: {}", usuarioId);
@@ -100,6 +87,7 @@ public class DocumentoService {
 
         if (domicilio != null && !domicilio.isEmpty()) {
             validarArchivo(domicilio, Documento.TipoDocumento.DOMICILIO);
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.DOMICILIO, usuarioDir);
             Documento doc = crearDocumento(usuario, domicilio, Documento.TipoDocumento.DOMICILIO, usuarioDir);
             documentosGuardados.add(documentoRepository.save(doc));
             log.info("Domicilio guardado para usuario: {}", usuarioId);
@@ -107,6 +95,7 @@ public class DocumentoService {
 
         if (cert1 != null && !cert1.isEmpty()) {
             validarArchivo(cert1, Documento.TipoDocumento.CERTIFICADO_1);
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.CERTIFICADO_1, usuarioDir);
             Documento doc = crearDocumento(usuario, cert1, Documento.TipoDocumento.CERTIFICADO_1, usuarioDir);
             documentosGuardados.add(documentoRepository.save(doc));
             log.info("Certificado 1 guardado para usuario: {}", usuarioId);
@@ -114,6 +103,7 @@ public class DocumentoService {
 
         if (cert2 != null && !cert2.isEmpty()) {
             validarArchivo(cert2, Documento.TipoDocumento.CERTIFICADO_2);
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.CERTIFICADO_2, usuarioDir);
             Documento doc = crearDocumento(usuario, cert2, Documento.TipoDocumento.CERTIFICADO_2, usuarioDir);
             documentosGuardados.add(documentoRepository.save(doc));
             log.info("Certificado 2 guardado para usuario: {}", usuarioId);
@@ -121,6 +111,7 @@ public class DocumentoService {
 
         if (idiomaCertDocumento != null && !idiomaCertDocumento.isEmpty()) {
             validarArchivo(idiomaCertDocumento, Documento.TipoDocumento.CERTIFICACION_IDIOMA);
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.CERTIFICACION_IDIOMA, usuarioDir);
             Documento doc = crearDocumento(usuario, idiomaCertDocumento, Documento.TipoDocumento.CERTIFICACION_IDIOMA, usuarioDir);
             documentosGuardados.add(documentoRepository.save(doc));
             log.info("Certificación de idioma guardada para usuario: {}", usuarioId);
@@ -128,6 +119,7 @@ public class DocumentoService {
 
         if (constanciaSnii != null && !constanciaSnii.isEmpty()) {
             validarArchivo(constanciaSnii, Documento.TipoDocumento.CONSTANCIA_SNII);
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.CONSTANCIA_SNII, usuarioDir);
             Documento doc = crearDocumento(usuario, constanciaSnii, Documento.TipoDocumento.CONSTANCIA_SNII, usuarioDir);
             documentosGuardados.add(documentoRepository.save(doc));
             log.info("Constancia SNII guardada para usuario: {}", usuarioId);
@@ -135,6 +127,7 @@ public class DocumentoService {
 
         if (estanciaDocumento != null && !estanciaDocumento.isEmpty()) {
             validarArchivo(estanciaDocumento, Documento.TipoDocumento.ESTANCIA_INVESTIGACION);
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.ESTANCIA_INVESTIGACION, usuarioDir);
             Documento doc = crearDocumento(usuario, estanciaDocumento, Documento.TipoDocumento.ESTANCIA_INVESTIGACION, usuarioDir);
             documentosGuardados.add(documentoRepository.save(doc));
             log.info("Documento de estancia guardado para usuario: {}", usuarioId);
@@ -142,6 +135,7 @@ public class DocumentoService {
 
         if (divulgArchivo != null && !divulgArchivo.isEmpty()) {
             validarArchivo(divulgArchivo, Documento.TipoDocumento.DIVULGACION);
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.DIVULGACION, usuarioDir);
             Documento doc = crearDocumento(usuario, divulgArchivo, Documento.TipoDocumento.DIVULGACION, usuarioDir);
             documentosGuardados.add(documentoRepository.save(doc));
             log.info("Archivo de divulgación guardado para usuario: {}", usuarioId);
@@ -335,21 +329,7 @@ public class DocumentoService {
         
         // Crear carpeta del usuario si no existe
         Path usuarioDir = crearDirectorioUsuario(usuarioId);
-        
-        // Eliminar documento anterior del mismo tipo para este usuario
-        documentoRepository.findByUsuarioIdAndTipo(usuarioId, tipo)
-                .ifPresent(doc -> {
-                    // Eliminar archivo físico si existe
-                    try {
-                        Path archivoAnterior = FileSecurityUtils.resolveInside(usuarioDir, doc.getNombreArchivo());
-                        if (Files.exists(archivoAnterior)) {
-                            Files.delete(archivoAnterior);
-                        }
-                    } catch (IOException e) {
-                        log.warn("No se pudo eliminar archivo físico anterior: {}", e.getMessage());
-                    }
-                    documentoRepository.delete(doc);
-                });
+        eliminarDocumentosPorTipo(usuarioId, tipo, usuarioDir);
         
         // Guardar archivo físicamente
         String nombreArchivo = FileSecurityUtils.sanitizeFilename(
@@ -378,19 +358,7 @@ public class DocumentoService {
         
         // Sincronizar CV y CURRICULUM: si se guarda uno, también actualizar el otro
         if (tipo == Documento.TipoDocumento.CURRICULUM) {
-            // Si se guarda CURRICULUM, también sincronizar CV
-            documentoRepository.findByUsuarioIdAndTipo(usuarioId, Documento.TipoDocumento.CV)
-                    .ifPresent(docAnterior -> {
-                        try {
-                            Path archivoAnterior = FileSecurityUtils.resolveInside(usuarioDir, docAnterior.getNombreArchivo());
-                            if (Files.exists(archivoAnterior)) {
-                                Files.delete(archivoAnterior);
-                            }
-                        } catch (IOException e) {
-                            log.warn("No se pudo eliminar CV anterior: {}", e.getMessage());
-                        }
-                        documentoRepository.delete(docAnterior);
-                    });
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.CV, usuarioDir);
             
             // Crear nuevo CV con el mismo contenido
             String nombreCV = generarNombreArchivo(Documento.TipoDocumento.CV, nombreArchivo, usuarioDir);
@@ -407,19 +375,7 @@ public class DocumentoService {
                     .build());
             log.info("CV sincronizado con currículum para usuario: {}", usuarioId);
         } else if (tipo == Documento.TipoDocumento.CV) {
-            // Si se guarda CV, también sincronizar CURRICULUM
-            documentoRepository.findByUsuarioIdAndTipo(usuarioId, Documento.TipoDocumento.CURRICULUM)
-                    .ifPresent(docAnterior -> {
-                        try {
-                            Path archivoAnterior = FileSecurityUtils.resolveInside(usuarioDir, docAnterior.getNombreArchivo());
-                            if (Files.exists(archivoAnterior)) {
-                                Files.delete(archivoAnterior);
-                            }
-                        } catch (IOException e) {
-                            log.warn("No se pudo eliminar currículum anterior: {}", e.getMessage());
-                        }
-                        documentoRepository.delete(docAnterior);
-                    });
+            eliminarDocumentosPorTipo(usuarioId, Documento.TipoDocumento.CURRICULUM, usuarioDir);
             
             // Crear nuevo CURRICULUM con el mismo contenido
             String nombreCurriculum = generarNombreArchivo(Documento.TipoDocumento.CURRICULUM, nombreArchivo, usuarioDir);
@@ -440,11 +396,44 @@ public class DocumentoService {
         return documentoGuardado;
     }
 
+    private List<Documento> obtenerDocumentosOrdenadosPorTipo(Long usuarioId, Documento.TipoDocumento tipo) {
+        return documentoRepository.findAllByUsuarioIdAndTipoOrderByFechaSubidaDescIdDesc(usuarioId, tipo);
+    }
+
+    private void eliminarDocumentosPorTipo(Long usuarioId, Documento.TipoDocumento tipo, Path usuarioDir) {
+        List<Documento> documentosExistentes = obtenerDocumentosOrdenadosPorTipo(usuarioId, tipo);
+        if (documentosExistentes.isEmpty()) {
+            return;
+        }
+
+        if (documentosExistentes.size() > 1) {
+            log.warn("Se detectaron {} documentos duplicados para usuario {} y tipo {}. Se eliminarán antes de guardar el nuevo archivo.",
+                    documentosExistentes.size(), usuarioId, tipo);
+        }
+
+        for (Documento doc : documentosExistentes) {
+            try {
+                Path archivoAnterior = FileSecurityUtils.resolveInside(usuarioDir, doc.getNombreArchivo());
+                if (Files.exists(archivoAnterior)) {
+                    Files.delete(archivoAnterior);
+                }
+            } catch (IOException e) {
+                log.warn("No se pudo eliminar archivo físico anterior: {}", e.getMessage());
+            }
+            documentoRepository.delete(doc);
+        }
+    }
+
     /**
      * Obtiene un documento de un usuario por tipo
      */
     public java.util.Optional<Documento> obtenerDocumentoPorUsuarioYTipo(Long usuarioId, Documento.TipoDocumento tipo) {
-        return documentoRepository.findByUsuarioIdAndTipo(usuarioId, tipo);
+        List<Documento> documentos = obtenerDocumentosOrdenadosPorTipo(usuarioId, tipo);
+        if (documentos.size() > 1) {
+            log.warn("Se detectaron {} documentos duplicados para usuario {} y tipo {}. Se devolverá el más reciente.",
+                    documentos.size(), usuarioId, tipo);
+        }
+        return documentos.stream().findFirst();
     }
 
     /**
@@ -469,18 +458,7 @@ public class DocumentoService {
         
         // Eliminar documento anterior del mismo tipo solo si se solicita
         if (eliminarAnteriores) {
-            documentoRepository.findByUsuarioIdAndTipo(usuarioId, tipo)
-                    .ifPresent(doc -> {
-                        try {
-                            Path archivoAnterior = FileSecurityUtils.resolveInside(usuarioDir, doc.getNombreArchivo());
-                            if (Files.exists(archivoAnterior)) {
-                                Files.delete(archivoAnterior);
-                            }
-                        } catch (IOException e) {
-                            log.warn("No se pudo eliminar archivo físico anterior: {}", e.getMessage());
-                        }
-                        documentoRepository.delete(doc);
-                    });
+            eliminarDocumentosPorTipo(usuarioId, tipo, usuarioDir);
         }
         
         String nombreArchivo = nombrePersonalizado != null && !nombrePersonalizado.isEmpty()
@@ -536,17 +514,7 @@ public class DocumentoService {
         Path usuarioDir = crearDirectorioUsuario(usuarioId);
 
         if (eliminarAnteriores) {
-            documentoRepository.findByUsuarioIdAndTipo(usuarioId, tipo).ifPresent(doc -> {
-                try {
-                    Path archivoAnterior = FileSecurityUtils.resolveInside(usuarioDir, doc.getNombreArchivo());
-                    if (Files.exists(archivoAnterior)) {
-                        Files.delete(archivoAnterior);
-                    }
-                } catch (IOException e) {
-                    log.warn("No se pudo eliminar archivo físico anterior: {}", e.getMessage());
-                }
-                documentoRepository.delete(doc);
-            });
+            eliminarDocumentosPorTipo(usuarioId, tipo, usuarioDir);
         }
 
         String nombre = (nombrePersonalizado != null && !nombrePersonalizado.isBlank())

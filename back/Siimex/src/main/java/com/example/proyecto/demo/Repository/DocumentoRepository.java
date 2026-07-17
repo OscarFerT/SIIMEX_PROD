@@ -26,6 +26,11 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
     Optional<Documento> findByUsuarioIdAndTipo(@Param("usuarioId") Long usuarioId, @Param("tipo") Documento.TipoDocumento tipo);
     
     /**
+     * Obtiene todos los documentos de un tipo para un usuario, ordenados del más reciente al más antiguo.
+     */
+    List<Documento> findAllByUsuarioIdAndTipoOrderByFechaSubidaDescIdDesc(Long usuarioId, Documento.TipoDocumento tipo);
+    
+    /**
      * Obtiene documentos por lista de tipos SIN cargar contenido BLOB
      */
     @Query("SELECT d FROM Documento d WHERE d.usuario.id = :usuarioId AND d.tipo IN :tipos")
