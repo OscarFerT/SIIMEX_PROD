@@ -224,6 +224,53 @@
                 </div>
               </div>
             </div>
+            <div class="col-12 col-md-6">
+              <label for="nacionalidadCatalogo" class="form-label fw-semibold">
+                Nacionalidad <span class="text-danger">*</span>
+              </label>
+              <div class="input-wrapper">
+                <div class="input-group has-icon">
+                  <span class="input-group-text"><i class="fas fa-flag"></i></span>
+                  <select
+                    id="nacionalidadCatalogo"
+                    class="form-select"
+                    [attr.data-control]="nacionalidadCatalogoSeleccionada() === catalogoOtroValue ? null : 'nacionalidad'"
+                    [class.is-invalid]="f['nacionalidad'].touched && f['nacionalidad'].invalid"
+                    [class.is-valid]="f['nacionalidad'].touched && f['nacionalidad'].valid"
+                    [disabled]="cargandoNacionalidades()"
+                    (change)="onNacionalidadCatalogoChange($event)">
+                    <option value="">{{ cargandoNacionalidades() ? 'Cargando nacionalidades...' : 'Selecciona tu nacionalidad...' }}</option>
+                    <option *ngFor="let nacionalidad of catalogoNacionalidades()" [value]="nacionalidad.nombre">{{ nacionalidad.nombre }}</option>
+                    <option [value]="catalogoOtroValue">Otro</option>
+                  </select>
+                  <span class="validation-icon" *ngIf="f['nacionalidad'].touched">
+                    <i class="fas fa-check-circle text-success" *ngIf="f['nacionalidad'].valid"></i>
+                    <i class="fas fa-times-circle text-danger" *ngIf="f['nacionalidad'].invalid"></i>
+                  </span>
+                </div>
+                <div class="input-group has-icon mt-2" *ngIf="nacionalidadCatalogoSeleccionada() === catalogoOtroValue">
+                  <span class="input-group-text"><i class="fas fa-pen"></i></span>
+                  <input
+                    data-control="nacionalidad"
+                    id="nacionalidad"
+                    type="text"
+                    class="form-control"
+                    [class.is-invalid]="f['nacionalidad'].touched && f['nacionalidad'].invalid"
+                    [class.is-valid]="f['nacionalidad'].touched && f['nacionalidad'].valid"
+                    formControlName="nacionalidad"
+                    placeholder="Escribe tu nacionalidad"
+                    autocomplete="country-name"
+                  />
+                </div>
+                <div class="field-help text-warning" *ngIf="errorCatalogoNacionalidades()" [@slideIn]>
+                  <i class="fas fa-exclamation-triangle me-1"></i>No se pudo cargar el catálogo. Puedes seleccionar Otro y escribirla manualmente.
+                </div>
+                <div class="field-help" *ngIf="f['nacionalidad'].touched && f['nacionalidad'].hasError('required')" [@slideIn]>
+                  <i class="fas fa-exclamation-circle me-1"></i>Selecciona o introduce tu nacionalidad.
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -299,151 +346,6 @@
                  *ngIf="f['tipoPerfil'].touched && f['tipoPerfil'].hasError('required')"
                  [@slideIn]>
               <i class="fas fa-exclamation-circle me-1"></i>Selecciona personas investigadoras, personas innovadoras o perfil mixto.
-            </div>
-          </div>
-        </div>
-
-        <!-- Sección: Ubicación -->
-        <div class="form-section mb-4">
-          <h5 class="section-title mb-3 d-flex align-items-center flex-wrap gap-2">
-            <i class="fas fa-map-marker-alt text-borgona me-2"></i>Ubicación
-            <button type="button" class="section-help-btn ms-auto" (click)="toggleSectionHelp('ubicacion')" [attr.aria-expanded]="openSectionHelp() === 'ubicacion'" aria-label="Ver ayuda de esta sección" title="¿Qué debo llenar aquí?">
-              <i class="fas fa-circle-question text-borgona"></i>
-            </button>
-          </h5>
-          <div class="section-help-content" *ngIf="openSectionHelp() === 'ubicacion'">
-            <i class="fas fa-info-circle me-2 text-borgona" aria-hidden="true"></i>
-            <span class="section-help-text">{{ sectionHelpTexts['ubicacion'] }}</span>
-          </div>
-          <div class="row g-3">
-            <div class="col-12 col-md-6">
-              <label for="paisNacimiento" class="form-label fw-semibold">
-                País de nacimiento <span class="text-danger">*</span>
-              </label>
-              <div class="input-wrapper">
-                <div class="input-group has-icon">
-                  <span class="input-group-text">
-                    <i class="fas fa-globe"></i>
-                  </span>
-                  <input
-                    data-control="paisNacimiento"
-                    id="paisNacimiento"
-                    type="text"
-                    class="form-control"
-                    [class.is-invalid]="f['paisNacimiento'].touched && f['paisNacimiento'].invalid"
-                    [class.is-valid]="f['paisNacimiento'].touched && f['paisNacimiento'].valid"
-                    formControlName="paisNacimiento"
-                    placeholder="Ej: MÉXICO"
-                  />
-                  <span class="validation-icon" *ngIf="f['paisNacimiento'].touched">
-                    <i class="fas fa-check-circle text-success" *ngIf="f['paisNacimiento'].valid"></i>
-                    <i class="fas fa-times-circle text-danger" *ngIf="f['paisNacimiento'].invalid"></i>
-                  </span>
-                </div>
-                <div class="field-help" 
-                     *ngIf="f['paisNacimiento'].touched && f['paisNacimiento'].hasError('required')"
-                     [@slideIn]>
-                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu país.
-                </div>
-              </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-              <label for="entidadFederativa" class="form-label fw-semibold">
-                Entidad federativa <span class="text-danger">*</span>
-              </label>
-              <div class="input-wrapper">
-                <div class="input-group has-icon">
-                  <span class="input-group-text">
-                    <i class="fas fa-map"></i>
-                  </span>
-                  <select
-                    data-control="entidadFederativa"
-                    id="entidadFederativa"
-                    class="form-select"
-                    [class.is-invalid]="f['entidadFederativa'].touched && f['entidadFederativa'].invalid"
-                    [class.is-valid]="f['entidadFederativa'].touched && f['entidadFederativa'].valid"
-                    formControlName="entidadFederativa">
-                    <option value="">Selecciona entidad...</option>
-                    <option *ngFor="let entidad of entidadesFederativas" [value]="entidad">
-                      {{ entidad }}
-                    </option>
-                  </select>
-                  <span class="validation-icon" *ngIf="f['entidadFederativa'].touched">
-                    <i class="fas fa-check-circle text-success" *ngIf="f['entidadFederativa'].valid"></i>
-                    <i class="fas fa-times-circle text-danger" *ngIf="f['entidadFederativa'].invalid"></i>
-                  </span>
-                </div>
-                <div class="field-help" 
-                     *ngIf="f['entidadFederativa'].touched && f['entidadFederativa'].hasError('required')"
-                     [@slideIn]>
-                  <i class="fas fa-exclamation-circle me-1"></i>Selecciona tu entidad federativa.
-                </div>
-              </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-              <label for="nacionalidad" class="form-label fw-semibold">
-                Nacionalidad <span class="text-danger">*</span>
-              </label>
-              <div class="input-wrapper">
-                <div class="input-group has-icon">
-                  <span class="input-group-text">
-                    <i class="fas fa-flag"></i>
-                  </span>
-                  <input
-                    data-control="nacionalidad"
-                    id="nacionalidad"
-                    type="text"
-                    class="form-control"
-                    [class.is-invalid]="f['nacionalidad'].touched && f['nacionalidad'].invalid"
-                    [class.is-valid]="f['nacionalidad'].touched && f['nacionalidad'].valid"
-                    formControlName="nacionalidad"
-                    placeholder="Ej: MEXICANA"
-                  />
-                  <span class="validation-icon" *ngIf="f['nacionalidad'].touched">
-                    <i class="fas fa-check-circle text-success" *ngIf="f['nacionalidad'].valid"></i>
-                    <i class="fas fa-times-circle text-danger" *ngIf="f['nacionalidad'].invalid"></i>
-                  </span>
-                </div>
-                <div class="field-help" 
-                     *ngIf="f['nacionalidad'].touched && f['nacionalidad'].hasError('required')"
-                     [@slideIn]>
-                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu nacionalidad.
-                </div>
-              </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-              <label for="municipio" class="form-label fw-semibold">
-                Municipio <span class="text-danger">*</span>
-              </label>
-              <div class="input-wrapper">
-                <div class="input-group has-icon">
-                  <span class="input-group-text">
-                    <i class="fas fa-city"></i>
-                  </span>
-                  <input
-                    data-control="municipio"
-                    id="municipio"
-                    type="text"
-                    class="form-control"
-                    [class.is-invalid]="f['municipio'].touched && f['municipio'].invalid"
-                    [class.is-valid]="f['municipio'].touched && f['municipio'].valid"
-                    formControlName="municipio"
-                    placeholder="Ej: Toluca"
-                  />
-                  <span class="validation-icon" *ngIf="f['municipio'].touched">
-                    <i class="fas fa-check-circle text-success" *ngIf="f['municipio'].valid"></i>
-                    <i class="fas fa-times-circle text-danger" *ngIf="f['municipio'].invalid"></i>
-                  </span>
-                </div>
-                <div class="field-help"
-                     *ngIf="f['municipio'].touched && f['municipio'].hasError('required')"
-                     [@slideIn]>
-                  <i class="fas fa-exclamation-circle me-1"></i>Introduce tu municipio.
-                </div>
-              </div>
             </div>
           </div>
         </div>

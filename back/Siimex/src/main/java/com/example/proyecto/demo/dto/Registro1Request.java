@@ -43,13 +43,10 @@ public record Registro1Request(
     String nacionalidad,
 
 
-    @NotBlank
     String paisNacimiento,
 
-    @NotBlank
     String entidadFederativa,
 
-    @NotBlank
     String municipio,
 
     @NotNull

@@ -2,6 +2,7 @@ import { Component, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { BRANDING } from '../../core/branding.constants';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -14,6 +15,7 @@ import Swal from 'sweetalert2';
 export class LandingComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
+  readonly branding = BRANDING;
 
   isLoggedIn = computed(() => this.auth.isLoggedIn());
 
@@ -56,3 +58,4 @@ export class LandingComponent implements OnInit {
     }
   }
 }
+

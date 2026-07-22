@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Propagation;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,10 +38,149 @@ public class PerfilCompletoService {
     private final ArticuloRepository articuloRepository;
     private final LogroRepository logroRepository;
     private final InteresHabilidadRepository interesHabilidadRepository;
+    private final DocumentoRepository documentoRepository;
     @Autowired
     @Lazy
     private PerfilCompletoService self;
 
+    public record SeccionFaltante(String clave, String nombre) {}
+
+    public static class RegistroIncompletoException extends IllegalArgumentException {
+        private final List<SeccionFaltante> seccionesFaltantes;
+
+        public RegistroIncompletoException(List<SeccionFaltante> seccionesFaltantes) {
+            super("Antes de finalizar, revisa las secciones pendientes");
+            this.seccionesFaltantes = List.copyOf(seccionesFaltantes);
+        }
+
+        public List<SeccionFaltante> getSeccionesFaltantes() {
+            return seccionesFaltantes;
+        }
+    }
+
+    @Transactional
+    public PerfilMigracion finalizarRegistroPersistido(Usuario usuario) {
+        if (usuario == null || usuario.getId() == null) {
+            throw new IllegalArgumentException("No se pudo identificar al usuario que desea finalizar el registro");
+        }
+
+        List<SeccionFaltante> seccionesFaltantes = obtenerSeccionesFaltantes(usuario);
+        if (!seccionesFaltantes.isEmpty()) {
+            throw new RegistroIncompletoException(seccionesFaltantes);
+        }
+
+        PerfilMigracion perfilMigracion = perfilMigracionRepository.findByUsuarioId(usuario.getId())
+                .orElseGet(() -> PerfilMigracion.builder()
+                        .migracionId("MIG_" + usuario.getId() + "_" + UUID.randomUUID().toString().substring(0, 8))
+                        .build());
+
+        if (perfilMigracion.getMigracionId() == null || perfilMigracion.getMigracionId().isBlank()) {
+            perfilMigracion.setMigracionId(
+                    "MIG_" + usuario.getId() + "_" + UUID.randomUUID().toString().substring(0, 8));
+        }
+        perfilMigracion.setUsuario(usuario);
+        perfilMigracion = perfilMigracionRepository.save(perfilMigracion);
+
+        usuario.setRegistro2Completo(true);
+        usuarioRepository.save(usuario);
+        log.info(">>> Registro completado desde datos persistidos para usuario {}, perfilMigracion {}",
+                usuario.getId(), perfilMigracion.getId());
+        return perfilMigracion;
+    }
+
+    private List<SeccionFaltante> obtenerSeccionesFaltantes(Usuario usuario) {
+        List<SeccionFaltante> faltantes = new java.util.ArrayList<>();
+        Long usuarioId = usuario.getId();
+        Registro1 registro = usuario.getRegistro1();
+
+        if (registro == null
+                || textoVacio(usuario.getNombre())
+                || textoVacio(usuario.getApellidoPaterno())
+                || textoVacio(usuario.getApellidoMaterno())
+                || textoVacio(registro.getCurp())
+                || textoVacio(registro.getRfc())
+                || registro.getFechaNacimiento() == null
+                || registro.getGenero() == null
+                || registro.getEstadoCivil() == null
+                || textoVacio(registro.getNacionalidad())
+                || textoVacio(usuario.getSemblanza())) {
+            faltantes.add(new SeccionFaltante("personaPrincipal", "Datos personales"));
+        }
+
+        if (registro == null
+                || textoVacio(registro.getTelefono())
+                || textoVacio(registro.getTipoIdentificacionOficial())
+                || textoVacio(registro.getIdentificacionOficial())
+                || textoVacio(registro.getCalle())
+                || textoVacio(registro.getNumeroExterior())
+                || textoVacio(registro.getColonia())
+                || textoVacio(registro.getMunicipioDomicilio())
+                || textoVacio(registro.getLocalidad())
+                || textoVacio(registro.getCodigoPostal())) {
+            faltantes.add(new SeccionFaltante("padronInstitucional", "Padrón institucional"));
+        }
+
+        List<Institucion> instituciones = institucionRepository.findByUsuarioId(usuarioId);
+        agregarSiNoHayRegistroValido(faltantes, instituciones, institucion -> {
+            String pais = institucion.getPaisNombre();
+            boolean ubicacionValida = !textoVacio(pais);
+            if ("México".equalsIgnoreCase(pais)) {
+                ubicacionValida = !textoVacio(institucion.getEntidadNombre())
+                        && !textoVacio(institucion.getMunicipioNombre());
+            } else if ("Estados Unidos".equalsIgnoreCase(pais)) {
+                ubicacionValida = !textoVacio(institucion.getEntidadNombre());
+            }
+            return !textoVacio(institucion.getClaveOficial())
+                    && !textoVacio(institucion.getNombre())
+                    && !textoVacio(institucion.getTipoId())
+                    && ubicacionValida;
+        }, "institucion", "Institución");
+
+        agregarSiNoHayRegistroValido(faltantes, areaConocimientoRepository.findByUsuarioId(usuarioId),
+                area -> !textoVacio(area.getAreaNombre()) && !textoVacio(area.getAreaClave()),
+                "area-conocimiento", "Área de conocimiento");
+
+        List<TrayectoriaAcademica> grados = trayectoriaAcademicaRepository.findByUsuarioId(usuarioId);
+        List<Idioma> idiomas = idiomaRepository.findByUsuarioId(usuarioId);
+
+        if (!grados.isEmpty()
+                && documentoRepository.findByUsuarioIdAndTipo(usuarioId, Documento.TipoDocumento.CERTIFICADO_1).isEmpty()) {
+            agregarFaltanteSiNoExiste(faltantes, "trayectoria-academica", "Documento probatorio de titulación");
+        }
+        if (grados.stream().anyMatch(grado -> Boolean.TRUE.equals(grado.getEsPerfilSnii()))
+                && documentoRepository.findByUsuarioIdAndTipo(usuarioId, Documento.TipoDocumento.CONSTANCIA_SNII).isEmpty()) {
+            agregarFaltanteSiNoExiste(faltantes, "trayectoria-academica", "Constancia SNII");
+        }
+        if (idiomas.stream().anyMatch(idioma -> "Excelente".equalsIgnoreCase(idioma.getDominioNombre()))
+                && documentoRepository.findByUsuarioIdAndTipo(usuarioId, Documento.TipoDocumento.CERTIFICACION_IDIOMA).isEmpty()) {
+            agregarFaltanteSiNoExiste(faltantes, "idiomas", "Certificación de idioma");
+        }
+        return faltantes;
+    }
+
+    private <T> void agregarSiNoHayRegistroValido(
+            List<SeccionFaltante> faltantes,
+            List<T> registros,
+            Predicate<T> esValido,
+            String clave,
+            String nombre) {
+        if (registros == null || registros.stream().noneMatch(esValido)) {
+            agregarFaltanteSiNoExiste(faltantes, clave, nombre);
+        }
+    }
+
+    private void agregarFaltanteSiNoExiste(
+            List<SeccionFaltante> faltantes,
+            String clave,
+            String nombre) {
+        if (faltantes.stream().noneMatch(item -> item.clave().equals(clave))) {
+            faltantes.add(new SeccionFaltante(clave, nombre));
+        }
+    }
+
+    private boolean textoVacio(String valor) {
+        return valor == null || valor.isBlank();
+    }
     @Transactional(rollbackFor = {IllegalStateException.class}, noRollbackFor = {IllegalArgumentException.class, NullPointerException.class})
     public PerfilMigracion guardarPerfilCompleto(Map<String, Object> datos) {
         PerfilMigracion perfilMigracion = null; // Declarar fuera del try para acceso en catch
@@ -209,6 +349,10 @@ public class PerfilCompletoService {
                                 }
                             }
                             
+                            actualizado |= setSiCambio(registro1::getPaisNacimiento, registro1::setPaisNacimiento, datos.get("paisNacimiento"));
+                            actualizado |= setSiCambio(registro1::getEntidadFederativa, registro1::setEntidadFederativa, datos.get("entidadFederativa"));
+                            actualizado |= setSiCambio(registro1::getNacionalidad, registro1::setNacionalidad, datos.get("nacionalidad"));
+                            actualizado |= setSiCambio(registro1::getMunicipio, registro1::setMunicipio, datos.get("municipio"));
                             actualizado |= setSiCambio(registro1::getTelefono, registro1::setTelefono, datos.get("telefono"));
                             actualizado |= setSiCambio(registro1::getCelular, registro1::setCelular, datos.get("celular"));
                             actualizado |= setSiCambio(registro1::getTipoIdentificacionOficial, registro1::setTipoIdentificacionOficial, datos.get("tipoIdentificacionOficial"));
@@ -282,14 +426,18 @@ public class PerfilCompletoService {
                 // No propagar la excepción para no marcar la transacción para rollback
             }
 
-            // 5. Guardar Idioma
+            // 5. Guardar Idiomas
             try {
-                if (datos.get("idiomaNombre") != null && !datos.get("idiomaNombre").toString().isBlank()) {
-                    log.info(">>> Guardando idioma");
+                String idiomasJsonStr = datos.get("idiomasJson") != null ? datos.get("idiomasJson").toString() : null;
+                if (idiomasJsonStr != null && !idiomasJsonStr.isBlank()) {
+                    log.info(">>> Guardando idiomas desde idiomasJson");
+                    self.guardarIdiomasDesdeJsonConTransaccion(usuarioFinal, idiomasJsonStr);
+                } else if (datos.get("idiomaNombre") != null && !datos.get("idiomaNombre").toString().isBlank()) {
+                    log.info(">>> Guardando idioma en formato compatible");
                     self.guardarIdiomaConTransaccion(usuarioFinal, datos);
                 }
             } catch (Exception e) {
-                log.error(">>> Error al guardar idioma: {}", e.getMessage(), e);
+                log.error(">>> Error al guardar idiomas: {}", e.getMessage(), e);
                 // No propagar la excepción para no marcar la transacción para rollback
             }
 
@@ -530,6 +678,7 @@ public class PerfilCompletoService {
             log.info(">>> Total trayectorias académicas guardadas: {}", lista.size());
         } catch (Exception e) {
             log.error(">>> Error al parsear academicaJson: {}", e.getMessage(), e);
+            throw new IllegalArgumentException("El formato de la trayectoria académica no es válido", e);
         }
     }
 
@@ -552,6 +701,38 @@ public class PerfilCompletoService {
         idiomaRepository.save(idioma);
     }
 
+    private void guardarIdiomasDesdeJson(Usuario usuario, String idiomasJson) {
+        idiomaRepository.findByUsuarioId(usuario.getId()).forEach(idiomaRepository::delete);
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            List<Map<String, Object>> lista = mapper.readValue(idiomasJson, new TypeReference<List<Map<String, Object>>>() {});
+            int guardados = 0;
+            for (Map<String, Object> item : lista) {
+                String nombre = convertirAString(item.get("nombre"));
+                if (nombre == null || nombre.isBlank()) continue;
+
+                Idioma idioma = Idioma.builder()
+                        .usuario(usuario)
+                        .nombre(nombre.trim())
+                        .dominioNombre(convertirAString(item.get("dominioNombre")))
+                        .conversacion(convertirAString(item.get("conversacion")))
+                        .lectura(convertirAString(item.get("lectura")))
+                        .escritura(convertirAString(item.get("escritura")))
+                        .esCertificado(convertirBoolean(datosDefault(item.get("esCertificado"), false)))
+                        .certInstitucion(convertirAString(item.get("certInstitucion")))
+                        .certPuntuacion(convertirAString(item.get("certPuntuacion")))
+                        .vigenciaFin(convertirFecha(item.get("vigenciaFin")))
+                        .build();
+                idiomaRepository.save(idioma);
+                guardados++;
+            }
+            log.info(">>> Total idiomas guardados: {}", guardados);
+        } catch (Exception e) {
+            log.error(">>> Error al parsear idiomasJson: {}", e.getMessage(), e);
+            throw new IllegalArgumentException("El formato de los idiomas no es válido", e);
+        }
+    }
     private void guardarTrayectoriaProfesional(Usuario usuario, Map<String, Object> datos) {
         // Eliminar trayectorias anteriores si existen
         trayectoriaProfesionalRepository.findByUsuarioId(usuario.getId()).forEach(trayectoriaProfesionalRepository::delete);
@@ -569,6 +750,7 @@ public class PerfilCompletoService {
         TrayectoriaProfesional trayectoria = TrayectoriaProfesional.builder()
                 .usuario(usuario)
                 .nombramiento(convertirAString(datos.get("trayProfNombramiento")))
+                .institucion(convertirAString(datos.get("trayProfInstitucion")))
                 .fechaInicio(convertirFecha(datos.get("trayProfFechaInicio")))
                 .fechaFin(convertirFecha(datos.get("trayProfFechaFin")))
                 .esActual((Boolean) datos.get("trayProfEsActual"))
@@ -618,6 +800,7 @@ public class PerfilCompletoService {
             log.info(">>> Total estancias guardadas: {}", lista.size());
         } catch (Exception e) {
             log.error(">>> Error al parsear estanciasJson: {}", e.getMessage(), e);
+            throw new IllegalArgumentException("El formato de las estancias no es válido", e);
         }
     }
 
@@ -634,6 +817,7 @@ public class PerfilCompletoService {
                 .fechaFin(convertirFecha(datos.get("cursoFechaFin")))
                 .institucion(convertirAString(datos.get("cursoInstitucion")))
                 .nivelEscolaridad(convertirAString(datos.get("cursoNivelEscolaridad")))
+                .productoPrincipal(Boolean.TRUE.equals(convertirBoolean(datos.get("cursoProductoPrincipal"))))
                 .build();
         cursoRepository.save(curso);
     }
@@ -658,6 +842,7 @@ public class PerfilCompletoService {
                         .fechaFin(convertirFecha(item.get("fechaFin")))
                         .institucion(convertirAString(item.get("institucion")))
                         .nivelEscolaridad(convertirAString(item.get("nivelEscolaridad")))
+                        .productoPrincipal(Boolean.TRUE.equals(convertirBoolean(item.get("productoPrincipal"))))
                         .build();
                 cursoRepository.save(curso);
                 log.info(">>> Curso guardado: {}", nombre);
@@ -665,6 +850,7 @@ public class PerfilCompletoService {
             log.info(">>> Total cursos guardados: {}", lista.size());
         } catch (Exception e) {
             log.error(">>> Error al parsear cursosJson: {}", e.getMessage(), e);
+            throw new IllegalArgumentException("El formato de los cursos no es válido", e);
         }
     }
 
@@ -678,6 +864,7 @@ public class PerfilCompletoService {
                 .tipoParticipacionNombre(convertirAString(datos.get("congresoTipoPartNombre")))
                 .fecha(convertirFecha(datos.get("congresoFecha")))
                 .paisSede(convertirAString(datos.get("congresoPaisSede")))
+                .productoPrincipal(Boolean.TRUE.equals(convertirBoolean(datos.get("congresoProductoPrincipal"))))
                 .build();
         congresoRepository.save(congreso);
     }
@@ -700,6 +887,7 @@ public class PerfilCompletoService {
                         .tipoParticipacionNombre(convertirAString(item.get("tipoParticipacion")))
                         .fecha(convertirFecha(item.get("fecha")))
                         .paisSede(convertirAString(item.get("paisSede")))
+                        .productoPrincipal(Boolean.TRUE.equals(convertirBoolean(item.get("productoPrincipal"))))
                         .build();
                 congresoRepository.save(congreso);
                 log.info(">>> Congreso guardado: {}", nombre);
@@ -707,6 +895,7 @@ public class PerfilCompletoService {
             log.info(">>> Total congresos guardados: {}", lista.size());
         } catch (Exception e) {
             log.error(">>> Error al parsear congresosJson: {}", e.getMessage(), e);
+            throw new IllegalArgumentException("El formato de los congresos no es válido", e);
         }
     }
 
@@ -768,6 +957,7 @@ public class PerfilCompletoService {
             log.info(">>> Total divulgaciones procesadas: {}", lista.size());
         } catch (Exception e) {
             log.error(">>> Error al parsear divulgacionesJson: {}", e.getMessage(), e);
+            throw new IllegalArgumentException("El formato de las divulgaciones no es válido", e);
         }
     }
 
@@ -791,6 +981,7 @@ public class PerfilCompletoService {
                 .estadoNombre(convertirAString(datos.get("artEstadoNombre")))
                 .objetivoNombre(convertirAString(datos.get("artObjetivoNombre")))
                 .fondoProgramaNombre(convertirAString(datos.get("artFondoProgNombre")))
+                .totalCitas(convertirInteger(datos.get("artTotalCitas")))
                 .autores(new java.util.ArrayList<>())
                 .build();
 
@@ -874,6 +1065,7 @@ public class PerfilCompletoService {
                         .estadoNombre(convertirAString(item.get("estadoNombre")))
                         .objetivoNombre(convertirAString(item.get("objetivoNombre")))
                         .fondoProgramaNombre(fondoPrograma)
+                        .totalCitas(convertirInteger(item.get("totalCitas")))
                         .autores(new java.util.ArrayList<>())
                         .build();
 
@@ -909,6 +1101,7 @@ public class PerfilCompletoService {
             log.info(">>> Total de artículos procesados: {}", lista.size());
         } catch (Exception e) {
             log.error(">>> Error al parsear articulosJson: {}", e.getMessage(), e);
+            throw new IllegalArgumentException("El formato de las aportaciones no es válido", e);
         }
     }
 
@@ -948,6 +1141,7 @@ public class PerfilCompletoService {
             log.info(">>> Total logros procesados: {}", lista.size());
         } catch (Exception e) {
             log.error(">>> Error al parsear logrosJson: {}", e.getMessage(), e);
+            throw new IllegalArgumentException("El formato de los logros no es válido", e);
         }
     }
 
@@ -1110,6 +1304,11 @@ public class PerfilCompletoService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void guardarIdiomaConTransaccion(Usuario usuario, Map<String, Object> datos) {
         guardarIdioma(usuario, datos);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void guardarIdiomasDesdeJsonConTransaccion(Usuario usuario, String idiomasJson) {
+        guardarIdiomasDesdeJson(usuario, idiomasJson);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

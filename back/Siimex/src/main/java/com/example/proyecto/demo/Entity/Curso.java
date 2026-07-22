@@ -44,4 +44,7 @@ public class Curso {
 
     @Column(name = "nivel_escolaridad", length = 100)
     private String nivelEscolaridad;
+
+    @Column(name = "producto_principal")
+    private Boolean productoPrincipal;
 }

@@ -108,6 +108,8 @@ public class AuthService {
         throw new ApiException(HttpStatus.BAD_REQUEST, "Formato de CURP inválido");
     }
 
+    String entidadFederativaCurp = CurpValidator.obtenerNombreEntidadDesdeCurp(req.registro().curp());
+
     // Validar que los datos del CURP coincidan con los datos del usuario
     String generoStr = req.registro().genero().name();
     Optional<String> errorCurp = CurpValidator.validarCoincidenciaDatosConMensaje(
@@ -117,7 +119,7 @@ public class AuthService {
             req.registro().nombre(),
             req.registro().fechaNacimiento(),
             generoStr,
-            req.registro().entidadFederativa());
+            entidadFederativaCurp);
     if (errorCurp.isPresent()) {
         throw new ApiException(HttpStatus.BAD_REQUEST, errorCurp.get());
     }
@@ -148,9 +150,11 @@ public class AuthService {
             .fechaNacimiento(req.registro().fechaNacimiento())
             .genero(Registro1.Genero.valueOf(req.registro().genero().name()))
             .nacionalidad(req.registro().nacionalidad().trim())
-            .paisNacimiento(req.registro().paisNacimiento().trim())
-            .entidadFederativa(req.registro().entidadFederativa().trim())
-            .municipio(req.registro().municipio().trim())
+            .paisNacimiento(req.registro().paisNacimiento() != null && !req.registro().paisNacimiento().isBlank()
+                    ? req.registro().paisNacimiento().trim() : null)
+            .entidadFederativa(entidadFederativaCurp)
+            .municipio(req.registro().municipio() != null && !req.registro().municipio().isBlank()
+                    ? req.registro().municipio().trim() : null)
             .estadoCivil(Registro1.EstadoCivil.valueOf(req.registro().estadoCivil().name()))
             .tipoPerfil(tipoPerfil)
             .telefono(req.telefono() != null && !req.telefono().isBlank() ? req.telefono().trim() : null)

@@ -16,6 +16,7 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth.service';
 import { Usuario } from '../../core/models/user';
 import Swal from 'sweetalert2';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Control de navegación entre secciones
@@ -45,6 +46,21 @@ interface CursoImpartido {
   institucion: string;
   nivelEscolaridad: string;
   productoPrincipal: boolean;
+}
+
+interface IdiomaDominio {
+  nombre: string;
+  dominioNombre: string;
+  conversacion: string;
+  lectura: string;
+  escritura: string;
+  esCertificado: boolean;
+  certInstitucion: string;
+  certPuntuacion: string;
+  vigenciaFin: string;
+  certDocumento: File | null;
+  certDocumentoNombre: string;
+  certDocumentoPersistido: boolean;
 }
 
 interface EstanciaInvestigacion {
@@ -107,7 +123,9 @@ const MAX_BYTES = MAX_MB * 1024 * 1024;
 
 function requiredFile(): ValidatorFn {
   return (ctrl: AbstractControl): ValidationErrors | null => {
-    return ctrl.value instanceof File ? null : { requiredFile: true };
+    const value = ctrl.value;
+    const yaGuardado = !!value && typeof value === 'object' && (value as any).persisted === true;
+    return value instanceof File || yaGuardado ? null : { requiredFile: true };
   };
 }
 
@@ -136,7 +154,7 @@ interface InstitucionEducativaItem {
   estado?: string;
 }
 
-type InstitucionCatalogControl = 'inst_nombre' | 'acad_institucion' | 'curso_institucion';
+type InstitucionCatalogControl = 'inst_nombre' | 'acad_institucion' | 'tray_prof_institucion' | 'curso_institucion';
 
 @Component({
   selector: 'app-completar-registro',
@@ -157,6 +175,7 @@ export class CompletarRegistroComponent implements OnInit {
   view = signal<View>('documentos');
   submitting = signal(false);
   processingMigration = signal(false);
+  savingSection = signal(false);
   submitProgress = signal(0);
   submitProgressBadge = signal('Guardando');
   submitProgressTitle = signal('Procesando registro');
@@ -176,6 +195,14 @@ export class CompletarRegistroComponent implements OnInit {
 
   form!: FormGroup;
   private readonly STORAGE_KEY = 'siimex_migration_session';
+  private readonly seccionesObligatorias: View[] = [
+    'personaPrincipal',
+    'padronInstitucional',
+    'institucion',
+    'area-conocimiento'
+  ];
+  private readonly archivosGuardados: Record<string, { documentoId: number; nombre: string }> = {};
+  private readonly archivosSubidosEnSesion = new WeakSet<File>();
   readonly catalogoOtroValue = '__OTRO__';
 
   autoresList: AutorArticuloItem[] = [
@@ -195,6 +222,8 @@ export class CompletarRegistroComponent implements OnInit {
   editingGradoIndex: number | null = null;
   cursosImpartidosList: CursoImpartido[] = [];
   editingCursoIndex: number | null = null;
+  idiomasDominioList: IdiomaDominio[] = [];
+  editingIdiomaIndex: number | null = null;
   estanciasInvestigacionList: EstanciaInvestigacion[] = [];
   editingEstanciaIndex: number | null = null;
   divulgacionesCientificasList: DivulgacionCientifica[] = [];
@@ -226,9 +255,11 @@ export class CompletarRegistroComponent implements OnInit {
   catalogoCarreras: CatalogItem[] = [];
   selectedInstitucionRegistroId = '';
   selectedInstitucionAcademicaId = '';
+  selectedInstitucionProfesionalId = '';
   selectedInstitucionCursoId = '';
   selectedCarreraClave = '';
   selectedNacionalidadNombre = '';
+  selectedMunicipioNacimientoNombre = '';
   selectedEntidadDomicilioNombre = '';
   selectedMunicipioNombre = '';
   selectedLocalidadNombre = '';
@@ -365,7 +396,7 @@ export class CompletarRegistroComponent implements OnInit {
     this.loadUserData(); // Cargar datos de Registro1 automáticamente
     
     // Luego cargar borrador si existe (esto sobreescribirá los datos del usuario si hay borrador)
-    this.loadDraft(); 
+    this.loadDraft();
     
     // 💡 SOLUCIÓN AL ERROR DE rfcNum: 
     // Sincroniza el RFC de la pantalla 1 con el campo técnico rfcNum para que no sea invalidado
@@ -686,6 +717,7 @@ export class CompletarRegistroComponent implements OnInit {
     if (userData.entidadFederativa) formData['pers_entidad_nombre'] = userData.entidadFederativa;
     if (userData.paisNacimiento) formData['pers_pais_nac_nombre'] = userData.paisNacimiento ?? '';
     if (userData.nacionalidad) formData['pers_nacionalidad_nombre'] = userData.nacionalidad ?? '';
+    if (userData.municipio) formData['pers_municipio_nombre'] = userData.municipio;
     if (userData.genero) {
       const m: Record<string, string> = { 'MASCULINO': 'Hombre', 'FEMENINO': 'Mujer', 'OTRO': 'Otro' };
       formData['pers_sexo_nombre'] = m[userData.genero] ?? userData.genero;
@@ -717,6 +749,7 @@ export class CompletarRegistroComponent implements OnInit {
 
     this.loadingUserData.set(true);
     this.dataLoadFailed.set(false);
+    this.cargarArchivosGuardados();
 
     this.authService.me().subscribe({
       next: (userData: Usuario) => {
@@ -758,6 +791,9 @@ export class CompletarRegistroComponent implements OnInit {
         }
         if (userData.nacionalidad) {
           formData['pers_nacionalidad_nombre'] = userData.nacionalidad;
+        }
+        if (userData.municipio) {
+          formData['pers_municipio_nombre'] = userData.municipio;
         }
         if (userData.genero) {
           // Mapear el enum del backend al valor del select
@@ -822,6 +858,12 @@ export class CompletarRegistroComponent implements OnInit {
             delete savedData['_cursosImpartidosList'];
             this.editingCursoIndex = savedData['_editingCursoIndex'] ?? null;
             delete savedData['_editingCursoIndex'];
+            if (Array.isArray(savedData['_idiomasDominioList']) && savedData['_idiomasDominioList'].length > 0) {
+              this.idiomasDominioList = savedData['_idiomasDominioList'].map((item: any) => this.normalizarIdioma(item));
+            }
+            delete savedData['_idiomasDominioList'];
+            this.editingIdiomaIndex = savedData['_editingIdiomaIndex'] ?? null;
+            delete savedData['_editingIdiomaIndex'];
             if (Array.isArray(savedData['_estanciasInvestigacionList']) && savedData['_estanciasInvestigacionList'].length > 0) {
               this.estanciasInvestigacionList = savedData['_estanciasInvestigacionList'];
             }
@@ -879,6 +921,10 @@ export class CompletarRegistroComponent implements OnInit {
           }
         }
         
+        // La BD sigue siendo la fuente de verdad para los datos ya confirmados.
+        // Si existe borrador local, se conserva y solo se sincronizan campos críticos persistidos.
+        this.cargarAvancePersistido(!!sessionStorage.getItem(this.STORAGE_KEY));
+
         // Inicializar validaciones condicionales después de cargar datos
         this.actualizarValidacionesCondicionales();
       },
@@ -903,6 +949,211 @@ export class CompletarRegistroComponent implements OnInit {
     });
   }
 
+  private cargarAvancePersistido(conservarBorradorLocal = false): void {
+    this.http.get<any>(environment.apiBaseUrl + '/usuarios/me/detalle').subscribe({
+      next: detalle => {
+        if (conservarBorradorLocal) {
+          this.sincronizarCamposPersistidosCriticos(detalle);
+          return;
+        }
+        this.aplicarAvancePersistido(detalle);
+      },
+      error: () => {
+        // Mantener el endpoint específico de idiomas como respaldo si falla el detalle general.
+        this.cargarIdiomasGuardados();
+      }
+    });
+  }
+
+  private sincronizarCamposPersistidosCriticos(detalle: any): void {
+    const claveOficial = (detalle?.institucion?.claveOficial || '').toString().trim();
+    if (!claveOficial) {
+      return;
+    }
+
+    this.form.patchValue({ inst_clave_oficial: claveOficial }, { emitEvent: false });
+    this.saveDraft();
+  }
+
+  private aplicarAvancePersistido(detalle: any): void {
+    if (!detalle) {
+      return;
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (detalle.semblanza) patch['pers_semblanza'] = detalle.semblanza;
+
+    const institucion = detalle.institucion || {};
+    if (institucion.nombre) patch['inst_nombre'] = institucion.nombre;
+    if (institucion.claveOficial) patch['inst_clave_oficial'] = institucion.claveOficial;
+    if (institucion.tipoId) patch['inst_tipo_id'] = institucion.tipoId;
+    if (institucion.tipoNombre) patch['inst_tipo_nombre'] = institucion.tipoNombre;
+    if (institucion.paisNombre) patch['inst_pais_nombre'] = institucion.paisNombre;
+    if (institucion.paisNombre === 'Estados Unidos') {
+      if (institucion.entidadNombre) patch['inst_estado_usa'] = institucion.entidadNombre;
+    } else {
+      if (institucion.entidadNombre) patch['inst_entidad_nombre'] = institucion.entidadNombre;
+      if (institucion.municipioNombre) patch['inst_municipio_nombre'] = institucion.municipioNombre;
+    }
+    if (institucion.nivelUnoNombre) patch['inst_nivel_uno_nombre'] = institucion.nivelUnoNombre;
+    if (institucion.nivelDosNombre) patch['inst_nivel_dos_nombre'] = institucion.nivelDosNombre;
+
+    const area = detalle.areaConocimiento || {};
+    if (area.areaId) patch['area_id'] = area.areaId;
+    if (area.areaNombre) patch['area_nombre'] = area.areaNombre;
+    if (area.areaClave) patch['area_clave'] = area.areaClave;
+    if (area.areaVersion) patch['area_version'] = area.areaVersion;
+    if (area.campoId) patch['campo_id'] = area.campoId;
+    if (area.campoNombre) patch['campo_nombre'] = area.campoNombre;
+    if (area.campoClave) patch['campo_clave'] = area.campoClave;
+    if (area.disciplinaId) patch['disciplina_id'] = area.disciplinaId;
+    if (area.disciplinaNombre) patch['disciplina_nombre'] = area.disciplinaNombre;
+    if (area.disciplinaClave) patch['disciplina_clave'] = area.disciplinaClave;
+    if (area.subdisciplinaId) patch['subdisciplina_id'] = area.subdisciplinaId;
+    if (area.subdisciplinaNombre) patch['subdisciplina_nombre'] = area.subdisciplinaNombre;
+    if (area.subdisciplinaClave) patch['subdisciplina_clave'] = area.subdisciplinaClave;
+
+    const profesionales = Array.isArray(detalle.trayectoriaProfesional) ? detalle.trayectoriaProfesional : [];
+    const profesional = profesionales.find((item: any) => item?.esActual) || profesionales[0];
+    if (profesional) {
+      patch['tray_prof_nombramiento'] = profesional.nombramiento || '';
+      patch['tray_prof_institucion'] = profesional.institucion || '';
+      patch['tray_prof_fecha_inicio'] = profesional.fechaInicio || '';
+      patch['tray_prof_fecha_fin'] = profesional.fechaFin || '';
+      patch['tray_prof_es_actual'] = !!profesional.esActual;
+      patch['tray_prof_logros'] = profesional.logros || '';
+    }
+
+    const grados = Array.isArray(detalle.trayectoriaAcademica) ? detalle.trayectoriaAcademica : [];
+    this.acadGradosList = grados
+      .map((item: any) => ({
+        nivelNombre: (item?.nivelNombre || '').toString(),
+        titulo: (item?.titulo || '').toString(),
+        estatusNombre: (item?.estatusNombre || '').toString(),
+        cedulaProfesional: (item?.cedulaProfesional || '').toString(),
+        opcionTitulacion: (item?.opcionTitulacion || '').toString(),
+        tituloTesis: (item?.tituloTesis || '').toString(),
+        fechaObtencion: (item?.fechaObtencion || '').toString(),
+        institucion: (item?.institucion || '').toString()
+      }))
+      .filter((item: GradoAcademico) => !!(item.nivelNombre && item.titulo && item.estatusNombre));
+    if (grados.some((item: any) => !!item?.esPerfilSnii)) {
+      patch['acad_es_perfil_snii'] = true;
+    }
+
+    const cursos = Array.isArray(detalle.cursos) ? detalle.cursos : [];
+    this.cursosImpartidosList = cursos
+      .map((item: any) => ({
+        nombre: (item?.nombre || '').toString(),
+        programa: (item?.programa || '').toString(),
+        horasTotales: Number(item?.horasTotales ?? 0),
+        fechaInicio: (item?.fechaInicio || '').toString(),
+        fechaFin: (item?.fechaFin || '').toString(),
+        institucion: (item?.institucion || '').toString(),
+        nivelEscolaridad: (item?.nivelEscolaridad || '').toString(),
+        productoPrincipal: !!item?.productoPrincipal
+      }))
+      .filter((item: CursoImpartido) => !!(item.nombre && item.programa));
+
+    const idiomas = Array.isArray(detalle.idiomas) ? detalle.idiomas : [];
+    this.idiomasDominioList = idiomas
+      .map((item: any) => this.normalizarIdioma(item))
+      .filter((item: IdiomaDominio) => !!(item.nombre && item.dominioNombre));
+
+    const estancias = Array.isArray(detalle.estancias) ? detalle.estancias : [];
+    this.estanciasInvestigacionList = estancias
+      .map((item: any) => ({
+        nombreProyecto: (item?.nombreProyecto || '').toString(),
+        tipoNombre: (item?.tipoNombre || '').toString(),
+        logros: (item?.logros || '').toString(),
+        fechaInicio: (item?.fechaInicio || '').toString(),
+        fechaFin: (item?.fechaFin || '').toString(),
+        institucionReceptora: (item?.institucionReceptora || '').toString()
+      }))
+      .filter((item: EstanciaInvestigacion) => !!(item.nombreProyecto && item.tipoNombre));
+
+    const articulos = Array.isArray(detalle.articulos) ? detalle.articulos : [];
+    this.articulosCientificosList = articulos
+      .map((item: any) => ({
+        idExterno: (item?.idExterno || '').toString(),
+        eje: (item?.eje || '').toString(),
+        tipo: (item?.tipo || '').toString(),
+        productoPrincipal: !!item?.productoPrincipal,
+        anio: item?.anio == null ? null : Number(item.anio),
+        issn: (item?.issn || '').toString(),
+        issnElectronico: (item?.issnElectronico || '').toString(),
+        doi: (item?.doi || '').toString(),
+        nombreRevista: (item?.nombreRevista || '').toString(),
+        titulo: (item?.titulo || '').toString(),
+        rolParticipacionNombre: (item?.rolParticipacionNombre || '').toString(),
+        estadoNombre: (item?.estadoNombre || '').toString(),
+        objetivoNombre: (item?.objetivoNombre || '').toString(),
+        recibioApoyoSECIHTI: !!item?.fondoProgramaNombre,
+        fondoProgramaNombre: (item?.fondoProgramaNombre || '').toString(),
+        totalCitas: Number(item?.totalCitas ?? 0),
+        autores: (Array.isArray(item?.autores) ? item.autores : []).map((autor: any, index: number) => ({
+          nombre: (autor?.nombreCompleto || autor?.nombre || '').toString(),
+          orcid: (autor?.orcid || '').toString(),
+          orden: Number(autor?.orden ?? index + 1)
+        }))
+      }))
+      .filter((item: ArticuloCientifico) => !!(item.titulo && item.nombreRevista));
+
+    const congresos = Array.isArray(detalle.congresos) ? detalle.congresos : [];
+    const congresosNormalizados = congresos
+      .map((item: any) => ({
+        nombre: (item?.nombreEvento || '').toString(),
+        tituloTrabajo: (item?.tituloTrabajo || '').toString(),
+        tipoParticipacion: (item?.tipoParticipacionNombre || '').toString(),
+        tipoParticipacionManual: '',
+        fecha: (item?.fecha || '').toString(),
+        paisSede: (item?.paisSede || '').toString(),
+        paisSedeManual: '',
+        productoPrincipal: !!item?.productoPrincipal
+      }))
+      .filter((item: any) => !!item.nombre);
+    if (congresosNormalizados.length > 0) {
+      this.congresosList = congresosNormalizados;
+    }
+
+    const divulgaciones = Array.isArray(detalle.divulgaciones) ? detalle.divulgaciones : [];
+    this.divulgacionesCientificasList = divulgaciones
+      .map((item: any) => ({
+        titulo: (item?.titulo || '').toString(),
+        tipoDivulgacionNombre: (item?.tipoDivulgacionNombre || '').toString(),
+        medioNombre: (item?.medioNombre || '').toString(),
+        dirigidoA: (item?.dirigidoA || '').toString(),
+        productoObtenidoNombre: (item?.productoObtenidoNombre || '').toString(),
+        fecha: (item?.fecha || '').toString(),
+        institucionOrganizadora: (item?.institucionOrganizadora || '').toString(),
+        evidenciaTipo: item?.evidenciaTipo === 'LINK' ? 'LINK' as const : 'PDF' as const,
+        evidenciaLink: (item?.evidenciaLink || '').toString(),
+        evidenciaArchivo: null,
+        evidenciaArchivoNombre: (item?.evidenciaArchivoNombre || '').toString()
+      }))
+      .filter((item: DivulgacionCientifica) => !!item.titulo);
+
+    const logros = Array.isArray(detalle.logros) ? detalle.logros : [];
+    this.logrosReconocimientosList = logros
+      .map((item: any) => ({
+        tipo: (item?.tipo || '').toString(),
+        nombre: (item?.nombre || '').toString(),
+        anio: item?.anio == null ? null : Number(item.anio)
+      }))
+      .filter((item: LogroReconocimiento) => !!item.nombre);
+
+    this.form.patchValue(patch, { emitEvent: false });
+    this.sincronizarGradosAcademicosAntesDeEnviar();
+    this.sincronizarCursosAntesDeEnviar();
+    this.sincronizarIdiomasAntesDeEnviar();
+    this.sincronizarEstanciasAntesDeEnviar();
+    this.sincronizarArticulosAntesDeEnviar();
+    this.sincronizarDivulgacionesAntesDeEnviar();
+    this.sincronizarLogrosAntesDeEnviar();
+    this.sincronizarValoresCatalogoActuales();
+    this.actualizarValidacionesCondicionales();
+    this.saveDraft();
+  }
   private aplicarDatosPadronUsuario(formData: { [key: string]: string }, userData: Usuario): void {
     const campos: Array<keyof Usuario> = [
       'telefono',
@@ -959,9 +1210,10 @@ export class CompletarRegistroComponent implements OnInit {
       pers_curp: ['', [Validators.required]],
       pers_rfc: ['', [Validators.required]],
       pers_fecha_nacimiento: ['', [Validators.required]],
-      pers_sexo_id: [''], pers_sexo_nombre: [''], pers_pais_nac_id: [''], pers_pais_nac_nombre: [''],
-      pers_entidad_clave: [''], pers_entidad_nombre: ['', [Validators.required]], pers_estado_civil_id: [''], pers_estado_civil_nombre: [''],
-      pers_nacionalidad_id: [''], pers_nacionalidad_nombre: [''],
+      pers_sexo_id: [''], pers_sexo_nombre: ['', [Validators.required]], pers_pais_nac_id: [''], pers_pais_nac_nombre: [''],
+      pers_entidad_clave: [''], pers_entidad_nombre: ['', [Validators.required]], pers_estado_civil_id: [''], pers_estado_civil_nombre: ['', [Validators.required]],
+      pers_nacionalidad_id: [''], pers_nacionalidad_nombre: ['', [Validators.required]],
+      pers_municipio_nombre: ['', [Validators.required]],
       pers_orcid_url: ['', [Validators.pattern('https?://.*')]],
       pers_scholar_url: ['', [Validators.pattern('https?://.*')]],
       pers_semblanza: ['', [Validators.required]],
@@ -1026,6 +1278,7 @@ export class CompletarRegistroComponent implements OnInit {
 
       // 8. TRAYECTORIA PROFESIONAL / ESTANCIAS
       tray_prof_nombramiento: ['', [Validators.required]],
+      tray_prof_institucion: ['', [Validators.required]],
       tray_prof_fecha_inicio: ['', [Validators.required]],
       tray_prof_fecha_fin: [''], tray_prof_es_actual: [false], tray_prof_logros: [''],
       estancia_nombre_proyecto: ['', [Validators.required]],
@@ -1110,7 +1363,11 @@ export class CompletarRegistroComponent implements OnInit {
       'pers_rfc': { nombre: 'RFC', seccion: 'personaPrincipal' },
       'pers_fecha_nacimiento': { nombre: 'Fecha de nacimiento', seccion: 'personaPrincipal' },
       'pers_semblanza': { nombre: 'Resumen de trayectoria (Semblanza)', seccion: 'personaPrincipal' },
+      'pers_sexo_nombre': { nombre: 'Sexo', seccion: 'personaPrincipal' },
+      'pers_estado_civil_nombre': { nombre: 'Estado civil', seccion: 'personaPrincipal' },
+      'pers_nacionalidad_nombre': { nombre: 'Nacionalidad', seccion: 'personaPrincipal' },
       'pers_entidad_nombre': { nombre: 'Entidad federativa', seccion: 'personaPrincipal' },
+      'pers_municipio_nombre': { nombre: 'Municipio de nacimiento', seccion: 'personaPrincipal' },
       'rfcNum': { nombre: 'RFC (Número)', seccion: 'personaPrincipal' },
 
       // Padrón institucional
@@ -1149,6 +1406,7 @@ export class CompletarRegistroComponent implements OnInit {
       
       // Trayectoria profesional
       'tray_prof_nombramiento': { nombre: 'Puesto o nombramiento', seccion: 'trayectoria-profesional' },
+      'tray_prof_institucion': { nombre: 'Institución o empresa', seccion: 'trayectoria-profesional' },
       'tray_prof_fecha_inicio': { nombre: 'Fecha de inicio', seccion: 'trayectoria-profesional' },
       
       // Cursos
@@ -1591,8 +1849,14 @@ export class CompletarRegistroComponent implements OnInit {
     }
   }
 
-  setView(v: View): void {
-    if (this.view() === v) {
+  async setView(v: View): Promise<void> {
+    if (this.savingSection() || this.view() === v) {
+      return;
+    }
+
+    const vistaActual = this.view();
+    const puedeContinuar = await this.guardarSeccionActualAntesDeNavegar(vistaActual, v);
+    if (!puedeContinuar) {
       return;
     }
 
@@ -1933,6 +2197,7 @@ export class CompletarRegistroComponent implements OnInit {
         this.form.patchValue(datosMapeados);
         this.importarGradosAcademicosDesdePerfil(jsonData);
         this.importarCursosImpartidosDesdePerfil(jsonData);
+        this.importarIdiomasDesdePerfil(jsonData);
         this.importarEstanciasDesdePerfil(jsonData);
         this.importarDivulgacionesDesdePerfil(jsonData);
         this.importarLogrosDesdePerfil(jsonData);
@@ -2105,6 +2370,10 @@ export class CompletarRegistroComponent implements OnInit {
       const nacionalidad = typeof principal.nacionalidad === 'object' ? principal.nacionalidad.nombre : principal.nacionalidad;
       if (nacionalidad) datosMapeados['pers_nacionalidad_nombre'] = nacionalidad;
     }
+    if (principal.municipio) {
+      const municipio = typeof principal.municipio === 'object' ? principal.municipio.nombre : principal.municipio;
+      if (municipio) datosMapeados['pers_municipio_nombre'] = municipio;
+    }
     
     // Mapear estado civil
     if (principal.estadoCivil) {
@@ -2235,6 +2504,7 @@ export class CompletarRegistroComponent implements OnInit {
       
       if (profActual) {
         if (profActual.nombramiento) datosMapeados['tray_prof_nombramiento'] = profActual.nombramiento;
+        if (profActual.institucion) datosMapeados['tray_prof_institucion'] = profActual.institucion;
         if (profActual.fechaInicio) datosMapeados['tray_prof_fecha_inicio'] = profActual.fechaInicio;
         if (profActual.fechaFin) datosMapeados['tray_prof_fecha_fin'] = profActual.fechaFin;
         if (profActual.esActual !== undefined) datosMapeados['tray_prof_es_actual'] = profActual.esActual;
@@ -2540,6 +2810,657 @@ export class CompletarRegistroComponent implements OnInit {
     return datosMapeados;
   }
 
+  private cargarArchivosGuardados(): void {
+    this.http.get<any>(environment.apiBaseUrl + '/usuarios/me/completar-registro/archivos').subscribe({
+      next: (response) => {
+        const archivos = response?.archivos || {};
+        Object.entries(archivos).forEach(([campo, raw]) => {
+          const archivo = raw as any;
+          if (!archivo?.guardado) {
+            return;
+          }
+          this.archivosGuardados[campo] = {
+            documentoId: Number(archivo.documentoId),
+            nombre: String(archivo.nombre || 'Documento guardado')
+          };
+
+          const control = this.form.get(campo);
+          if (control && !(control.value instanceof File)) {
+            control.setValue({
+              persisted: true,
+              documentoId: Number(archivo.documentoId),
+              name: String(archivo.nombre || 'Documento guardado')
+            }, { emitEvent: false });
+            control.updateValueAndValidity({ emitEvent: false });
+          }
+        });
+        const certificadoIdioma = this.archivosGuardados['idioma_cert_documento'];
+        if (certificadoIdioma) {
+          this.idiomasDominioList = this.idiomasDominioList.map(item => ({
+            ...item,
+            certDocumentoPersistido: item.certDocumentoPersistido || item.esCertificado,
+            certDocumentoNombre: item.certDocumentoNombre || certificadoIdioma.nombre
+          }));
+        }
+        this.actualizarValidacionesCondicionales();
+      },
+      error: () => {
+        // El guardado de datos puede continuar aunque no se pueda consultar el resumen de archivos.
+      }
+    });
+  }
+
+  private esArchivoDisponible(value: unknown, campo: string): boolean {
+    if (value instanceof File) {
+      return true;
+    }
+    if (value && typeof value === 'object' && (value as any).persisted === true) {
+      return true;
+    }
+    return !!this.archivosGuardados[campo];
+  }
+
+  private construirArchivosSeccion(seccion: View): FormData | null {
+    const archivos = new FormData();
+    let total = 0;
+
+    const agregarControl = (campo: string): void => {
+      const value = this.form.get(campo)?.value;
+      if (value instanceof File && !this.archivosSubidosEnSesion.has(value)) {
+        archivos.append(campo, value);
+        total++;
+      }
+    };
+
+    switch (seccion) {
+      case 'trayectoria-academica':
+        agregarControl('cert1');
+        agregarControl('acad_constancia_snii');
+        break;
+      case 'trayectoria-profesional':
+        agregarControl('cert2');
+        break;
+      case 'idiomas':
+        this.idiomasDominioList.forEach((item, index) => {
+          if (item.certDocumento instanceof File && !this.archivosSubidosEnSesion.has(item.certDocumento)) {
+            archivos.append('idiomaCertDocumento_' + index, item.certDocumento);
+            total++;
+          }
+        });
+        if (total === 0) {
+          agregarControl('idioma_cert_documento');
+        }
+        break;
+      case 'estancias':
+        agregarControl('estancia_documento');
+        break;
+      case 'divulgacion':
+        this.divulgacionesCientificasList.forEach((item, index) => {
+          if (item.evidenciaArchivo instanceof File && !this.archivosSubidosEnSesion.has(item.evidenciaArchivo)) {
+            archivos.append('divulgArchivo_' + index, item.evidenciaArchivo);
+            total++;
+          }
+        });
+        if (total === 0) {
+          agregarControl('divulg_archivo');
+        }
+        break;
+    }
+
+    return total > 0 ? archivos : null;
+  }
+
+  private registrarArchivosGuardados(response: any, enviados: FormData): void {
+    enviados.forEach((value) => {
+      if (value instanceof File) {
+        this.archivosSubidosEnSesion.add(value);
+      }
+    });
+
+    const guardados = Array.isArray(response?.archivos) ? response.archivos : [];
+    guardados.forEach((archivo: any) => {
+      const campoRespuesta = String(archivo?.campo || '');
+      const esCertificadoIdioma = campoRespuesta.startsWith('idiomaCertDocumento_');
+      const campo = campoRespuesta.startsWith('divulgArchivo_')
+        ? 'divulg_archivo'
+        : esCertificadoIdioma ? 'idioma_cert_documento' : campoRespuesta;
+      if (!campo || !archivo?.documentoId) {
+        return;
+      }
+      const nombre = String(archivo.nombre || 'Documento guardado');
+      this.archivosGuardados[campo] = {
+        documentoId: Number(archivo.documentoId),
+        nombre
+      };
+      if (esCertificadoIdioma) {
+        const index = Number(campoRespuesta.substring('idiomaCertDocumento_'.length));
+        const item = this.idiomasDominioList[index];
+        if (item) {
+          item.certDocumentoPersistido = true;
+          item.certDocumentoNombre = item.certDocumentoNombre || nombre;
+        }
+      }
+    });
+  }
+
+  private async validarArchivosRequeridosSeccion(seccion: View): Promise<boolean> {
+    this.actualizarValidacionesCondicionales();
+    const faltantes: Array<{ campo: string; nombre: string }> = [];
+
+    const requerir = (campo: string, nombre: string): void => {
+      const control = this.form.get(campo);
+      if (!this.esArchivoDisponible(control?.value, campo)) {
+        control?.markAsTouched();
+        faltantes.push({ campo, nombre });
+      }
+    };
+
+    if (seccion === 'trayectoria-academica') {
+      requerir('cert1', 'Documento probatorio de titulación');
+      if (this.form.get('acad_es_perfil_snii')?.value) {
+        requerir('acad_constancia_snii', 'Constancia SNII');
+      }
+    }
+
+    if (seccion === 'idiomas') {
+      const idiomaActual = this.obtenerIdiomaDesdeFormulario();
+      const idiomasAValidar = [...this.idiomasDominioList];
+      const tieneDatosActual = !!(idiomaActual.nombre || idiomaActual.dominioNombre);
+      if (tieneDatosActual && !idiomasAValidar.some(item => this.idiomasIguales(item, idiomaActual))) {
+        idiomasAValidar.unshift(idiomaActual);
+      }
+      const faltaCertificado = idiomasAValidar.some(item =>
+        item.dominioNombre === 'Excelente' &&
+        !(item.certDocumento instanceof File) &&
+        !item.certDocumentoPersistido &&
+        !this.archivosGuardados['idioma_cert_documento']
+      );
+      if (faltaCertificado) {
+        this.form.get('idioma_cert_documento')?.markAsTouched();
+        faltantes.push({
+          campo: 'idioma_cert_documento',
+          nombre: 'Documento probatorio de certificación para cada idioma con dominio Excelente'
+        });
+      }
+    }
+
+    if (seccion === 'divulgacion') {
+      const productoActual = this.resolverValorConOtro(
+        this.form.get('divulg_prod_obtenido_nombre')?.value,
+        this.divulgProductoManual
+      );
+      const archivoActual = this.form.get('divulg_archivo')?.value;
+      const requierePdfActual = !!productoActual && !this.esProductoConEvidenciaLink(productoActual);
+      const tienePdfEnControl = archivoActual instanceof File ||
+        (!!archivoActual && typeof archivoActual === 'object' && archivoActual.persisted === true);
+
+      this.sincronizarDivulgacionesAntesDeEnviar();
+      const hayEvidenciaPersistida = !!this.archivosGuardados['divulg_archivo'];
+      const faltaEnLista = this.divulgacionesCientificasList.some(item =>
+        item.evidenciaTipo === 'PDF' &&
+        !(item.evidenciaArchivo instanceof File || (!!item.evidenciaArchivoNombre && hayEvidenciaPersistida))
+      );
+
+      if ((requierePdfActual && !tienePdfEnControl) || faltaEnLista) {
+        const control = this.form.get('divulg_archivo');
+        control?.markAsTouched();
+        faltantes.push({ campo: 'divulg_archivo', nombre: 'Documento probatorio de divulgación' });
+      }
+    }
+
+    if (faltantes.length === 0) {
+      return true;
+    }
+
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Falta un archivo obligatorio',
+      text: 'Carga ' + faltantes.map(item => item.nombre).join(', ') + ' para continuar.',
+      confirmButtonColor: '#800020'
+    });
+    return false;
+  }
+  private async guardarSeccionActualAntesDeNavegar(actual: View, destino: View, forzar = false): Promise<boolean> {
+    this.saveDraft();
+
+    if (!forzar && !this.debeGuardarSeccionEnServidor(actual, destino)) {
+      return true;
+    }
+
+    const payload = this.construirPayloadGuardadoParcial(actual);
+    const archivos = this.construirArchivosSeccion(actual);
+    if (!this.payloadTieneDatos(payload) && !archivos) {
+      return true;
+    }
+
+    this.savingSection.set(true);
+    try {
+      const seccion = this.obtenerSeccionGuardado(actual);
+      if (this.payloadTieneDatos(payload)) {
+        await firstValueFrom(
+          this.http.patch(environment.apiBaseUrl + '/usuarios/me/completar-registro/seccion/' + seccion, payload)
+        );
+      }
+      if (archivos) {
+        const response = await firstValueFrom(
+          this.http.post<any>(environment.apiBaseUrl + '/usuarios/me/completar-registro/seccion/' + seccion + '/archivos', archivos)
+        );
+        this.registrarArchivosGuardados(response, archivos);
+      }
+      this.saveDraft();
+      if (!forzar) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Registrado correctamente',
+          text: 'El avance de esta sección quedó guardado.',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 1600,
+          timerProgressBar: true
+        });
+      }
+      return true;
+    } catch (error: any) {
+      const mensaje = error?.error?.message || error?.message || 'No se pudo guardar el avance de esta sección.';
+      await Swal.fire({
+        icon: 'error',
+        title: 'No se pudo guardar el avance',
+        text: mensaje,
+        confirmButtonColor: '#800020'
+      });
+      return false;
+    } finally {
+      this.savingSection.set(false);
+    }
+  }
+  private async validarSeccionCompletaAntesDeGuardar(seccion: View): Promise<boolean> {
+    const seccionNormalizada: View = seccion === 'inicio' ? 'personaPrincipal' : seccion;
+    this.actualizarValidacionesCondicionales();
+
+    if (this.getSectionProgress(seccionNormalizada) === 100) {
+      return true;
+    }
+
+    const camposPorSeccion: Partial<Record<View, string[]>> = {
+      personaPrincipal: [
+        'pers_nombre', 'pers_primer_apellido', 'pers_curp', 'pers_rfc',
+        'pers_fecha_nacimiento', 'pers_sexo_nombre', 'pers_estado_civil_nombre',
+        'pers_nacionalidad_nombre', 'pers_entidad_nombre', 'pers_municipio_nombre',
+        'pers_semblanza', 'rfcNum'
+      ],
+      padronInstitucional: [
+        'telefono', 'tipoIdentificacionOficial', 'identificacionOficial', 'calle',
+        'numeroExterior', 'colonia', 'localidad', 'municipioDomicilio', 'codigoPostal'
+      ],
+      institucion: [
+        'inst_clave_oficial', 'inst_nombre', 'inst_tipo_id', 'inst_pais_nombre',
+        'inst_entidad_nombre', 'inst_municipio_nombre', 'inst_estado_usa'
+      ],
+      'area-conocimiento': ['area_nombre', 'area_clave'],
+      'trayectoria-academica': ['acad_nivel_nombre', 'acad_titulo', 'acad_estatus_nombre', 'cert1', 'acad_constancia_snii'],
+      'trayectoria-profesional': ['tray_prof_nombramiento', 'tray_prof_institucion', 'tray_prof_fecha_inicio', 'tray_prof_fecha_fin'],
+      cursos: ['curso_nombre', 'curso_programa', 'curso_horas_totales', 'curso_fecha_inicio', 'curso_institucion', 'curso_nivel_escolaridad'],
+      idiomas: ['idioma_nombre', 'idioma_dominio_nombre', 'idioma_cert_institucion', 'idioma_cert_puntuacion', 'idioma_cert_documento'],
+      estancias: ['estancia_nombre_proyecto', 'estancia_tipo_nombre', 'estancia_fecha_inicio', 'estancia_institucion_receptora'],
+      aportaciones: ['art_titulo', 'art_nombre_revista', 'art_rol_part_nombre', 'art_estado_nombre', 'art_fondo_prog_nombre'],
+      divulgacion: ['divulg_titulo', 'divulg_tipo_div_nombre', 'divulg_medio_nombre', 'divulg_fecha', 'divulg_prod_obtenido_nombre', 'divulg_archivo', 'divulg_evidencia_link'],
+      logros: ['logro_nombre', 'logro_anio']
+    };
+
+    (camposPorSeccion[seccionNormalizada] || [])
+      .filter(campo => this.isConditionalFieldActive(campo))
+      .forEach(campo => {
+        const control = this.form.get(campo);
+        control?.markAsTouched();
+        control?.updateValueAndValidity({ emitEvent: false });
+      });
+
+    const nombreSeccion = this.getSectionSteps().find(item => item.id === seccionNormalizada)?.title || 'esta sección';
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Sección incompleta',
+      text: `Completa los campos obligatorios de ${nombreSeccion} antes de continuar.`,
+      confirmButtonColor: '#800020'
+    });
+    return false;
+  }
+
+  private debeGuardarSeccionEnServidor(actual: View, destino: View): boolean {
+    if (!['inicio', 'personaPrincipal', 'padronInstitucional', 'institucion', 'area-conocimiento', 'trayectoria-academica', 'trayectoria-profesional', 'cursos', 'idiomas', 'estancias', 'aportaciones', 'congresos', 'divulgacion', 'logros'].includes(actual)) {
+      return false;
+    }
+    return this.obtenerSeccionGuardado(actual) !== this.obtenerSeccionGuardado(destino);
+  }
+
+  private obtenerSeccionGuardado(seccion: View): string {
+    if (seccion === 'inicio') {
+      return 'personaPrincipal';
+    }
+    return seccion;
+  }
+
+  private obtenerOrdenSeccion(seccion: View): number {
+    const orden: Record<View, number> = {
+      'documentos': -1,
+      'inicio': 0,
+      'personaPrincipal': 1,
+      'padronInstitucional': 2,
+      'institucion': 3,
+      'area-conocimiento': 4,
+      'trayectoria-academica': 5,
+      'trayectoria-profesional': 6,
+      'cursos': 7,
+      'idiomas': 8,
+      'estancias': 9,
+      'aportaciones': 10,
+      'congresos': 11,
+      'divulgacion': 12,
+      'logros': 13
+    };
+    return orden[seccion] ?? 999;
+  }
+
+  private construirPayloadGuardadoParcial(seccion: View): Record<string, unknown> {
+    switch (seccion) {
+      case 'inicio':
+      case 'personaPrincipal':
+        return this.construirPayloadDatosPersonales();
+      case 'padronInstitucional':
+        return this.construirPayloadPadronInstitucional();
+      case 'institucion':
+        return this.construirPayloadInstitucion();
+      case 'area-conocimiento':
+        return this.construirPayloadAreaConocimiento();
+      case 'trayectoria-academica':
+        return this.construirPayloadTrayectoriaAcademica();
+      case 'trayectoria-profesional':
+        return this.construirPayloadTrayectoriaProfesional();
+      case 'cursos':
+        return this.construirPayloadCursos();
+      case 'idiomas':
+        return this.construirPayloadIdiomas();
+      case 'estancias':
+        return this.construirPayloadEstancias();
+      case 'aportaciones':
+        return this.construirPayloadAportaciones();
+      case 'congresos':
+        return this.construirPayloadCongresos();
+      case 'divulgacion':
+        return this.construirPayloadDivulgaciones();
+      case 'logros':
+        return this.construirPayloadLogros();
+      default:
+        return {};
+    }
+  }
+
+  private construirPayloadDatosPersonales(): Record<string, unknown> {
+    return {
+      nombre: this.obtenerTextoFormulario('pers_nombre'),
+      apellidoPaterno: this.obtenerTextoFormulario('pers_primer_apellido'),
+      apellidoMaterno: this.obtenerTextoFormulario('pers_segundo_apellido'),
+      curp: this.obtenerTextoFormulario('pers_curp'),
+      rfc: this.obtenerTextoFormulario('pers_rfc'),
+      fechaNacimiento: this.obtenerTextoFormulario('pers_fecha_nacimiento'),
+      genero: this.mapearGeneroParaBackend(this.obtenerTextoFormulario('pers_sexo_nombre')),
+      paisNacimiento: this.obtenerTextoFormulario('pers_pais_nac_nombre'),
+      entidadFederativa: this.obtenerTextoFormulario('pers_entidad_nombre'),
+      nacionalidad: this.obtenerTextoFormulario('pers_nacionalidad_nombre'),
+      municipio: this.obtenerTextoFormulario('pers_municipio_nombre'),
+      estadoCivil: this.mapearEstadoCivilParaBackend(this.obtenerTextoFormulario('pers_estado_civil_nombre')),
+      interesDescripcion: this.obtenerTextoFormulario('pers_semblanza')
+    };
+  }
+
+  private construirPayloadPadronInstitucional(): Record<string, unknown> {
+    return {
+      telefono: this.obtenerTextoFormulario('telefono'),
+      celular: this.obtenerTextoFormulario('celular'),
+      tipoIdentificacionOficial: this.obtenerTextoFormulario('tipoIdentificacionOficial'),
+      identificacionOficial: this.obtenerTextoFormulario('identificacionOficial'),
+      calle: this.obtenerTextoFormulario('calle'),
+      numeroExterior: this.obtenerTextoFormulario('numeroExterior'),
+      numeroInterior: this.obtenerTextoFormulario('numeroInterior'),
+      entreCalle: this.obtenerTextoFormulario('entreCalle'),
+      yCalle: this.obtenerTextoFormulario('yCalle'),
+      colonia: this.obtenerTextoFormulario('colonia'),
+      claveEntidadFederativa: this.obtenerTextoFormulario('claveEntidadFederativa'),
+      municipioDomicilio: this.obtenerTextoFormulario('municipioDomicilio'),
+      claveMunicipio: this.obtenerTextoFormulario('claveMunicipio'),
+      localidad: this.obtenerTextoFormulario('localidad'),
+      claveLocalidad: this.obtenerTextoFormulario('claveLocalidad'),
+      codigoPostal: this.obtenerTextoFormulario('codigoPostal'),
+      claveAgeb: this.obtenerTextoFormulario('claveAgeb'),
+      otraReferencia: this.obtenerTextoFormulario('otraReferencia'),
+      claveRedSocial: this.obtenerTextoFormulario('claveRedSocial'),
+      redSocial: this.obtenerTextoFormulario('redSocial')
+    };
+  }
+
+  private construirPayloadInstitucion(): Record<string, unknown> {
+    const pais = this.obtenerTextoFormulario('inst_pais_nombre');
+    const entidadOEstado = pais === 'Estados Unidos'
+      ? this.obtenerTextoFormulario('inst_estado_usa')
+      : this.obtenerTextoFormulario('inst_entidad_nombre');
+
+    return {
+      instClaveOficial: this.obtenerTextoFormulario('inst_clave_oficial'),
+      instNombre: this.obtenerTextoFormulario('inst_nombre'),
+      instTipoId: this.obtenerTextoFormulario('inst_tipo_id'),
+      instTipoNombre: this.obtenerTextoFormulario('inst_tipo_nombre'),
+      instPaisNombre: pais,
+      instEntidadNombre: entidadOEstado,
+      instMunicipioNombre: this.obtenerTextoFormulario('inst_municipio_nombre'),
+      instNivelUnoNombre: this.obtenerTextoFormulario('inst_nivel_uno_nombre'),
+      instNivelDosNombre: this.obtenerTextoFormulario('inst_nivel_dos_nombre')
+    };
+  }
+
+  private construirPayloadAreaConocimiento(): Record<string, unknown> {
+    return {
+      areaId: this.obtenerTextoFormulario('area_id'),
+      areaNombre: this.obtenerTextoFormulario('area_nombre'),
+      areaClave: this.obtenerTextoFormulario('area_clave'),
+      areaVersion: this.obtenerTextoFormulario('area_version'),
+      campoId: this.obtenerTextoFormulario('campo_id'),
+      campoNombre: this.obtenerTextoFormulario('campo_nombre'),
+      campoClave: this.obtenerTextoFormulario('campo_clave'),
+      disciplinaId: this.obtenerTextoFormulario('disciplina_id'),
+      disciplinaNombre: this.obtenerTextoFormulario('disciplina_nombre'),
+      disciplinaClave: this.obtenerTextoFormulario('disciplina_clave'),
+      subdisciplinaId: this.obtenerTextoFormulario('subdisciplina_id'),
+      subdisciplinaNombre: this.obtenerTextoFormulario('subdisciplina_nombre'),
+      subdisciplinaClave: this.obtenerTextoFormulario('subdisciplina_clave')
+    };
+  }
+
+
+  private construirPayloadTrayectoriaAcademica(): Record<string, unknown> {
+    this.sincronizarGradosAcademicosAntesDeEnviar();
+    if (this.acadGradosList.length > 0) {
+      const esPerfilSnii = !!this.form.get('acad_es_perfil_snii')?.value;
+      return {
+        academicaJson: JSON.stringify(this.acadGradosList.map(grado => ({
+          ...grado,
+          esPerfilSnii
+        })))
+      };
+    }
+    return {};
+  }
+
+  private construirPayloadTrayectoriaProfesional(): Record<string, unknown> {
+    const nombramiento = this.obtenerTextoFormulario('tray_prof_nombramiento');
+    const institucion = this.obtenerTextoFormulario('tray_prof_institucion');
+    const fechaInicio = this.obtenerTextoFormulario('tray_prof_fecha_inicio');
+    const fechaFin = this.form.get('tray_prof_es_actual')?.value ? null : this.obtenerTextoFormulario('tray_prof_fecha_fin');
+    const logros = this.obtenerTextoFormulario('tray_prof_logros');
+
+    if (!(nombramiento || institucion || fechaInicio || fechaFin || logros)) {
+      return {};
+    }
+
+    return {
+      trayProfNombramiento: nombramiento,
+      trayProfInstitucion: institucion,
+      trayProfFechaInicio: fechaInicio,
+      trayProfFechaFin: fechaFin,
+      trayProfEsActual: !!this.form.get('tray_prof_es_actual')?.value,
+      trayProfLogros: logros
+    };
+  }
+
+  private construirPayloadCursos(): Record<string, unknown> {
+    this.sincronizarCursosAntesDeEnviar();
+    if (this.cursosImpartidosList.length > 0) {
+      return {
+        cursosJson: JSON.stringify(this.cursosImpartidosList)
+      };
+    }
+    return {};
+  }
+
+  private construirPayloadIdiomas(): Record<string, unknown> {
+    this.sincronizarIdiomasAntesDeEnviar();
+    if (this.idiomasDominioList.length === 0) {
+      return {};
+    }
+
+    return {
+      idiomasJson: JSON.stringify(this.construirIdiomasPayload())
+    };
+  }
+
+  private construirPayloadEstancias(): Record<string, unknown> {
+    this.sincronizarEstanciasAntesDeEnviar();
+    if (this.estanciasInvestigacionList.length > 0) {
+      return {
+        estanciasJson: JSON.stringify(this.estanciasInvestigacionList)
+      };
+    }
+    return {};
+  }
+
+  private construirPayloadAportaciones(): Record<string, unknown> {
+    this.sincronizarArticulosAntesDeEnviar();
+    if (this.articulosCientificosList.length > 0) {
+      return {
+        articulosJson: JSON.stringify(this.articulosCientificosList)
+      };
+    }
+    return {};
+  }
+
+  private construirPayloadCongresos(): Record<string, unknown> {
+    const congresosConDatos = this.congresosList
+      .filter(c => (c.nombre || '').toString().trim() !== '')
+      .map(c => ({
+        ...c,
+        tipoParticipacion: this.resolverValorConOtro(c.tipoParticipacion, c.tipoParticipacionManual),
+        paisSede: this.resolverValorConOtro(c.paisSede, c.paisSedeManual)
+      }));
+
+    if (congresosConDatos.length === 0) {
+      return {};
+    }
+
+    return {
+      congresosJson: JSON.stringify(congresosConDatos)
+    };
+  }
+
+  private construirPayloadDivulgaciones(): Record<string, unknown> {
+    this.sincronizarDivulgacionesAntesDeEnviar();
+    if (this.divulgacionesCientificasList.length === 0) {
+      return {};
+    }
+
+    const divulgacionesPayload = this.divulgacionesCientificasList.map((item) => ({
+      titulo: item.titulo,
+      tipoDivulgacionNombre: item.tipoDivulgacionNombre,
+      medioNombre: item.medioNombre,
+      dirigidoA: item.dirigidoA,
+      productoObtenidoNombre: item.productoObtenidoNombre,
+      fecha: item.fecha,
+      institucionOrganizadora: item.institucionOrganizadora,
+      evidenciaTipo: item.evidenciaTipo,
+      evidenciaLink: item.evidenciaLink,
+      evidenciaArchivoNombre: item.evidenciaArchivoNombre || (item.evidenciaArchivo instanceof File ? item.evidenciaArchivo.name : '')
+    }));
+
+    return {
+      divulgacionesJson: JSON.stringify(divulgacionesPayload)
+    };
+  }
+
+  private construirPayloadLogros(): Record<string, unknown> {
+    this.sincronizarLogrosAntesDeEnviar();
+    if (this.logrosReconocimientosList.length > 0) {
+      return {
+        logrosJson: JSON.stringify(this.logrosReconocimientosList)
+      };
+    }
+    return {};
+  }
+  private obtenerTextoFormulario(controlName: string): string | null {
+    const valor = this.form.get(controlName)?.value;
+    if (valor === null || valor === undefined) {
+      return null;
+    }
+    const texto = valor.toString().trim();
+    return texto ? texto : null;
+  }
+
+  private mapearGeneroParaBackend(valor: string | null): string | null {
+    if (!valor) {
+      return null;
+    }
+    const generoMap: Record<string, string> = {
+      'Mujer': 'FEMENINO',
+      'Hombre': 'MASCULINO',
+      'Otro': 'OTRO'
+    };
+    return generoMap[valor] || valor.toUpperCase();
+  }
+
+  private mapearEstadoCivilParaBackend(valor: string | null): string | null {
+    if (!valor) {
+      return null;
+    }
+    const estadoCivilMap: Record<string, string> = {
+      'Soltero(a)': 'SOLTERO',
+      'Casado(a)': 'CASADO',
+      'Divorciado(a)': 'DIVORCIADO',
+      'Viudo(a)': 'VIUDO',
+      'Unión Libre': 'UNION_LIBRE'
+    };
+    return estadoCivilMap[valor] || valor.replace(/\(a\)/g, '').toUpperCase().replace(/\s+/g, '_');
+  }
+
+  private payloadTieneDatos(payload: Record<string, unknown>): boolean {
+    return Object.values(payload).some((valor) => {
+      if (valor === null || valor === undefined) {
+        return false;
+      }
+      if (typeof valor === 'string') {
+        return valor.trim().length > 0;
+      }
+      if (typeof valor === 'boolean') {
+        return valor;
+      }
+      if (typeof valor === 'number') {
+        return !Number.isNaN(valor) && valor !== 0;
+      }
+      if (Array.isArray(valor)) {
+        return valor.length > 0;
+      }
+      if (typeof valor === 'object') {
+        return Object.keys(valor as Record<string, unknown>).length > 0;
+      }
+      return true;
+    });
+  }
   private saveDraft(): void {
     const rawData = this.form.getRawValue();
     const dataToStore: any = { ...rawData };
@@ -2552,6 +3473,11 @@ export class CompletarRegistroComponent implements OnInit {
     dataToStore['_editingGradoIndex'] = this.editingGradoIndex;
     dataToStore['_cursosImpartidosList'] = this.cursosImpartidosList;
     dataToStore['_editingCursoIndex'] = this.editingCursoIndex;
+    dataToStore['_idiomasDominioList'] = this.idiomasDominioList.map((item) => ({
+      ...item,
+      certDocumento: null
+    }));
+    dataToStore['_editingIdiomaIndex'] = this.editingIdiomaIndex;
     dataToStore['_estanciasInvestigacionList'] = this.estanciasInvestigacionList;
     dataToStore['_editingEstanciaIndex'] = this.editingEstanciaIndex;
     dataToStore['_divulgacionesCientificasList'] = this.divulgacionesCientificasList.map((item) => ({
@@ -2595,6 +3521,12 @@ export class CompletarRegistroComponent implements OnInit {
         delete savedData['_cursosImpartidosList'];
         this.editingCursoIndex = savedData['_editingCursoIndex'] ?? null;
         delete savedData['_editingCursoIndex'];
+        if (Array.isArray(savedData['_idiomasDominioList']) && savedData['_idiomasDominioList'].length > 0) {
+          this.idiomasDominioList = savedData['_idiomasDominioList'].map((item: any) => this.normalizarIdioma(item));
+        }
+        delete savedData['_idiomasDominioList'];
+        this.editingIdiomaIndex = savedData['_editingIdiomaIndex'] ?? null;
+        delete savedData['_editingIdiomaIndex'];
         if (Array.isArray(savedData['_estanciasInvestigacionList']) && savedData['_estanciasInvestigacionList'].length > 0) {
           this.estanciasInvestigacionList = savedData['_estanciasInvestigacionList'];
         }
@@ -2695,7 +3627,7 @@ export class CompletarRegistroComponent implements OnInit {
   /**
    * 🚀 ENVÍO FINAL (INYECCIÓN)
    */
-  submitFinal(ev?: Event): void {
+  async submitFinal(ev?: Event): Promise<void> {
     ev?.preventDefault();
     this.errorMsg = '';
     this.okMsg = '';
@@ -2717,17 +3649,19 @@ export class CompletarRegistroComponent implements OnInit {
     // Actualizar validaciones condicionales antes de validar
     this.sincronizarGradosAcademicosAntesDeEnviar();
     this.sincronizarCursosAntesDeEnviar();
+    this.sincronizarIdiomasAntesDeEnviar();
     this.sincronizarEstanciasAntesDeEnviar();
     this.sincronizarArticulosAntesDeEnviar();
     this.sincronizarDivulgacionesAntesDeEnviar();
     this.sincronizarLogrosAntesDeEnviar();
     this.actualizarValidacionesCondicionales();
     
-    // Marcar todos los campos como touched para activar las validaciones
-      this.form.markAllAsTouched();
-    
-    if (this.form.invalid) {
-      this.resaltarYEnfocarCamposFaltantes();
+    const primeraSeccionIncompleta = this.seccionesObligatorias.find(
+      seccion => this.getSectionProgress(seccion) < 100
+    );
+    if (primeraSeccionIncompleta) {
+      await this.setView(primeraSeccionIncompleta);
+      await this.validarSeccionCompletaAntesDeGuardar(primeraSeccionIncompleta);
       return;
     }
 
@@ -2735,335 +3669,64 @@ export class CompletarRegistroComponent implements OnInit {
     this.reiniciarProgresoEnvio();
     this.actualizarProgresoEnvio(10, 'Validando tu sesión', 'Estamos preparando la información para guardarla.');
 
-    // Asegurar que tenemos el usuarioId antes de continuar
-    if (this.currentUsuarioId) {
-      this.enviarFormulario();
-    } else {
-      this.actualizarProgresoEnvio(18, 'Verificando identidad', 'Consultando la sesión activa para asociar el registro a tu cuenta.');
-      // Obtener el usuarioId del usuario autenticado
-      this.authService.me().subscribe({
-        next: (userData: Usuario) => {
-          if (userData.id) {
-            this.currentUsuarioId = userData.id;
-            this.enviarFormulario();
-          } else {
-            this.submitting.set(false);
-            this.reiniciarProgresoEnvio();
-            Swal.fire({
-              icon: 'error',
-              title: 'Error de autenticación',
-              text: 'No se pudo obtener la información de la usuaria o del usuario. Por favor, inicia sesión nuevamente.',
-              confirmButtonColor: '#800020',
-              confirmButtonText: 'Ir al login'
-            }).then(() => {
-              this.router.navigate(['/login']);
-            });
-          }
-        },
-        error: (err) => {
-          this.submitting.set(false);
-          this.reiniciarProgresoEnvio();
-          console.error('Error al obtener usuario:', err);
-          Swal.fire({
-            icon: 'error',
-            title: 'Error de autenticación',
-            text: 'No se pudo verificar tu sesión. Por favor, inicia sesión nuevamente.',
-            confirmButtonColor: '#800020',
-            confirmButtonText: 'Ir al login'
-          }).then(() => {
-            this.router.navigate(['/login']);
-          });
-        }
-      });
-    }
+    void this.finalizarRegistroPersistido();
   }
 
-  private enviarFormulario(): void {
-    const fd = new FormData();
-    const values = this.form.getRawValue();
-    this.actualizarProgresoEnvio(28, 'Preparando archivos y formularios', 'Estamos armando el paquete final de tu registro.');
-
-    // Agregar usuarioId del usuario autenticado
-    if (this.currentUsuarioId) {
-      fd.append('usuarioId', this.currentUsuarioId.toString());
-    } else {
-      this.submitting.set(false);
-      this.reiniciarProgresoEnvio();
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'No se pudo identificar a la usuaria o al usuario. Por favor, recarga la página.',
-        confirmButtonColor: '#800020'
-      });
-      return;
-    }
-
-    this.construirYEnviarFormData(fd, values);
-  }
-
-  private construirYEnviarFormData(fd: FormData, values: any): void {
-    this.actualizarProgresoEnvio(42, 'Integrando catálogos y datos', 'Normalizando la información capturada antes de enviarla.');
-
-    // Campos que NO deben enviarse al backend
-    const camposExcluidos = [
-      'migracion_json', 
-      'jsonFileName', 
-      'fecha_migracion', 
-      'estatus_migracion',
-      'perfil_cvu',
-      'perfil_login',
-      'perfil_correo_alterno',
-      'perfil_nivel_academico',
-      'perfil_titulo_tratamiento',
-      'perfil_filtro',
-      'perfil_institucion_receptora',
-      'perfil_created_date',
-      'perfil_last_modified_date',
-      'foto_uri',
-      'habilidad_descripcion',
-      'habilidad_nivel',
-      'doc_nombre_archivo',
-      'art_autor_nombre_completo',
-      'art_autor_orcid',
-      'art_autor_orden',
-      'congreso_nombre_evento',
-      'congreso_titulo_trabajo',
-      'congreso_tipo_part_nombre',
-      'congreso_fecha',
-      'congreso_pais_sede'
-    ];
-    
-    Object.keys(values).forEach(key => {
-      // Ignorar campos excluidos
-      if (camposExcluidos.includes(key)) {
+  private async finalizarRegistroPersistido(): Promise<void> {
+    try {
+      this.actualizarProgresoEnvio(30, 'Guardando la última sección', 'Estamos registrando tus logros y reconocimientos.');
+      const seccionGuardada = await this.guardarSeccionActualAntesDeNavegar(this.view(), this.view(), true);
+      if (!seccionGuardada) {
         return;
       }
-      
-      const val = values[key];
-      if (val !== null && val !== undefined && !(val instanceof File)) {
-        // Si uuid_interno está vacío, generar ID interno SIIMEX-INV/IND/HIB-XXX antes de enviar
-        if (key === 'uuid_interno' && (val === '' || val.toString().trim() === '')) {
-          const idGenerado = this.generarIdInterno(this.currentTipoPerfil, this.currentUsuarioId);
-          const javaKey = 'migracionId'; // El backend espera migracionId
-          fd.append(javaKey, idGenerado);
-          return;
-        }
-        // Convertir uuid_interno a migracionId para el backend
-        if (key === 'uuid_interno') {
-          const javaKey = 'migracionId';
-          fd.append(javaKey, val.toString());
-          return;
-        }
-        
-        // Convertir campos booleanos correctamente
-        if (typeof val === 'boolean') {
-          const javaKey = key.replace(/_([a-z])/g, (match) => match[1].toUpperCase());
-          fd.append(javaKey, val ? 'true' : 'false');
-          return;
-        }
-        
-        // Convertir campos numéricos: asegurar que art_anio se envíe como número válido
-        if (key === 'art_anio') {
-          if (val === null || val === '' || val === undefined) {
-            // Si art_anio está vacío, no enviarlo
-            return;
-          }
-          // Asegurar que sea un número válido
-          const numVal = Number(val);
-          if (!isNaN(numVal) && numVal >= 1800) {
-            const javaKey = 'artAnio';
-            fd.append(javaKey, numVal.toString());
-          } else if (!isNaN(numVal)) {
-            // Si es menor a 1800, enviar 1800 como mínimo
-            const javaKey = 'artAnio';
-            fd.append(javaKey, '1800');
-          }
-          return;
-        }
-        
-        // Mapeo especial: pers_semblanza -> interesDescripcion
-        if (key === 'pers_semblanza') {
-          fd.append('interesDescripcion', val.toString());
-          return;
-        }
-        
-        // Mapeo especial: pers_sexo_nombre -> genero (convertir a formato enum del backend)
-        if (key === 'pers_sexo_nombre' && val) {
-          const generoMap: { [key: string]: string } = {
-            'Mujer': 'FEMENINO',
-            'Hombre': 'MASCULINO',
-            'Otro': 'OTRO'
-          };
-          const generoEnum = generoMap[val.toString()] || val.toString().toUpperCase();
-          fd.append('genero', generoEnum);
-          return;
-        }
-        
-        // Mapeo especial: pers_estado_civil_nombre -> estadoCivil (convertir a formato enum del backend)
-        if (key === 'pers_estado_civil_nombre' && val) {
-          const estadoCivilMap: { [key: string]: string } = {
-            'Soltero(a)': 'SOLTERO',
-            'Casado(a)': 'CASADO',
-            'Divorciado(a)': 'DIVORCIADO',
-            'Viudo(a)': 'VIUDO',
-            'Unión Libre': 'UNION_LIBRE'
-          };
-          const estadoCivilEnum = estadoCivilMap[val.toString()] || val.toString().replace(/\(a\)/g, '').toUpperCase().replace(/\s+/g, '_');
-          fd.append('estadoCivil', estadoCivilEnum);
-          return;
-        }
-        
-        // Convertir snake_case a camelCase para el backend
-        const javaKey = key.replace(/_([a-z])/g, (match) => match[1].toUpperCase());
-        fd.append(javaKey, val.toString());
-      }
-    });
 
-    this.actualizarProgresoEnvio(58, 'Preparando trayectorias y evidencia', 'Empaquetando la información académica, profesional y de divulgación.');
+      this.actualizarProgresoEnvio(75, 'Finalizando tu registro', 'Validando la información que ya está guardada.');
+      await firstValueFrom(
+        this.http.post(environment.apiBaseUrl + '/usuarios/me/completar-registro/finalizar', {})
+      );
 
-    // Enviar artículos científicos dinámicos (incluyendo autores por artículo)
-    if (this.articulosCientificosList.length > 0) {
-      fd.append('articulosJson', JSON.stringify(this.articulosCientificosList));
-    } else {
-      // Compatibilidad hacia atrás si aún se usa artículo individual
-      const autoresConDatos = this.autoresList.filter(a => a.nombre.trim() !== '');
-      if (autoresConDatos.length > 0) {
-        fd.append('autoresJson', JSON.stringify(autoresConDatos));
-      }
-    }
-
-    if (this.cursosImpartidosList.length > 0) {
-      fd.append('cursosJson', JSON.stringify(this.cursosImpartidosList));
-    }
-
-    if (this.estanciasInvestigacionList.length > 0) {
-      fd.append('estanciasJson', JSON.stringify(this.estanciasInvestigacionList));
-    }
-
-    if (this.divulgacionesCientificasList.length > 0) {
-      const divulgacionesPayload = this.divulgacionesCientificasList.map((item, idx) => ({
-        titulo: item.titulo,
-        tipoDivulgacionNombre: item.tipoDivulgacionNombre,
-        medioNombre: item.medioNombre,
-        dirigidoA: item.dirigidoA,
-        productoObtenidoNombre: item.productoObtenidoNombre,
-        fecha: item.fecha,
-        institucionOrganizadora: item.institucionOrganizadora,
-        evidenciaTipo: item.evidenciaTipo,
-        evidenciaLink: item.evidenciaLink,
-        evidenciaArchivoCampo: item.evidenciaArchivo instanceof File ? `divulgArchivo_${idx}` : null,
-        evidenciaArchivoNombre: item.evidenciaArchivoNombre || (item.evidenciaArchivo instanceof File ? item.evidenciaArchivo.name : '')
-      }));
-      fd.append('divulgacionesJson', JSON.stringify(divulgacionesPayload));
-
-      this.divulgacionesCientificasList.forEach((item, idx) => {
-        if (item.evidenciaArchivo instanceof File) {
-          fd.append(`divulgArchivo_${idx}`, item.evidenciaArchivo);
-        }
+      this.actualizarProgresoEnvio(100, 'Registro completado', 'Tu información se guardó correctamente.');
+      sessionStorage.removeItem(this.STORAGE_KEY);
+      this.authService.me().subscribe();
+      await Swal.fire({
+        icon: 'success',
+        title: '¡Registro completado!',
+        text: 'Su información ha sido guardada exitosamente.',
+        confirmButtonColor: '#800020',
+        confirmButtonText: 'Ir a mi perfil'
       });
-    }
-
-    // Enviar congresos como JSON array
-    const congresosConDatos = this.congresosList
-      .filter(c => c.nombre.trim() !== '')
-      .map(c => ({
-        ...c,
-        tipoParticipacion: this.resolverValorConOtro(c.tipoParticipacion, c.tipoParticipacionManual),
-        paisSede: this.resolverValorConOtro(c.paisSede, c.paisSedeManual)
-      }));
-    if (congresosConDatos.length > 0) {
-      fd.append('congresosJson', JSON.stringify(congresosConDatos));
-    }
-
-    if (this.acadGradosList.length > 0) {
-      fd.append('academicaJson', JSON.stringify(this.acadGradosList));
-    }
-
-    if (this.logrosReconocimientosList.length > 0) {
-      fd.append('logrosJson', JSON.stringify(this.logrosReconocimientosList));
-    }
-
-    this.actualizarProgresoEnvio(68, 'Adjuntando comprobantes', 'Subiendo los archivos necesarios para cerrar tu registro.');
-
-    const fileFields = ['cvFile', 'fiscalPdf', 'domicilio', 'cert1', 'cert2', 'acad_constancia_snii', 'idioma_cert_documento', 'estancia_documento'];
-    if (this.divulgacionesCientificasList.length === 0) {
-      fileFields.push('divulg_archivo');
-    }
-    fileFields.forEach(f => {
-      if (values[f] instanceof File) {
-        fd.append(f, values[f]);
-      }
-    });
-
-    this.actualizarProgresoEnvio(78, 'Enviando información al servidor', 'Este paso puede tardar unos momentos dependiendo del tamaño de los archivos.');
-
-    this.http.post(`${environment.apiBaseUrl}/migracion`, fd).subscribe({
-      next: (res) => {
-        this.actualizarProgresoEnvio(100, 'Registro completado', 'Tu información se guardó correctamente.');
-        this.submitting.set(false);
-        this.reiniciarProgresoEnvio();
-        sessionStorage.removeItem(this.STORAGE_KEY);
-        // Actualizar datos del usuario para que el menú oculte "Completar registro"
-        this.authService.me().subscribe();
-        Swal.fire({
-          icon: 'success',
-          title: '¡Registro completado!',
-          text: 'Su información ha sido guardada exitosamente.',
+      this.router.navigate(['/app/perfil']);
+    } catch (error: any) {
+      const seccionesFaltantes = Array.isArray(error?.error?.seccionesFaltantes)
+        ? error.error.seccionesFaltantes
+        : [];
+      const primeraSeccion = error?.error?.primeraSeccion as View | undefined;
+      if (seccionesFaltantes.length > 0 && primeraSeccion) {
+        const nombres = seccionesFaltantes
+          .map((item: any) => item?.nombre)
+          .filter((nombre: unknown) => typeof nombre === 'string' && nombre.length > 0);
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Revisa las secciones pendientes',
+          text: 'Falta guardar o completar: ' + nombres.join(', ') + '.',
           confirmButtonColor: '#800020',
-          confirmButtonText: 'Ir a mi perfil'
-        }).then(() => {
-          // Redirigir a perfil después de guardar
-          this.router.navigate(['/app/perfil']);
+          confirmButtonText: 'Ir a revisar'
         });
-      },
-      error: (err) => {
-        this.submitting.set(false);
-        this.reiniciarProgresoEnvio();
-        
-        // Manejar errores específicos
-        if (err.status === 401) {
-          // Token expirado o inválido
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
-          Swal.fire({
-            icon: 'warning',
-            title: 'Sesión expirada',
-            text: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
-            confirmButtonColor: '#800020',
-            confirmButtonText: 'Ir al login'
-          }).then(() => {
-            this.router.navigate(['/login']);
-          });
-        } else {
-          // Otros errores
-          const errorPayload = err?.error;
-          const errorMessage =
-            errorPayload?.message ||
-            errorPayload?.error ||
-            errorPayload?.display_message ||
-            err?.message ||
-            'Error al completar el registro. Por favor, intente nuevamente.';
-          const trackingCode =
-            errorPayload?.traceId ||
-            errorPayload?.message_ID ||
-            errorPayload?.messageId ||
-            errorPayload?.attack_ID ||
-            null;
-          const fullErrorMessage = trackingCode
-            ? `${errorMessage}\n\nCódigo de seguimiento: ${trackingCode}`
-            : errorMessage;
-          Swal.fire({
-            icon: 'error',
-            title: 'Error al registrar',
-            text: fullErrorMessage,
-            confirmButtonColor: '#800020',
-            confirmButtonText: 'Entendido'
-          });
-        }
+        await this.setView(primeraSeccion);
+        return;
       }
-    });
+      const mensaje = error?.error?.message || error?.message || 'No se pudo finalizar el registro.';
+      await Swal.fire({
+        icon: 'error',
+        title: 'No se pudo completar el registro',
+        text: mensaje,
+        confirmButtonColor: '#800020'
+      });
+    } finally {
+      this.submitting.set(false);
+      this.reiniciarProgresoEnvio();
+    }
   }
-
   private actualizarEstadoProgreso(valor: number, badge: string, title: string, label: string, detail: string): void {
     this.submitProgress.set(Math.max(0, Math.min(100, Math.round(valor))));
     this.submitProgressBadge.set(badge);
@@ -3547,6 +4210,88 @@ export class CompletarRegistroComponent implements OnInit {
     return index;
   }
 
+  agregarIdiomaDominio(): void {
+    if (!this.validarCamposBaseIdioma(true)) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Completa los datos del idioma',
+        text: 'El idioma y su dominio son obligatorios. Si indicas una certificación, completa también sus datos y el documento cuando corresponda.',
+        confirmButtonColor: '#800020'
+      });
+      return;
+    }
+
+    const idioma = this.obtenerIdiomaDesdeFormulario();
+    const duplicado = this.idiomasDominioList.findIndex((item, index) =>
+      index !== this.editingIdiomaIndex && item.nombre.localeCompare(idioma.nombre, 'es', { sensitivity: 'base' }) === 0
+    );
+    if (duplicado >= 0) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Idioma ya registrado',
+        text: 'Ese idioma ya está en la lista. Puedes editarlo para actualizar su nivel o certificación.',
+        confirmButtonColor: '#800020'
+      });
+      return;
+    }
+
+    if (this.editingIdiomaIndex !== null && this.editingIdiomaIndex >= 0) {
+      this.idiomasDominioList.splice(this.editingIdiomaIndex, 1);
+      this.editingIdiomaIndex = null;
+    }
+    this.idiomasDominioList = [idioma, ...this.idiomasDominioList];
+    this.limpiarFormularioIdioma();
+    this.actualizarValidacionesCondicionales();
+    this.saveDraft();
+  }
+
+  editarIdiomaDominio(index: number): void {
+    const idioma = this.idiomasDominioList[index];
+    if (!idioma) return;
+
+    this.editingIdiomaIndex = index;
+    const documento = idioma.certDocumento instanceof File
+      ? idioma.certDocumento
+      : idioma.certDocumentoPersistido
+        ? { persisted: true, name: idioma.certDocumentoNombre || 'Certificado guardado' }
+        : null;
+    this.form.patchValue({
+      idioma_nombre: idioma.nombre,
+      idioma_dominio_nombre: idioma.dominioNombre,
+      idioma_conversacion: idioma.conversacion,
+      idioma_lectura: idioma.lectura,
+      idioma_escritura: idioma.escritura,
+      idioma_es_certificado: idioma.esCertificado,
+      idioma_cert_institucion: idioma.certInstitucion,
+      idioma_cert_puntuacion: idioma.certPuntuacion,
+      idioma_vigencia_fin: idioma.vigenciaFin,
+      idioma_cert_documento: documento
+    });
+    this.actualizarValidacionesCondicionales();
+  }
+
+  eliminarIdiomaDominio(index: number): void {
+    if (index < 0 || index >= this.idiomasDominioList.length) return;
+    this.idiomasDominioList.splice(index, 1);
+    if (this.editingIdiomaIndex === index) {
+      this.editingIdiomaIndex = null;
+      this.limpiarFormularioIdioma();
+    } else if (this.editingIdiomaIndex !== null && this.editingIdiomaIndex > index) {
+      this.editingIdiomaIndex -= 1;
+    }
+    this.actualizarValidacionesCondicionales();
+    this.saveDraft();
+  }
+
+  cancelarEdicionIdiomaDominio(): void {
+    this.editingIdiomaIndex = null;
+    this.limpiarFormularioIdioma();
+    this.actualizarValidacionesCondicionales();
+  }
+
+  trackByIdiomaDominioIndex(index: number): number {
+    return index;
+  }
   agregarCursoImpartido(): void {
     const baseValido = this.validarCamposBaseCursoImpartido();
     if (!baseValido) {
@@ -3801,7 +4546,12 @@ export class CompletarRegistroComponent implements OnInit {
   // Métodos para mejorar UX
   getSectionProgress(section: View): number {
     if (section === 'trayectoria-academica') {
-      const tieneGrados = this.acadGradosList.length > 0 || this.validarCamposBaseGradoAcademico();
+      const listaCompleta = this.acadGradosList.length > 0 && this.acadGradosList.every(grado =>
+        !!(grado.nivelNombre?.trim() && grado.titulo?.trim() && grado.estatusNombre?.trim())
+      );
+      const edicionValida = this.editingGradoIndex === null || this.validarCamposBaseGradoAcademico();
+      const tieneGrados = listaCompleta && edicionValida
+        || (this.acadGradosList.length === 0 && this.validarCamposBaseGradoAcademico());
       let total = 2;
       let completos = 0;
 
@@ -3817,27 +4567,82 @@ export class CompletarRegistroComponent implements OnInit {
     }
 
     if (section === 'cursos') {
-      const tieneCursos = this.cursosImpartidosList.length > 0 || this.validarCamposBaseCursoImpartido();
+      const listaCompleta = this.cursosImpartidosList.length > 0 && this.cursosImpartidosList.every(curso =>
+        !!(curso.nombre?.trim() && curso.programa?.trim() && Number(curso.horasTotales) >= 0
+          && curso.fechaInicio?.trim() && curso.institucion?.trim() && curso.nivelEscolaridad?.trim())
+      );
+      const edicionValida = this.editingCursoIndex === null || this.validarCamposBaseCursoImpartido();
+      const tieneCursos = listaCompleta && edicionValida
+        || (this.cursosImpartidosList.length === 0 && this.validarCamposBaseCursoImpartido());
       return tieneCursos ? 100 : 0;
     }
 
+    if (section === 'idiomas') {
+      const listaCompleta = this.idiomasDominioList.length > 0 && this.idiomasDominioList.every(idioma => {
+        if (!(idioma.nombre?.trim() && idioma.dominioNombre?.trim())) return false;
+        const requiereCertificacion = idioma.dominioNombre === 'Excelente'
+          || (idioma.dominioNombre === 'Avanzado' && idioma.esCertificado);
+        if (!requiereCertificacion) return true;
+        if (!(idioma.certInstitucion?.trim() && idioma.certPuntuacion?.trim())) return false;
+        return idioma.dominioNombre !== 'Excelente'
+          || idioma.certDocumento instanceof File
+          || idioma.certDocumentoPersistido
+          || !!this.archivosGuardados['idioma_cert_documento'];
+      });
+      const edicionValida = this.editingIdiomaIndex === null || this.validarCamposBaseIdioma(false);
+      const tieneIdiomas = listaCompleta && edicionValida
+        || (this.idiomasDominioList.length === 0 && this.validarCamposBaseIdioma(false));
+      return tieneIdiomas ? 100 : 0;
+    }
+
     if (section === 'estancias') {
-      const tieneEstancias = this.estanciasInvestigacionList.length > 0 || this.validarCamposBaseEstancia();
+      const listaCompleta = this.estanciasInvestigacionList.length > 0 && this.estanciasInvestigacionList.every(estancia =>
+        !!(estancia.nombreProyecto?.trim() && estancia.tipoNombre?.trim()
+          && estancia.fechaInicio?.trim() && estancia.institucionReceptora?.trim())
+      );
+      const edicionValida = this.editingEstanciaIndex === null || this.validarCamposBaseEstancia();
+      const tieneEstancias = listaCompleta && edicionValida
+        || (this.estanciasInvestigacionList.length === 0 && this.validarCamposBaseEstancia());
       return tieneEstancias ? 100 : 0;
     }
 
     if (section === 'aportaciones') {
-      const tieneAportaciones = this.articulosCientificosList.length > 0 || this.validarCamposBaseArticulo();
+      const listaCompleta = this.articulosCientificosList.length > 0 && this.articulosCientificosList.every(articulo =>
+        !!(articulo.titulo?.trim() && articulo.nombreRevista?.trim()
+          && articulo.rolParticipacionNombre?.trim() && articulo.estadoNombre?.trim()
+          && (!articulo.recibioApoyoSECIHTI || articulo.fondoProgramaNombre?.trim()))
+      );
+      const edicionValida = this.editingArticuloIndex === null || this.validarCamposBaseArticulo();
+      const tieneAportaciones = listaCompleta && edicionValida
+        || (this.articulosCientificosList.length === 0 && this.validarCamposBaseArticulo());
       return tieneAportaciones ? 100 : 0;
     }
 
     if (section === 'divulgacion') {
-      const tieneDivulgaciones = this.divulgacionesCientificasList.length > 0 || this.validarCamposBaseDivulgacion();
+      const listaCompleta = this.divulgacionesCientificasList.length > 0 && this.divulgacionesCientificasList.every(divulgacion => {
+        if (!(divulgacion.titulo?.trim() && divulgacion.tipoDivulgacionNombre?.trim()
+          && divulgacion.medioNombre?.trim() && divulgacion.fecha?.trim()
+          && divulgacion.productoObtenidoNombre?.trim())) return false;
+        if (this.esProductoConEvidenciaLink(divulgacion.productoObtenidoNombre)) {
+          return /^https?:\/\/.+/i.test(divulgacion.evidenciaLink || '');
+        }
+        return divulgacion.evidenciaArchivo instanceof File
+          || !!divulgacion.evidenciaArchivoNombre
+          || !!this.archivosGuardados['divulg_archivo'];
+      });
+      const edicionValida = this.editingDivulgacionIndex === null || this.validarCamposBaseDivulgacion();
+      const tieneDivulgaciones = listaCompleta && edicionValida
+        || (this.divulgacionesCientificasList.length === 0 && this.validarCamposBaseDivulgacion());
       return tieneDivulgaciones ? 100 : 0;
     }
 
     if (section === 'logros') {
-      const tieneLogros = this.logrosReconocimientosList.length > 0 || this.validarCamposBaseLogro();
+      const listaCompleta = this.logrosReconocimientosList.length > 0 && this.logrosReconocimientosList.every(logro =>
+        !!(logro.nombre?.trim() && logro.anio !== null && logro.anio !== undefined)
+      );
+      const edicionValida = this.editingLogroIndex === null || this.validarCamposBaseLogro();
+      const tieneLogros = listaCompleta && edicionValida
+        || (this.logrosReconocimientosList.length === 0 && this.validarCamposBaseLogro());
       return tieneLogros ? 100 : 0;
     }
 
@@ -3860,7 +4665,9 @@ export class CompletarRegistroComponent implements OnInit {
     const sectionFields: { [key: string]: string[] } = {
       'personaPrincipal': [
         'pers_nombre', 'pers_primer_apellido', 'pers_curp', 'pers_rfc',
-        'pers_fecha_nacimiento', 'pers_entidad_nombre', 'pers_semblanza', 'rfcNum'
+        'pers_fecha_nacimiento', 'pers_sexo_nombre', 'pers_estado_civil_nombre',
+        'pers_nacionalidad_nombre', 'pers_entidad_nombre', 'pers_municipio_nombre',
+        'pers_semblanza', 'rfcNum'
       ],
       'padronInstitucional': [
         'telefono', 'tipoIdentificacionOficial', 'identificacionOficial',
@@ -3872,7 +4679,7 @@ export class CompletarRegistroComponent implements OnInit {
       ],
       'area-conocimiento': ['area_nombre', 'area_clave'],
       'trayectoria-academica': ['acad_nivel_nombre', 'acad_titulo', 'acad_estatus_nombre', 'cert1', 'acad_constancia_snii'],
-      'trayectoria-profesional': ['tray_prof_nombramiento', 'tray_prof_fecha_inicio', 'tray_prof_fecha_fin'],
+      'trayectoria-profesional': ['tray_prof_nombramiento', 'tray_prof_institucion', 'tray_prof_fecha_inicio', 'tray_prof_fecha_fin'],
       'cursos': ['curso_nombre', 'curso_programa', 'curso_horas_totales', 'curso_fecha_inicio', 'curso_institucion', 'curso_nivel_escolaridad'],
       'idiomas': ['idioma_nombre', 'idioma_dominio_nombre', 'idioma_cert_institucion', 'idioma_cert_puntuacion', 'idioma_cert_documento'],
       'estancias': ['estancia_nombre_proyecto', 'estancia_tipo_nombre', 'estancia_fecha_inicio', 'estancia_institucion_receptora'],
@@ -3898,20 +4705,22 @@ export class CompletarRegistroComponent implements OnInit {
     return this.getSectionProgress(section) === 100;
   }
 
+  isOptionalSection(section: View): boolean {
+    return !this.seccionesObligatorias.includes(section === 'inicio' ? 'personaPrincipal' : section);
+  }
+
+  getSectionProgressLabel(section: View): string {
+    const progress = this.getSectionProgress(section);
+    return `${progress}%`;
+  }
+
   getOverallProgress(): number {
-    const sections: View[] = [
-      'personaPrincipal', 'padronInstitucional', 'institucion', 'area-conocimiento', 
-      'trayectoria-academica', 'trayectoria-profesional', 'cursos',
-      'idiomas', 'estancias', 'aportaciones', 'congresos', 
-      'divulgacion', 'logros'
-    ];
-    
     let totalProgress = 0;
-    sections.forEach(section => {
+    this.seccionesObligatorias.forEach(section => {
       totalProgress += this.getSectionProgress(section);
     });
-    
-    return Math.round(totalProgress / sections.length);
+
+    return Math.round(totalProgress / this.seccionesObligatorias.length);
   }
 
   getSectionSteps(): Array<{id: View, title: string, icon: string, iconImage: string, group: string, order: number, description: string}> {
@@ -4344,6 +5153,117 @@ export class CompletarRegistroComponent implements OnInit {
     }
   }
 
+  private validarCamposBaseIdioma(marcarCampos = false): boolean {
+    this.actualizarValidacionesCondicionales();
+    const campos = ['idioma_nombre', 'idioma_dominio_nombre'];
+    const esCertificado = !!this.form.get('idioma_es_certificado')?.value;
+    const dominio = this.obtenerTextoFormulario('idioma_dominio_nombre');
+    if (esCertificado && (dominio === 'Avanzado' || dominio === 'Excelente')) {
+      campos.push('idioma_cert_institucion', 'idioma_cert_puntuacion');
+    }
+    if (dominio === 'Excelente') {
+      campos.push('idioma_cert_documento');
+    }
+    if (marcarCampos) {
+      campos.forEach(campo => this.form.get(campo)?.markAsTouched());
+    }
+    return campos.every(campo => this.form.get(campo)?.valid && this.hasMeaningfulValue(campo));
+  }
+
+  private obtenerIdiomaDesdeFormulario(): IdiomaDominio {
+    const documento = this.form.get('idioma_cert_documento')?.value;
+    const documentoPersistido = !!documento && typeof documento === 'object' && documento.persisted === true;
+    return {
+      nombre: this.obtenerTextoFormulario('idioma_nombre') ?? '',
+      dominioNombre: this.obtenerTextoFormulario('idioma_dominio_nombre') ?? '',
+      conversacion: this.obtenerTextoFormulario('idioma_conversacion') ?? '',
+      lectura: this.obtenerTextoFormulario('idioma_lectura') ?? '',
+      escritura: this.obtenerTextoFormulario('idioma_escritura') ?? '',
+      esCertificado: !!this.form.get('idioma_es_certificado')?.value,
+      certInstitucion: this.obtenerTextoFormulario('idioma_cert_institucion') ?? '',
+      certPuntuacion: this.obtenerTextoFormulario('idioma_cert_puntuacion') ?? '',
+      vigenciaFin: this.obtenerTextoFormulario('idioma_vigencia_fin') ?? '',
+      certDocumento: documento instanceof File ? documento : null,
+      certDocumentoNombre: documento instanceof File ? documento.name : documentoPersistido ? String(documento.name || 'Certificado guardado') : '',
+      certDocumentoPersistido: documentoPersistido || !!this.archivosGuardados['idioma_cert_documento']
+    };
+  }
+
+  private limpiarFormularioIdioma(): void {
+    this.form.patchValue({
+      idioma_nombre: '',
+      idioma_dominio_nombre: '',
+      idioma_conversacion: '',
+      idioma_lectura: '',
+      idioma_escritura: '',
+      idioma_es_certificado: false,
+      idioma_cert_institucion: '',
+      idioma_cert_puntuacion: '',
+      idioma_vigencia_fin: '',
+      idioma_cert_documento: null
+    }, { emitEvent: false });
+  }
+
+  private sincronizarIdiomasAntesDeEnviar(): void {
+    const idiomaActual = this.obtenerIdiomaDesdeFormulario();
+    const tieneActual = this.validarCamposBaseIdioma(false);
+
+    if (this.editingIdiomaIndex !== null && tieneActual) {
+      this.idiomasDominioList.splice(this.editingIdiomaIndex, 1);
+      this.idiomasDominioList = [idiomaActual, ...this.idiomasDominioList];
+      this.editingIdiomaIndex = null;
+    } else if (tieneActual && !this.idiomasDominioList.some(item => this.idiomasIguales(item, idiomaActual))) {
+      this.idiomasDominioList = [idiomaActual, ...this.idiomasDominioList];
+    }
+
+    if (this.idiomasDominioList.length > 0) {
+      const principal = this.idiomasDominioList[0];
+      const documento = principal.certDocumento instanceof File
+        ? principal.certDocumento
+        : principal.certDocumentoPersistido
+          ? { persisted: true, name: principal.certDocumentoNombre || 'Certificado guardado' }
+          : null;
+      this.form.patchValue({
+        idioma_nombre: principal.nombre,
+        idioma_dominio_nombre: principal.dominioNombre,
+        idioma_conversacion: principal.conversacion,
+        idioma_lectura: principal.lectura,
+        idioma_escritura: principal.escritura,
+        idioma_es_certificado: principal.esCertificado,
+        idioma_cert_institucion: principal.certInstitucion,
+        idioma_cert_puntuacion: principal.certPuntuacion,
+        idioma_vigencia_fin: principal.vigenciaFin,
+        idioma_cert_documento: documento
+      }, { emitEvent: false });
+      this.actualizarValidacionesCondicionales();
+    }
+  }
+
+  private idiomasIguales(a: IdiomaDominio, b: IdiomaDominio): boolean {
+    return JSON.stringify(this.idiomaSinArchivo(a)) === JSON.stringify(this.idiomaSinArchivo(b));
+  }
+
+  private idiomaSinArchivo(item: IdiomaDominio): Record<string, unknown> {
+    return {
+      nombre: item.nombre,
+      dominioNombre: item.dominioNombre,
+      conversacion: item.conversacion,
+      lectura: item.lectura,
+      escritura: item.escritura,
+      esCertificado: item.esCertificado,
+      certInstitucion: item.certInstitucion,
+      certPuntuacion: item.certPuntuacion,
+      vigenciaFin: item.vigenciaFin
+    };
+  }
+
+  private construirIdiomasPayload(): Record<string, unknown>[] {
+    return this.idiomasDominioList.map((item, index) => ({
+      ...this.idiomaSinArchivo(item),
+      certDocumentoCampo: item.certDocumento instanceof File ? 'idiomaCertDocumento_' + index : null,
+      certDocumentoNombre: item.certDocumentoNombre || ''
+    }));
+  }
   private validarCamposBaseEstancia(): boolean {
     const nombre = (this.form.get('estancia_nombre_proyecto')?.value || '').toString().trim();
     const tipo = this.resolverValorConOtro(this.form.get('estancia_tipo_nombre')?.value, this.estanciaTipoManual);
@@ -4533,13 +5453,17 @@ export class CompletarRegistroComponent implements OnInit {
       const link = (this.form.get('divulg_evidencia_link')?.value || '').toString().trim();
       return /^https?:\/\/.+/i.test(link);
     }
-    return this.form.get('divulg_archivo')?.value instanceof File;
+    return this.esArchivoDisponible(this.form.get('divulg_archivo')?.value, 'divulg_archivo');
   }
 
   private obtenerDivulgacionDesdeFormulario(): DivulgacionCientifica {
     const producto = this.resolverValorConOtro(this.form.get('divulg_prod_obtenido_nombre')?.value, this.divulgProductoManual);
     const usaLink = this.esProductoConEvidenciaLink(producto);
-    const evidenciaArchivo = usaLink ? null : (this.form.get('divulg_archivo')?.value instanceof File ? this.form.get('divulg_archivo')?.value : null);
+    const archivoValue = this.form.get('divulg_archivo')?.value;
+    const evidenciaArchivo = usaLink ? null : (archivoValue instanceof File ? archivoValue : null);
+    const evidenciaArchivoNombre = usaLink
+      ? ''
+      : (evidenciaArchivo?.name || archivoValue?.name || this.archivosGuardados['divulg_archivo']?.nombre || '');
     const evidenciaLink = usaLink ? (this.form.get('divulg_evidencia_link')?.value || '').toString().trim() : '';
 
     return {
@@ -4553,7 +5477,7 @@ export class CompletarRegistroComponent implements OnInit {
       evidenciaTipo: usaLink ? 'LINK' : 'PDF',
       evidenciaLink,
       evidenciaArchivo: evidenciaArchivo as File | null,
-      evidenciaArchivoNombre: evidenciaArchivo?.name || ''
+      evidenciaArchivoNombre
     };
   }
 
@@ -4602,7 +5526,15 @@ export class CompletarRegistroComponent implements OnInit {
         divulg_fecha: principal.fecha || '',
         divulg_institucion_organizadora: principal.institucionOrganizadora || '',
         divulg_evidencia_link: principal.evidenciaTipo === 'LINK' ? (principal.evidenciaLink || '') : '',
-        divulg_archivo: principal.evidenciaTipo === 'PDF' ? (principal.evidenciaArchivo ?? null) : null
+        divulg_archivo: principal.evidenciaTipo === 'PDF'
+          ? (principal.evidenciaArchivo ?? (principal.evidenciaArchivoNombre && this.archivosGuardados['divulg_archivo']
+            ? {
+                persisted: true,
+                documentoId: this.archivosGuardados['divulg_archivo'].documentoId,
+                name: principal.evidenciaArchivoNombre
+              }
+            : null))
+          : null
       }, { emitEvent: false });
     }
   }
@@ -4732,6 +5664,68 @@ export class CompletarRegistroComponent implements OnInit {
     this.actualizarValidacionesCondicionales();
   }
 
+  private cargarIdiomasGuardados(): void {
+    if (!this.authService.isLoggedIn() || this.idiomasDominioList.length > 0) {
+      return;
+    }
+    this.http.get<any[]>(environment.apiBaseUrl + '/trayectoria/idiomas').subscribe({
+      next: (lista) => {
+        if (!Array.isArray(lista) || lista.length === 0 || this.idiomasDominioList.length > 0) {
+          return;
+        }
+        this.idiomasDominioList = lista
+          .map(item => this.normalizarIdioma(item))
+          .filter(item => !!(item.nombre && item.dominioNombre));
+        if (this.idiomasDominioList.length > 0) {
+          this.editarIdiomaDominio(0);
+          this.editingIdiomaIndex = null;
+          this.saveDraft();
+        }
+      },
+      error: () => {
+        // El formulario sigue disponible aunque no existan idiomas previos.
+      }
+    });
+  }
+
+  private importarIdiomasDesdePerfil(jsonData: any): void {
+    const lista = jsonData?.perfil?.idiomaLengua?.idiomas;
+    if (!Array.isArray(lista) || lista.length === 0) return;
+
+    const normalizados = lista
+      .map((item: any) => this.normalizarIdioma(item))
+      .filter((item: IdiomaDominio) => !!(item.nombre && item.dominioNombre));
+    if (normalizados.length === 0) return;
+
+    this.idiomasDominioList = normalizados;
+    this.editarIdiomaDominio(0);
+    this.editingIdiomaIndex = null;
+  }
+
+  private normalizarIdioma(item: any): IdiomaDominio {
+    const nombreRaw = item?.nombre;
+    const dominioRaw = item?.dominioNombre ?? item?.dominio;
+    const nombre = (typeof nombreRaw === 'object' ? nombreRaw?.nombre : nombreRaw || '').toString().trim();
+    const dominioOriginal = (typeof dominioRaw === 'object' ? dominioRaw?.nombre : dominioRaw || '').toString().trim();
+    const dominioMap: Record<string, string> = {
+      'Nivel universitario': 'Excelente',
+      'Intermedio': 'Bueno'
+    };
+    return {
+      nombre,
+      dominioNombre: dominioMap[dominioOriginal] || dominioOriginal,
+      conversacion: (typeof item?.conversacion === 'object' ? item?.conversacion?.nombre : item?.conversacion || '').toString().trim(),
+      lectura: (typeof item?.lectura === 'object' ? item?.lectura?.nombre : item?.lectura || '').toString().trim(),
+      escritura: (typeof item?.escritura === 'object' ? item?.escritura?.nombre : item?.escritura || '').toString().trim(),
+      esCertificado: !!item?.esCertificado,
+      certInstitucion: (item?.certInstitucion ?? item?.nombreInstitucion ?? '').toString().trim(),
+      certPuntuacion: (item?.certPuntuacion ?? item?.puntuacion ?? '').toString().trim(),
+      vigenciaFin: (item?.vigenciaFin ?? item?.finVigencia ?? '').toString().trim(),
+      certDocumento: null,
+      certDocumentoNombre: (item?.certDocumentoNombre || this.archivosGuardados['idioma_cert_documento']?.nombre || '').toString().trim(),
+      certDocumentoPersistido: !!item?.certDocumentoPersistido || (!!this.archivosGuardados['idioma_cert_documento'] && !!item?.esCertificado)
+    };
+  }
   private importarEstanciasDesdePerfil(jsonData: any): void {
     const lista = jsonData?.perfil?.estancias;
     if (!Array.isArray(lista) || lista.length === 0) return;
@@ -4952,9 +5946,11 @@ export class CompletarRegistroComponent implements OnInit {
     this.form.get('inst_nombre')?.valueChanges.subscribe(() => this.onInstitucionEducativaChange());
     this.form.get('inst_nombre')?.valueChanges.subscribe(() => this.actualizarSeleccionInstitucionDesdeTexto('inst_nombre'));
     this.form.get('acad_institucion')?.valueChanges.subscribe(() => this.actualizarSeleccionInstitucionDesdeTexto('acad_institucion'));
+    this.form.get('tray_prof_institucion')?.valueChanges.subscribe(() => this.actualizarSeleccionInstitucionDesdeTexto('tray_prof_institucion'));
     this.form.get('curso_institucion')?.valueChanges.subscribe(() => this.actualizarSeleccionInstitucionDesdeTexto('curso_institucion'));
     this.form.get('acad_titulo')?.valueChanges.subscribe(() => this.actualizarSeleccionCarreraDesdeTexto());
     this.form.get('pers_nacionalidad_nombre')?.valueChanges.subscribe(() => this.actualizarSeleccionNacionalidadDesdeTexto());
+    this.form.get('pers_municipio_nombre')?.valueChanges.subscribe(() => this.actualizarSeleccionMunicipioNacimientoDesdeTexto());
     this.form.get('claveEntidadFederativa')?.valueChanges.subscribe(() => this.actualizarSeleccionEntidadDomicilioDesdeClave());
     this.form.get('municipioDomicilio')?.valueChanges.subscribe(() => this.actualizarSeleccionMunicipioDesdeTexto());
     this.form.get('localidad')?.valueChanges.subscribe(() => this.actualizarSeleccionLocalidadDesdeTexto());
@@ -4998,7 +5994,9 @@ export class CompletarRegistroComponent implements OnInit {
     }
     this.form.patchValue(patch, { emitEvent: false });
     this.actualizarLocalidadesFiltradas();
-    this.limpiarSeleccionLocalidadSiNoCorresponde();
+    if (this.catalogoLocalidades.length > 0 && this.puedeSeleccionarMunicipioCatalogo()) {
+      this.limpiarSeleccionLocalidadSiNoCorresponde();
+    }
   }
 
   onLocalidadChange(): void {
@@ -5052,13 +6050,17 @@ export class CompletarRegistroComponent implements OnInit {
     const nombre = (this.form.get('inst_nombre')?.value || '').toString().trim();
     const match = this.buscarInstitucionEducativaPorNombre(nombre);
     if (!match) {
-      this.form.patchValue({ inst_clave_oficial: '' }, { emitEvent: false });
+      if (!nombre) {
+        this.form.patchValue({ inst_clave_oficial: '' }, { emitEvent: false });
+      }
       return;
     }
 
-    const patch: Record<string, string> = {
-      inst_clave_oficial: (match.cct || '').toString().trim()
-    };
+    const patch: Record<string, string> = {};
+    const cct = (match.cct || '').toString().trim();
+    if (cct) {
+      patch['inst_clave_oficial'] = cct;
+    }
 
     if (match.nivelEducativo && !(this.form.get('inst_nivel_uno_nombre')?.value || '').toString().trim()) {
       patch['inst_nivel_uno_nombre'] = match.nivelEducativo;
@@ -5117,6 +6119,21 @@ export class CompletarRegistroComponent implements OnInit {
       return;
     }
     this.form.get('pers_nacionalidad_nombre')?.setValue(selectedValue || '');
+  }
+
+  onMunicipioNacimientoCatalogoChange(selectedValue: string): void {
+    this.selectedMunicipioNacimientoNombre = selectedValue;
+    const control = this.form.get('pers_municipio_nombre');
+
+    if (selectedValue === this.catalogoOtroValue) {
+      const currentValue = (control?.value || '').toString().trim();
+      if (!currentValue || this.buscarCatalogoPorNombre(this.catalogoMunicipios, currentValue)) {
+        control?.setValue('');
+      }
+      return;
+    }
+
+    control?.setValue(selectedValue || '');
   }
 
   onEntidadFederativaDomicilioCatalogoChange(selectedValue: string): void {
@@ -5250,23 +6267,45 @@ export class CompletarRegistroComponent implements OnInit {
   }
 
   private sincronizarValoresCatalogoActuales(): void {
-    this.onEntidadFederativaChange();
-    this.onEstadoCivilChange();
-    this.onNacionalidadCatalogChange();
-    this.onMunicipioDomicilioChange();
-    this.onLocalidadChange();
-    this.onTipoInstitucionChange();
-    this.onInstitucionEducativaChange();
-    this.actualizarSeleccionEntidadDomicilioDesdeClave();
-    this.actualizarSeleccionInstitucionDesdeTexto('inst_nombre');
-    this.actualizarSeleccionInstitucionDesdeTexto('acad_institucion');
-    this.actualizarSeleccionInstitucionDesdeTexto('curso_institucion');
-    this.actualizarSeleccionCarreraDesdeTexto();
-    this.actualizarSeleccionNacionalidadDesdeTexto();
-    this.actualizarSeleccionMunicipioDesdeTexto();
-    this.actualizarSeleccionLocalidadDesdeTexto();
-    this.actualizarSeleccionRedSocialDesdeTexto();
-    this.actualizarSeleccionGradoDesdeTexto();
+    if (this.catalogoEntidadesFederativas.length > 0) {
+      this.onEntidadFederativaChange();
+      this.actualizarSeleccionEntidadDomicilioDesdeClave();
+    }
+    if (this.catalogoEstadosCiviles.length > 0) {
+      this.onEstadoCivilChange();
+    }
+    if (this.catalogoNacionalidades.length > 0) {
+      this.onNacionalidadCatalogChange();
+      this.actualizarSeleccionNacionalidadDesdeTexto();
+    }
+    if (this.catalogoMunicipios.length > 0) {
+      this.onMunicipioDomicilioChange();
+      this.actualizarSeleccionMunicipioNacimientoDesdeTexto();
+      this.actualizarSeleccionMunicipioDesdeTexto();
+    }
+    if (this.catalogoLocalidades.length > 0) {
+      this.onLocalidadChange();
+      this.actualizarSeleccionLocalidadDesdeTexto();
+    }
+    if (this.catalogoTiposInstitucion.length > 0) {
+      this.onTipoInstitucionChange();
+    }
+    if (this.catalogoInstitucionesEducativas.length > 0) {
+      this.onInstitucionEducativaChange();
+      this.actualizarSeleccionInstitucionDesdeTexto('inst_nombre');
+      this.actualizarSeleccionInstitucionDesdeTexto('acad_institucion');
+      this.actualizarSeleccionInstitucionDesdeTexto('tray_prof_institucion');
+      this.actualizarSeleccionInstitucionDesdeTexto('curso_institucion');
+    }
+    if (this.catalogoCarreras.length > 0) {
+      this.actualizarSeleccionCarreraDesdeTexto();
+    }
+    if (this.catalogoRedesSociales.length > 0) {
+      this.actualizarSeleccionRedSocialDesdeTexto();
+    }
+    if (this.catalogoGradosEstudio.length > 0) {
+      this.actualizarSeleccionGradoDesdeTexto();
+    }
     this.sincronizarTextoManualSiCorresponde('acad_estatus_nombre', this.opcionesEstatusAcademico, (value) => this.acadEstatusManual = value);
     this.sincronizarTextoManualSiCorresponde('curso_nivel_escolaridad', this.opcionesNivelCurso, (value) => this.cursoNivelManual = value);
     this.sincronizarTextoManualSiCorresponde('estancia_tipo_nombre', this.opcionesTipoEstancia, (value) => this.estanciaTipoManual = value);
@@ -5453,6 +6492,17 @@ export class CompletarRegistroComponent implements OnInit {
     this.selectedNacionalidadNombre = this.esOpcionOtroCatalogoItem(match) ? this.catalogoOtroValue : (match?.nombre || (nombre ? this.catalogoOtroValue : ''));
   }
 
+  private actualizarSeleccionMunicipioNacimientoDesdeTexto(): void {
+    const nombre = (this.form.get('pers_municipio_nombre')?.value || '').toString().trim();
+    if (!nombre && this.selectedMunicipioNacimientoNombre === this.catalogoOtroValue) {
+      return;
+    }
+    const match = this.buscarCatalogoPorNombre(this.catalogoMunicipios, nombre);
+    this.selectedMunicipioNacimientoNombre = this.esOpcionOtroCatalogoItem(match)
+      ? this.catalogoOtroValue
+      : (match?.nombre || (nombre ? this.catalogoOtroValue : ''));
+  }
+
   private actualizarSeleccionEntidadDomicilioDesdeClave(): void {
     const clave = (this.form.get('claveEntidadFederativa')?.value || '').toString().trim();
     const match = this.buscarCatalogoPorClave(this.catalogoEntidadesFederativas, clave)
@@ -5500,6 +6550,17 @@ export class CompletarRegistroComponent implements OnInit {
 
   mostrarCampoManualCatalogo(selectedValue: string | null | undefined): boolean {
     return selectedValue === this.catalogoOtroValue;
+  }
+
+  puedeSeleccionarMunicipioNacimientoCatalogo(): boolean {
+    const entidadNombre = (this.form.get('pers_entidad_nombre')?.value || '').toString().trim();
+    const entidad = this.buscarCatalogoPorNombre(this.catalogoEntidadesFederativas, entidadNombre);
+    return !!entidad && this.esEntidadFederativaPadronDomicilio(entidad);
+  }
+
+  mostrarCampoManualMunicipioNacimiento(): boolean {
+    return !this.puedeSeleccionarMunicipioNacimientoCatalogo()
+      || this.mostrarCampoManualCatalogo(this.selectedMunicipioNacimientoNombre);
   }
 
   puedeSeleccionarMunicipioCatalogo(): boolean {
@@ -5551,6 +6612,9 @@ export class CompletarRegistroComponent implements OnInit {
     if (controlName === 'acad_institucion') {
       return this.selectedInstitucionAcademicaId;
     }
+    if (controlName === 'tray_prof_institucion') {
+      return this.selectedInstitucionProfesionalId;
+    }
     return this.selectedInstitucionCursoId;
   }
 
@@ -5561,6 +6625,10 @@ export class CompletarRegistroComponent implements OnInit {
     }
     if (controlName === 'acad_institucion') {
       this.selectedInstitucionAcademicaId = selectedValue;
+      return;
+    }
+    if (controlName === 'tray_prof_institucion') {
+      this.selectedInstitucionProfesionalId = selectedValue;
       return;
     }
     this.selectedInstitucionCursoId = selectedValue;
@@ -5628,6 +6696,10 @@ export class CompletarRegistroComponent implements OnInit {
     return [...items].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
   }
 }
+
+
+
+
 
 
 

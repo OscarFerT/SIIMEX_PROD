@@ -39,4 +39,7 @@ public class Congreso {
 
     @Column(name = "pais_sede", length = 100)
     private String paisSede;
+
+    @Column(name = "producto_principal")
+    private Boolean productoPrincipal;
 }

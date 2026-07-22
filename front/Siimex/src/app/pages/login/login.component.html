@@ -14,7 +14,7 @@
         </div>
         <h1 class="login-title">
           <span class="title-main">SIIMEX</span>
-          <span class="title-sub">Sistema de investigadoras e innovadoras mexiquenses</span>
+          <span class="title-sub">{{ branding.officialName }}</span>
         </h1>
         <p class="login-welcome">
           Bienvenida o bienvenido de nuevo. Inicia sesión para acceder a tu cuenta.
@@ -23,6 +23,10 @@
 
       <!-- Paso 1: Email + contraseña -->
       <form *ngIf="step === 1" [formGroup]="form" (ngSubmit)="submitStep1()" class="login-form" novalidate>
+        <p class="text-muted small mb-3">
+          <strong>Paso 1 de 2: Credenciales.</strong>
+          Después de validarlas, enviaremos un código de seguridad de 6 dígitos a tu correo. Si este dispositivo ya es de confianza, entrarás directamente.
+        </p>
         <!-- Campo correo -->
         <div class="form-group">
           <label for="correo" class="form-label">
@@ -89,7 +93,7 @@
             <input class="form-check-input-custom" type="checkbox" id="recordar" formControlName="remember" />
             <label class="form-check-label-custom" for="recordar">
               <i class="fas fa-check"></i>
-              Recuérdame
+              Confiar en este dispositivo
             </label>
           </div>
           <a routerLink="/recuperacion" class="forgot-link">
@@ -105,11 +109,11 @@
           [disabled]="loading || form.invalid">
           <span *ngIf="!loading">
             <i class="fas fa-sign-in-alt me-2"></i>
-            ENVIAR CÓDIGO
+            CONTINUAR
           </span>
           <span *ngIf="loading" class="loading-content">
             <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-            Enviando código...
+            Validando credenciales...
           </span>
         </button>
 
@@ -122,6 +126,7 @@
 
       <!-- Paso 2: Código de verificación -->
       <form *ngIf="step === 2" [formGroup]="codeForm" (ngSubmit)="submitStep2()" class="login-form" novalidate>
+        <p class="text-muted small mb-2"><strong>Paso 2 de 2: Código de seguridad.</strong></p>
         <p class="text-muted small mb-3">
           <i class="fas fa-envelope-open-text me-1"></i>
           Código enviado a <strong>{{ pendingEmail }}</strong>
@@ -227,4 +232,5 @@
     </div>
   </div>
 </div>
+
 

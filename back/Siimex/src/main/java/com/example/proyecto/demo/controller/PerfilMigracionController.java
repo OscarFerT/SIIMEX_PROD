@@ -259,7 +259,26 @@ public class PerfilMigracionController {
                         }
                     }
                 }
-                log.info(">>> Archivos guardados exitosamente en carpeta del usuario: {}", usuarioId);
+                // Soporta un certificado PDF independiente por cada idioma capturado.
+                if (multipartRequest != null) {
+                    for (Map.Entry<String, MultipartFile> entry : multipartRequest.getFileMap().entrySet()) {
+                        String key = entry.getKey();
+                        MultipartFile file = entry.getValue();
+                        if (key != null && key.startsWith("idiomaCertDocumento_") && file != null && !file.isEmpty()) {
+                            try {
+                                documentoService.guardarDocumento(
+                                        usuarioId,
+                                        file,
+                                        com.example.proyecto.demo.Entity.Documento.TipoDocumento.CERTIFICACION_IDIOMA,
+                                        file.getOriginalFilename(),
+                                        false
+                                );
+                            } catch (Exception ex) {
+                                log.warn(">>> No se pudo guardar certificado dinámico de idioma {}: {}", key, ex.getMessage());
+                            }
+                        }
+                    }
+                }                log.info(">>> Archivos guardados exitosamente en carpeta del usuario: {}", usuarioId);
             } catch (IllegalArgumentException e) {
                 log.warn(">>> Validación de archivos fallida: {}", e.getMessage());
                 throw e;

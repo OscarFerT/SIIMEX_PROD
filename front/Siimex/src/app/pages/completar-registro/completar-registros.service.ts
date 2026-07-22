@@ -15,6 +15,7 @@ export interface Registro1Response {
   paisNacimiento: string;
   entidadFederativa: string;
   nacionalidad: string;
+  municipio?: string;
   estadoCivil: 'SOLTERO' | 'CASADO' | 'DIVORCIADO' | 'VIUDO' | 'UNION_LIBRE';
 }
 

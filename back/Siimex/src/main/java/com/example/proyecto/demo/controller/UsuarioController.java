@@ -15,6 +15,7 @@ import com.example.proyecto.demo.Entity.InteresHabilidad;
 import com.example.proyecto.demo.Entity.Logro;
 import com.example.proyecto.demo.Entity.PerfilMigracion;
 import com.example.proyecto.demo.Entity.PropiedadIntelectual;
+import com.example.proyecto.demo.Entity.Registro1;
 import com.example.proyecto.demo.Entity.TrayectoriaAcademica;
 import com.example.proyecto.demo.Entity.TrayectoriaProfesional;
 import com.example.proyecto.demo.Entity.Usuario;
@@ -36,6 +37,8 @@ import com.example.proyecto.demo.Repository.TrayectoriaAcademicaRepository;
 import com.example.proyecto.demo.Repository.TrayectoriaProfesionalRepository;
 import com.example.proyecto.demo.Repository.UsuarioRepository;
 import com.example.proyecto.demo.Service.DocumentoService;
+import com.example.proyecto.demo.Service.PerfilCompletoService;
+import com.example.proyecto.demo.Service.PerfilCompletoService.RegistroIncompletoException;
 import com.example.proyecto.demo.dto.ArticuloItemDTO;
 import com.example.proyecto.demo.dto.CursoItemDTO;
 import com.example.proyecto.demo.dto.IdiomaItemDTO;
@@ -53,8 +56,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -91,6 +96,7 @@ public class UsuarioController {
     private final CongresoRepository congresoRepository;
     private final DivulgacionRepository divulgacionRepository;
     private final PerfilMigracionRepository perfilMigracionRepository;
+    private final PerfilCompletoService perfilCompletoService;
     private static final String EVIDENCIA_RUBRO_PREFIX = "EVIDENCIA__";
     private static final Set<String> RUBROS_EVIDENCIA_VALIDOS = Set.of(
             "institucion",
@@ -302,6 +308,7 @@ public class UsuarioController {
             institucion.put("id", inst.getId());
             institucion.put("nombre", inst.getNombre());
             institucion.put("claveOficial", inst.getClaveOficial());
+            institucion.put("tipoId", inst.getTipoId());
             institucion.put("tipoNombre", inst.getTipoNombre());
             institucion.put("paisNombre", inst.getPaisNombre());
             institucion.put("entidadNombre", inst.getEntidadNombre());
@@ -314,12 +321,17 @@ public class UsuarioController {
         Map<String, Object> areaConocimiento = new LinkedHashMap<>();
         areaConocimientoRepository.findByUsuarioId(usuario.getId()).stream().findFirst().ifPresent(area -> {
             areaConocimiento.put("id", area.getId());
+            areaConocimiento.put("areaId", area.getAreaId());
             areaConocimiento.put("areaNombre", area.getAreaNombre());
             areaConocimiento.put("areaClave", area.getAreaClave());
+            areaConocimiento.put("areaVersion", area.getAreaVersion());
+            areaConocimiento.put("campoId", area.getCampoId());
             areaConocimiento.put("campoNombre", area.getCampoNombre());
             areaConocimiento.put("campoClave", area.getCampoClave());
+            areaConocimiento.put("disciplinaId", area.getDisciplinaId());
             areaConocimiento.put("disciplinaNombre", area.getDisciplinaNombre());
             areaConocimiento.put("disciplinaClave", area.getDisciplinaClave());
+            areaConocimiento.put("subdisciplinaId", area.getSubdisciplinaId());
             areaConocimiento.put("subdisciplinaNombre", area.getSubdisciplinaNombre());
             areaConocimiento.put("subdisciplinaClave", area.getSubdisciplinaClave());
         });
@@ -407,6 +419,7 @@ public class UsuarioController {
             m.put("fechaFin", c.getFechaFin() != null ? c.getFechaFin().toString() : null);
             m.put("institucion", c.getInstitucion());
             m.put("nivelEscolaridad", c.getNivelEscolaridad());
+            m.put("productoPrincipal", c.getProductoPrincipal());
             return m;
         }).collect(Collectors.toList()));
 
@@ -434,6 +447,12 @@ public class UsuarioController {
             m.put("rolParticipacionNombre", a.getRolParticipacionNombre());
             m.put("estadoNombre", a.getEstadoNombre());
             m.put("productoPrincipal", a.getProductoPrincipal());
+            m.put("idExterno", a.getIdExterno());
+            m.put("eje", a.getEje());
+            m.put("issnElectronico", a.getIssnElectronico());
+            m.put("objetivoNombre", a.getObjetivoNombre());
+            m.put("fondoProgramaNombre", a.getFondoProgramaNombre());
+            m.put("totalCitas", a.getTotalCitas());
             if (a.getAutores() != null) {
                 m.put("autores", a.getAutores().stream().map(au -> {
                     Map<String, Object> am = new LinkedHashMap<>();
@@ -456,6 +475,7 @@ public class UsuarioController {
             m.put("tipoParticipacionNombre", c.getTipoParticipacionNombre());
             m.put("fecha", c.getFecha() != null ? c.getFecha().toString() : null);
             m.put("paisSede", c.getPaisSede());
+            m.put("productoPrincipal", c.getProductoPrincipal());
             return m;
         }).collect(Collectors.toList()));
 
@@ -552,6 +572,283 @@ public class UsuarioController {
         return ResponseEntity.ok(Map.of("status", "ok", "message", "Perfil actualizado correctamente"));
     }
 
+    @PatchMapping("/me/completar-registro/seccion/{seccion}")
+    @Transactional
+    public ResponseEntity<Map<String, String>> guardarSeccionCompletarRegistro(
+            @PathVariable String seccion,
+            @RequestBody(required = false) Map<String, Object> body,
+            Authentication auth) {
+        Long authUserId = (Long) auth.getPrincipal();
+        Usuario usuario = usuarioRepo.findByAuthUserIdWithRegistro1(authUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        Map<String, Object> datos = body != null ? new HashMap<>(body) : new HashMap<>();
+        String seccionNormalizada = seccion == null ? "" : seccion.trim().toLowerCase(Locale.ROOT);
+
+        switch (seccionNormalizada) {
+            case "inicio":
+            case "personaprincipal":
+                guardarDatosPersonalesParciales(usuario, datos);
+                break;
+            case "padroninstitucional":
+                guardarPadronParcial(usuario, datos);
+                break;
+            case "institucion":
+                if (tieneAlgunValor(datos, "instClaveOficial", "instNombre", "instTipoId", "instTipoNombre", "instPaisNombre", "instEntidadNombre", "instMunicipioNombre", "instNivelUnoNombre", "instNivelDosNombre")) {
+                    perfilCompletoService.guardarInstitucionConTransaccion(usuario, datos);
+                }
+                break;
+            case "area-conocimiento":
+            case "areaconocimiento":
+                if (tieneAlgunValor(datos, "areaNombre", "areaClave", "areaVersion", "campoNombre", "disciplinaNombre", "subdisciplinaNombre")) {
+                    perfilCompletoService.guardarAreaConocimientoConTransaccion(usuario, datos);
+                }
+                break;
+            case "trayectoria-academica":
+            case "trayectoriaacademica":
+                if (tieneTexto(datos.get("academicaJson"))) {
+                    perfilCompletoService.guardarTrayectoriaAcademicaDesdeJsonConTransaccion(usuario, normalizarTexto(datos.get("academicaJson")));
+                } else if (tieneAlgunValor(datos, "acadTitulo", "acadNivelNombre", "acadEstatusNombre", "acadInstitucion", "acadCedulaProfesional")) {
+                    perfilCompletoService.guardarTrayectoriaAcademicaConTransaccion(usuario, datos);
+                }
+                break;
+            case "trayectoria-profesional":
+            case "trayectoriaprofesional":
+                if (tieneAlgunValor(datos, "trayProfNombramiento", "trayProfInstitucion", "trayProfFechaInicio", "trayProfFechaFin", "trayProfLogros")) {
+                    perfilCompletoService.guardarTrayectoriaProfesionalConTransaccion(usuario, datos);
+                }
+                break;
+            case "cursos":
+                if (tieneTexto(datos.get("cursosJson"))) {
+                    perfilCompletoService.guardarCursosDesdeJsonConTransaccion(usuario, normalizarTexto(datos.get("cursosJson")));
+                } else if (tieneAlgunValor(datos, "cursoNombre", "cursoPrograma", "cursoFechaInicio", "cursoInstitucion", "cursoNivelEscolaridad")) {
+                    perfilCompletoService.guardarCursoConTransaccion(usuario, datos);
+                }
+                break;
+            case "idiomas":
+                if (tieneTexto(datos.get("idiomasJson"))) {
+                    perfilCompletoService.guardarIdiomasDesdeJsonConTransaccion(usuario, normalizarTexto(datos.get("idiomasJson")));
+                } else if (tieneAlgunValor(datos, "idiomaNombre", "idiomaDominioNombre", "idiomaCertInstitucion", "idiomaCertPuntuacion")) {
+                    perfilCompletoService.guardarIdiomaConTransaccion(usuario, datos);
+                }
+                break;
+            case "estancias":
+                if (tieneTexto(datos.get("estanciasJson"))) {
+                    perfilCompletoService.guardarEstanciasDesdeJsonConTransaccion(usuario, normalizarTexto(datos.get("estanciasJson")));
+                } else if (tieneAlgunValor(datos, "estanciaNombreProyecto", "estanciaTipoNombre", "estanciaFechaInicio", "estanciaInstitucionReceptora")) {
+                    perfilCompletoService.guardarEstanciaConTransaccion(usuario, datos);
+                }
+                break;
+            case "aportaciones":
+                if (tieneTexto(datos.get("articulosJson"))) {
+                    perfilCompletoService.guardarArticulosDesdeJsonConTransaccion(usuario, normalizarTexto(datos.get("articulosJson")));
+                } else if (tieneAlgunValor(datos, "artTitulo", "artNombreRevista", "artRolPartNombre", "artEstadoNombre")) {
+                    perfilCompletoService.guardarArticuloConTransaccion(usuario, datos);
+                }
+                break;
+            case "congresos":
+                if (tieneTexto(datos.get("congresosJson"))) {
+                    perfilCompletoService.guardarCongresosDesdeJsonConTransaccion(usuario, normalizarTexto(datos.get("congresosJson")));
+                } else if (tieneAlgunValor(datos, "congresoNombreEvento", "congresoTipoPartNombre", "congresoFecha", "congresoPaisSede")) {
+                    perfilCompletoService.guardarCongresoConTransaccion(usuario, datos);
+                }
+                break;
+            case "divulgacion":
+                if (tieneTexto(datos.get("divulgacionesJson"))) {
+                    perfilCompletoService.guardarDivulgacionesDesdeJsonConTransaccion(usuario, normalizarTexto(datos.get("divulgacionesJson")));
+                } else if (tieneAlgunValor(datos, "divulgTitulo", "divulgTipoDivNombre", "divulgMedioNombre", "divulgProdObtenidoNombre")) {
+                    perfilCompletoService.guardarDivulgacionConTransaccion(usuario, datos);
+                }
+                break;
+            case "logros":
+                if (tieneTexto(datos.get("logrosJson"))) {
+                    perfilCompletoService.guardarLogrosDesdeJsonConTransaccion(usuario, normalizarTexto(datos.get("logrosJson")));
+                } else if (tieneAlgunValor(datos, "logroNombre", "logroTipo")) {
+                    perfilCompletoService.guardarLogroConTransaccion(usuario, datos);
+                }
+                break;
+            default:
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("status", "error", "message", "Sección no soportada para guardado parcial: " + seccion));
+        }
+
+        usuarioRepo.save(usuario);
+        return ResponseEntity.ok(Map.of(
+                "status", "ok",
+                "message", "Sección guardada correctamente",
+                "section", seccion
+        ));
+    }
+    @PostMapping("/me/completar-registro/finalizar")
+    public ResponseEntity<Map<String, Object>> finalizarCompletarRegistro(Authentication auth) {
+        Long authUserId = (Long) auth.getPrincipal();
+        Usuario usuario = usuarioRepo.findByAuthUserIdWithRegistro1AndPerfilMigracion(authUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        try {
+            PerfilMigracion perfil = perfilCompletoService.finalizarRegistroPersistido(usuario);
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("status", "success");
+            response.put("message", "Registro completado correctamente");
+            response.put("usuarioId", usuario.getId());
+            response.put("perfilMigracionId", perfil.getId());
+            response.put("migracionId", perfil.getMigracionId());
+            return ResponseEntity.ok(response);
+        } catch (RegistroIncompletoException ex) {
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("status", "incomplete");
+            response.put("message", ex.getMessage());
+            response.put("seccionesFaltantes", ex.getSeccionesFaltantes());
+            response.put("primeraSeccion", ex.getSeccionesFaltantes().get(0).clave());
+            return ResponseEntity.badRequest().body(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", ex.getMessage()));
+        }
+    }
+    @GetMapping("/me/completar-registro/archivos")
+    public ResponseEntity<Map<String, Object>> obtenerArchivosCompletarRegistro(Authentication auth) {
+        Long authUserId = (Long) auth.getPrincipal();
+        Usuario usuario = usuarioRepo.findByAuthUserIdWithRegistro1(authUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        Map<String, Object> archivos = new LinkedHashMap<>();
+        agregarArchivoGuardado(archivos, "cert1", usuario.getId(), Documento.TipoDocumento.CERTIFICADO_1);
+        agregarArchivoGuardado(archivos, "cert2", usuario.getId(), Documento.TipoDocumento.CERTIFICADO_2);
+        agregarArchivoGuardado(archivos, "acad_constancia_snii", usuario.getId(), Documento.TipoDocumento.CONSTANCIA_SNII);
+        agregarArchivoGuardado(archivos, "idioma_cert_documento", usuario.getId(), Documento.TipoDocumento.CERTIFICACION_IDIOMA);
+        agregarArchivoGuardado(archivos, "estancia_documento", usuario.getId(), Documento.TipoDocumento.ESTANCIA_INVESTIGACION);
+        agregarArchivoGuardado(archivos, "divulg_archivo", usuario.getId(), Documento.TipoDocumento.DIVULGACION);
+
+        return ResponseEntity.ok(Map.of("status", "ok", "archivos", archivos));
+    }
+
+    @PostMapping(value = "/me/completar-registro/seccion/{seccion}/archivos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> guardarArchivosCompletarRegistro(
+            @PathVariable String seccion,
+            MultipartHttpServletRequest request,
+            Authentication auth) {
+        Long authUserId = (Long) auth.getPrincipal();
+        Usuario usuario = usuarioRepo.findByAuthUserIdWithRegistro1(authUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        String seccionNormalizada = seccion == null ? "" : seccion.trim().toLowerCase(Locale.ROOT);
+        List<Map<String, Object>> guardados = new ArrayList<>();
+
+        try {
+            switch (seccionNormalizada) {
+                case "trayectoria-academica":
+                case "trayectoriaacademica":
+                    guardarArchivoParcial(request.getFile("cert1"), "cert1", Documento.TipoDocumento.CERTIFICADO_1, usuario.getId(), guardados);
+                    guardarArchivoParcial(request.getFile("acad_constancia_snii"), "acad_constancia_snii", Documento.TipoDocumento.CONSTANCIA_SNII, usuario.getId(), guardados);
+                    break;
+                case "trayectoria-profesional":
+                case "trayectoriaprofesional":
+                    guardarArchivoParcial(request.getFile("cert2"), "cert2", Documento.TipoDocumento.CERTIFICADO_2, usuario.getId(), guardados);
+                    break;
+                case "idiomas":
+                    guardarArchivoParcial(request.getFile("idioma_cert_documento"), "idioma_cert_documento", Documento.TipoDocumento.CERTIFICACION_IDIOMA, usuario.getId(), guardados);
+                    List<Map.Entry<String, MultipartFile>> certificadosIdioma = request.getFileMap().entrySet().stream()
+                            .filter(entry -> entry.getKey().startsWith("idiomaCertDocumento_")
+                                    && entry.getValue() != null && !entry.getValue().isEmpty())
+                            .sorted(Map.Entry.comparingByKey())
+                            .toList();
+                    for (Map.Entry<String, MultipartFile> certificado : certificadosIdioma) {
+                        Documento documento = documentoService.guardarDocumento(
+                                usuario.getId(),
+                                certificado.getValue(),
+                                Documento.TipoDocumento.CERTIFICACION_IDIOMA,
+                                certificado.getValue().getOriginalFilename(),
+                                false
+                        );
+                        guardados.add(resumenArchivoGuardado(certificado.getKey(), documento));
+                    }
+                    break;
+                case "estancias":
+                    guardarArchivoParcial(request.getFile("estancia_documento"), "estancia_documento", Documento.TipoDocumento.ESTANCIA_INVESTIGACION, usuario.getId(), guardados);
+                    break;
+                case "divulgacion":
+                    List<Map.Entry<String, MultipartFile>> evidencias = request.getFileMap().entrySet().stream()
+                            .filter(entry -> (entry.getKey().equals("divulg_archivo") || entry.getKey().startsWith("divulgArchivo_"))
+                                    && entry.getValue() != null && !entry.getValue().isEmpty())
+                            .sorted(Map.Entry.comparingByKey())
+                            .toList();
+                    for (Map.Entry<String, MultipartFile> evidencia : evidencias) {
+                        Documento documento;
+                        if (evidencia.getKey().equals("divulg_archivo")) {
+                            documento = documentoService.guardarDocumentoUsuario(
+                                    usuario.getId(),
+                                    evidencia.getValue(),
+                                    Documento.TipoDocumento.DIVULGACION
+                            );
+                        } else {
+                            documento = documentoService.guardarDocumento(
+                                    usuario.getId(),
+                                    evidencia.getValue(),
+                                    Documento.TipoDocumento.DIVULGACION,
+                                    evidencia.getValue().getOriginalFilename(),
+                                    false
+                            );
+                        }
+                        guardados.add(resumenArchivoGuardado(evidencia.getKey(), documento));
+                    }
+                    break;
+                default:
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                            "status", "error",
+                            "message", "La sección no admite archivos: " + seccion
+                    ));
+            }
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "status", "error",
+                    "message", ex.getMessage()
+            ));
+        } catch (Exception ex) {
+            log.error("No se pudieron guardar los archivos parciales de la sección {} para el usuario {}", seccion, usuario.getId(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "status", "error",
+                    "message", "No se pudieron guardar los archivos de esta sección"
+            ));
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "status", "ok",
+                "message", guardados.isEmpty() ? "No había archivos nuevos para guardar" : "Archivos guardados correctamente",
+                "archivos", guardados
+        ));
+    }
+
+    private void guardarArchivoParcial(
+            MultipartFile archivo,
+            String campo,
+            Documento.TipoDocumento tipo,
+            Long usuarioId,
+            List<Map<String, Object>> guardados) throws Exception {
+        if (archivo == null || archivo.isEmpty()) {
+            return;
+        }
+        Documento documento = documentoService.guardarDocumentoUsuario(usuarioId, archivo, tipo);
+        guardados.add(resumenArchivoGuardado(campo, documento));
+    }
+
+    private void agregarArchivoGuardado(
+            Map<String, Object> archivos,
+            String campo,
+            Long usuarioId,
+            Documento.TipoDocumento tipo) {
+        documentoService.obtenerDocumentoPorUsuarioYTipo(usuarioId, tipo)
+                .ifPresent(documento -> archivos.put(campo, resumenArchivoGuardado(campo, documento)));
+    }
+
+    private Map<String, Object> resumenArchivoGuardado(String campo, Documento documento) {
+        Map<String, Object> resumen = new LinkedHashMap<>();
+        resumen.put("campo", campo);
+        resumen.put("documentoId", documento.getId());
+        resumen.put("nombre", documento.getNombreArchivo());
+        resumen.put("tipo", documento.getTipo().name());
+        resumen.put("guardado", true);
+        return resumen;
+    }
     @PatchMapping("/me/perfil-snii")
     @Transactional
     public ResponseEntity<Map<String, String>> updatePerfilSnii(@RequestBody Map<String, Object> body, Authentication auth) {
@@ -587,6 +884,137 @@ public class UsuarioController {
         return ResponseEntity.ok(Map.of("status", "ok", "message", "Perfil SNII actualizado correctamente"));
     }
 
+    private void guardarDatosPersonalesParciales(Usuario usuario, Map<String, Object> datos) {
+        if (datos == null) {
+            return;
+        }
+
+        if (datos.containsKey("nombre")) usuario.setNombre(normalizarTexto(datos.get("nombre")));
+        if (datos.containsKey("apellidoPaterno")) usuario.setApellidoPaterno(normalizarTexto(datos.get("apellidoPaterno")));
+        if (datos.containsKey("apellidoMaterno")) usuario.setApellidoMaterno(normalizarTexto(datos.get("apellidoMaterno")));
+
+        Registro1 registro1 = asegurarRegistro1(usuario);
+        if (datos.containsKey("curp")) registro1.setCurp(normalizarTexto(datos.get("curp")));
+        if (datos.containsKey("rfc")) registro1.setRfc(normalizarTexto(datos.get("rfc")));
+        if (datos.containsKey("fechaNacimiento")) registro1.setFechaNacimiento(parseFecha(datos.get("fechaNacimiento")));
+        if (datos.containsKey("genero")) registro1.setGenero(parseGenero(datos.get("genero")));
+        if (datos.containsKey("nacionalidad")) registro1.setNacionalidad(normalizarTexto(datos.get("nacionalidad")));
+        if (datos.containsKey("paisNacimiento")) registro1.setPaisNacimiento(normalizarTexto(datos.get("paisNacimiento")));
+        if (datos.containsKey("entidadFederativa")) registro1.setEntidadFederativa(normalizarTexto(datos.get("entidadFederativa")));
+        if (datos.containsKey("municipio")) registro1.setMunicipio(normalizarTexto(datos.get("municipio")));
+        if (datos.containsKey("estadoCivil")) registro1.setEstadoCivil(parseEstadoCivil(datos.get("estadoCivil")));
+
+        if (datos.containsKey("interesDescripcion")) {
+            String semblanza = normalizarTexto(datos.get("interesDescripcion"));
+            usuario.setSemblanza(semblanza);
+            Map<String, Object> datosInteres = new HashMap<>();
+            datosInteres.put("interesDescripcion", semblanza);
+            perfilCompletoService.guardarInteresHabilidadConTransaccion(usuario, datosInteres);
+        }
+    }
+
+    private void guardarPadronParcial(Usuario usuario, Map<String, Object> datos) {
+        if (datos == null) {
+            return;
+        }
+
+        Registro1 registro1 = asegurarRegistro1(usuario);
+        if (datos.containsKey("telefono")) registro1.setTelefono(normalizarTexto(datos.get("telefono")));
+        if (datos.containsKey("celular")) registro1.setCelular(normalizarTexto(datos.get("celular")));
+        if (datos.containsKey("tipoIdentificacionOficial")) registro1.setTipoIdentificacionOficial(normalizarTexto(datos.get("tipoIdentificacionOficial")));
+        if (datos.containsKey("identificacionOficial")) registro1.setIdentificacionOficial(normalizarTexto(datos.get("identificacionOficial")));
+        if (datos.containsKey("calle")) registro1.setCalle(normalizarTexto(datos.get("calle")));
+        if (datos.containsKey("numeroExterior")) registro1.setNumeroExterior(normalizarTexto(datos.get("numeroExterior")));
+        if (datos.containsKey("numeroInterior")) registro1.setNumeroInterior(normalizarTexto(datos.get("numeroInterior")));
+        if (datos.containsKey("entreCalle")) registro1.setEntreCalle(normalizarTexto(datos.get("entreCalle")));
+        if (datos.containsKey("yCalle")) registro1.setYCalle(normalizarTexto(datos.get("yCalle")));
+        if (datos.containsKey("colonia")) registro1.setColonia(normalizarTexto(datos.get("colonia")));
+        if (datos.containsKey("claveEntidadFederativa")) registro1.setClaveEntidadFederativa(normalizarTexto(datos.get("claveEntidadFederativa")));
+        if (datos.containsKey("municipioDomicilio")) registro1.setMunicipioDomicilio(normalizarTexto(datos.get("municipioDomicilio")));
+        if (datos.containsKey("claveMunicipio")) registro1.setClaveMunicipio(normalizarTexto(datos.get("claveMunicipio")));
+        if (datos.containsKey("localidad")) registro1.setLocalidad(normalizarTexto(datos.get("localidad")));
+        if (datos.containsKey("claveLocalidad")) registro1.setClaveLocalidad(normalizarTexto(datos.get("claveLocalidad")));
+        if (datos.containsKey("codigoPostal")) registro1.setCodigoPostal(normalizarTexto(datos.get("codigoPostal")));
+        if (datos.containsKey("claveAgeb")) registro1.setClaveAgeb(normalizarTexto(datos.get("claveAgeb")));
+        if (datos.containsKey("otraReferencia")) registro1.setOtraReferencia(normalizarTexto(datos.get("otraReferencia")));
+        if (datos.containsKey("claveRedSocial")) registro1.setClaveRedSocial(normalizarTexto(datos.get("claveRedSocial")));
+        if (datos.containsKey("redSocial")) registro1.setRedSocial(normalizarTexto(datos.get("redSocial")));
+    }
+
+    private Registro1 asegurarRegistro1(Usuario usuario) {
+        Registro1 registro1 = usuario.getRegistro1();
+        if (registro1 != null) {
+            return registro1;
+        }
+        registro1 = new Registro1();
+        registro1.setUsuario(usuario);
+        usuario.setRegistro1(registro1);
+        return registro1;
+    }
+
+    private boolean tieneAlgunValor(Map<String, Object> datos, String... keys) {
+        if (datos == null || keys == null) {
+            return false;
+        }
+        for (String key : keys) {
+            String valor = normalizarTexto(datos.get(key));
+            if (valor != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean tieneTexto(Object valor) {
+        return normalizarTexto(valor) != null;
+    }
+
+    private String normalizarTexto(Object valor) {
+        if (valor == null) {
+            return null;
+        }
+        String texto = valor.toString().trim();
+        return texto.isEmpty() ? null : texto;
+    }
+
+    private LocalDate parseFecha(Object valor) {
+        String texto = normalizarTexto(valor);
+        if (texto == null) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(texto);
+        } catch (Exception ex) {
+            log.warn("No se pudo convertir la fecha parcial [{}]", texto);
+            return null;
+        }
+    }
+
+    private Registro1.Genero parseGenero(Object valor) {
+        String texto = normalizarTexto(valor);
+        if (texto == null) {
+            return null;
+        }
+        try {
+            return Registro1.Genero.valueOf(texto.toUpperCase(Locale.ROOT));
+        } catch (Exception ex) {
+            log.warn("Genero parcial no válido: {}", texto);
+            return null;
+        }
+    }
+
+    private Registro1.EstadoCivil parseEstadoCivil(Object valor) {
+        String texto = normalizarTexto(valor);
+        if (texto == null) {
+            return null;
+        }
+        try {
+            return Registro1.EstadoCivil.valueOf(texto.toUpperCase(Locale.ROOT));
+        } catch (Exception ex) {
+            log.warn("Estado civil parcial no válido: {}", texto);
+            return null;
+        }
+    }
     private String resolverSemblanza(Usuario usuario) {
         String semblanzaInteres = null;
         try {
@@ -990,3 +1418,5 @@ public class UsuarioController {
     }
 
 }
+
+

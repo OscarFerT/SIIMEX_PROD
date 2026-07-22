@@ -69,6 +69,9 @@ public class Articulo {
     @Column(name = "fondo_programa_nombre", columnDefinition = "LONGTEXT")
     private String fondoProgramaNombre;
 
+    @Column(name = "total_citas")
+    private Integer totalCitas;
+
     // Relación uno a muchos con autores
     @OneToMany(mappedBy = "articulo", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

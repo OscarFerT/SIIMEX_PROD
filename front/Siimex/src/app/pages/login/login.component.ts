@@ -3,6 +3,7 @@ import { FormBuilder, Validators, ReactiveFormsModule, FormGroup } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/auth.service';
+import { BRANDING } from '../../core/branding.constants';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -13,6 +14,7 @@ import Swal from 'sweetalert2';
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent implements OnInit {
+  readonly branding = BRANDING;
   loading = false;
   errorMsg = '';
   /** 1 = email + contraseña, 2 = código de verificación */
@@ -237,3 +239,4 @@ export class LoginComponent implements OnInit {
     }
   }
 }
+

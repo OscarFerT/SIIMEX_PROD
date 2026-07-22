@@ -17,9 +17,9 @@ export interface Registro1Request {
   fechaNacimiento: string; // yyyy-MM-dd
   genero: 'MASCULINO' | 'FEMENINO' | 'OTRO';
   nacionalidad: string;
-  paisNacimiento: string;
-  entidadFederativa: string;
-  municipio: string;
+  paisNacimiento?: string | null;
+  entidadFederativa?: string | null;
+  municipio?: string | null;
   estadoCivil: 'SOLTERO' | 'CASADO' | 'DIVORCIADO' | 'VIUDO' | 'UNION_LIBRE';
   /** Tipo de perfil: INVESTIGADOR, INNOVADOR o HIBRIDO */
   tipoPerfil?: 'INVESTIGADOR' | 'INNOVADOR' | 'HIBRIDO';

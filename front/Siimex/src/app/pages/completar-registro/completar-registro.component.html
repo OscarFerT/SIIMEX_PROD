@@ -58,7 +58,7 @@
               </div>
               <span class="step-progress-text">
                 <img [src]="step.iconImage" [alt]="step.title" style="width: 12px; height: 12px; object-fit: contain; margin-right: 4px; vertical-align: middle;">
-                {{ getSectionProgress(step.id) }}%
+                {{ getSectionProgressLabel(step.id) }}
               </span>
             </div>
           </div>
@@ -273,6 +273,27 @@
                     </option>
                   </select>
                   <div class="invalid-feedback">La entidad federativa es obligatoria.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="municipio_nacimiento_nombre">Municipio de nacimiento *</label>
+                  <select *ngIf="puedeSeleccionarMunicipioNacimientoCatalogo()"
+                          class="form-select input-custom mb-2"
+                          [class.is-invalid]="isFieldInvalid('pers_municipio_nombre')"
+                          [ngModel]="selectedMunicipioNacimientoNombre"
+                          (ngModelChange)="onMunicipioNacimientoCatalogoChange($event)"
+                          [ngModelOptions]="{ standalone: true }">
+                    <option value="">Selecciona del catálogo...</option>
+                    <option [value]="catalogoOtroValue">Otro</option>
+                    <option *ngFor="let municipio of catalogoVisibleSinOtro(catalogoMunicipios)" [value]="municipio.nombre">{{ municipio.nombre }}</option>
+                  </select>
+                  <input *ngIf="mostrarCampoManualMunicipioNacimiento()"
+                         type="text" id="municipio_nacimiento_nombre" formControlName="pers_municipio_nombre"
+                         class="form-control input-custom" [class.is-invalid]="isFieldInvalid('pers_municipio_nombre')"
+                         list="catalogoMunicipiosList" placeholder="Escribe el municipio de nacimiento">
+                  <div class="invalid-feedback">El municipio de nacimiento es obligatorio.</div>
+                  <div class="form-text" *ngIf="!puedeSeleccionarMunicipioNacimientoCatalogo()">
+                    Captura el municipio manualmente para entidades fuera del catálogo disponible.
+                  </div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label fw-bold small" for="nacionalidad_nombre">Nacionalidad</label>
@@ -678,6 +699,27 @@
                   <div class="invalid-feedback">La entidad federativa es obligatoria.</div>
                 </div>
                 <div class="col-md-6">
+                  <label class="form-label fw-bold small" for="municipio_nacimiento_nombre_inicio">Municipio de nacimiento *</label>
+                  <select *ngIf="puedeSeleccionarMunicipioNacimientoCatalogo()"
+                          class="form-select input-custom mb-2"
+                          [class.is-invalid]="isFieldInvalid('pers_municipio_nombre')"
+                          [ngModel]="selectedMunicipioNacimientoNombre"
+                          (ngModelChange)="onMunicipioNacimientoCatalogoChange($event)"
+                          [ngModelOptions]="{ standalone: true }">
+                    <option value="">Selecciona del catálogo...</option>
+                    <option [value]="catalogoOtroValue">Otro</option>
+                    <option *ngFor="let municipio of catalogoVisibleSinOtro(catalogoMunicipios)" [value]="municipio.nombre">{{ municipio.nombre }}</option>
+                  </select>
+                  <input *ngIf="mostrarCampoManualMunicipioNacimiento()"
+                         type="text" id="municipio_nacimiento_nombre_inicio" formControlName="pers_municipio_nombre"
+                         class="form-control input-custom" [class.is-invalid]="isFieldInvalid('pers_municipio_nombre')"
+                         list="catalogoMunicipiosList" placeholder="Escribe el municipio de nacimiento">
+                  <div class="invalid-feedback">El municipio de nacimiento es obligatorio.</div>
+                  <div class="form-text" *ngIf="!puedeSeleccionarMunicipioNacimientoCatalogo()">
+                    Captura el municipio manualmente para entidades fuera del catálogo disponible.
+                  </div>
+                </div>
+                <div class="col-md-6">
                   <label class="form-label fw-bold small" for="nacionalidad_nombre_inicio">Nacionalidad</label>
                   <select class="form-select input-custom mb-2"
                           [ngModel]="selectedNacionalidadNombre"
@@ -972,6 +1014,17 @@
             <small class="form-text text-muted mt-1 d-block">
               Versión del catálogo de Áreas de conocimiento que estás utilizando.
             </small>
+            <a href="https://recca-servicios.secihti.mx/api/v1/disciplinas-conocimiento"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="btn catalogo-secihti-link w-100 mt-3"
+               aria-label="Consultar catálogo oficial de disciplinas SECIHTI en una pestaña nueva">
+              <i class="fas fa-external-link-alt me-2"></i>
+              Consultar disciplinas en SECIHTI
+            </a>
+            <small class="form-text text-muted mt-2 d-block">
+              El catálogo oficial se abrirá en una pestaña nueva.
+            </small>
           </div>
         </div>
 
@@ -1168,7 +1221,7 @@
         <p class="section-subtitle">Grados académicos y estudios realizados</p>
       </div>
       <div class="section-progress-badge">
-        <span>{{ getSectionProgress('trayectoria-academica') }}%</span>
+        <span>{{ getSectionProgressLabel('trayectoria-academica') }}</span>
       </div>
     </div>
   </div>
@@ -1444,7 +1497,7 @@
         <p class="section-subtitle">Experiencia laboral y profesional</p>
       </div>
       <div class="section-progress-badge">
-        <span>{{ getSectionProgress('trayectoria-profesional') }}%</span>
+        <span>{{ getSectionProgressLabel('trayectoria-profesional') }}</span>
       </div>
     </div>
   </div>
@@ -1521,8 +1574,8 @@
                 <div class="col-md-12">
                   <label class="form-label fw-bold small">Institución / Empresa *</label>
                   <select class="form-select input-custom mb-2"
-                          [ngModel]="selectedInstitucionRegistroId"
-                          (ngModelChange)="onInstitucionCatalogoChange('inst_nombre', $event)"
+                          [ngModel]="selectedInstitucionProfesionalId"
+                          (ngModelChange)="onInstitucionCatalogoChange('tray_prof_institucion', $event)"
                           [ngModelOptions]="{ standalone: true }">
                     <option value="">Selecciona del catálogo...</option>
                     <option [value]="catalogoOtroValue">Otro</option>
@@ -1531,10 +1584,10 @@
                       {{ institucion.nombre }}{{ institucion.cct ? ' (' + institucion.cct + ')' : '' }}
                     </option>
                   </select>
-                  <input *ngIf="mostrarCampoManualInstitucion('inst_nombre')" type="text" formControlName="inst_nombre" 
-                         class="form-control input-custom" 
+                  <input *ngIf="mostrarCampoManualInstitucion('tray_prof_institucion')" type="text" formControlName="tray_prof_institucion"
+                         class="form-control input-custom"
                          list="catalogoInstitucionesEducativasList"
-                         [class.is-invalid]="isFieldInvalid('inst_nombre')"
+                         [class.is-invalid]="isFieldInvalid('tray_prof_institucion')"
                          placeholder="Nombre de la institución o empresa">
                   <div class="form-text small">Si no corresponde a una institución del catálogo, elige Otro y escribe el nombre.</div>
                   <div class="invalid-feedback">La institución es obligatoria.</div>
@@ -1581,7 +1634,7 @@
         <p class="section-subtitle">Docencia y enseñanza</p>
       </div>
       <div class="section-progress-badge">
-        <span>{{ getSectionProgress('cursos') }}%</span>
+        <span>{{ getSectionProgressLabel('cursos') }}</span>
       </div>
     </div>
   <div class="main-wrapper">
@@ -1809,13 +1862,19 @@
         <p class="section-subtitle">Dominio de idiomas</p>
       </div>
       <div class="section-progress-badge">
-        <span>{{ getSectionProgress('idiomas') }}%</span>
+        <span>{{ getSectionProgressLabel('idiomas') }}</span>
       </div>
     </div>
   </div>
   <div class="main-wrapper">
     <div class="content-container">
-      <h2 class="text-borgona mb-4">Dominio de idiomas</h2>
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h2 class="text-borgona mb-0">Dominio de idiomas</h2>
+        <button type="button" class="btn btn-outline-success" (click)="agregarIdiomaDominio()">
+          <i class="fas fa-plus me-1"></i>
+          {{ editingIdiomaIndex !== null ? 'Guardar cambios del idioma' : (idiomasDominioList.length > 0 ? 'Agregar otro idioma' : 'Agregar idioma') }}
+        </button>
+      </div>
 
       <div class="row">
         
@@ -1956,6 +2015,63 @@
         </div>
       </div>
 
+      <div class="text-end d-flex gap-2 justify-content-end mb-3">
+        <button type="button" class="btn btn-outline-success" (click)="agregarIdiomaDominio()">
+          <i class="fas fa-plus me-1"></i>
+          {{ editingIdiomaIndex !== null ? 'Guardar cambios' : (idiomasDominioList.length > 0 ? 'Agregar otro idioma' : 'Agregar idioma') }}
+        </button>
+        <button type="button" class="btn btn-outline-secondary"
+                (click)="cancelarEdicionIdiomaDominio()"
+                *ngIf="editingIdiomaIndex !== null">
+          <i class="fas fa-times me-1"></i>
+          Cancelar edición
+        </button>
+      </div>
+
+      <div class="card border-borgona mb-3 shadow-sm">
+        <div class="card-header bg-light text-borgona fw-bold d-flex justify-content-between align-items-center">
+          <span>Idiomas capturados</span>
+          <span class="badge bg-secondary">{{ idiomasDominioList.length }}</span>
+        </div>
+        <div class="card-body">
+          <div *ngIf="idiomasDominioList.length === 0" class="alert alert-warning mb-0">
+            Aún no agregas idiomas. Captura los datos y presiona <strong>Agregar idioma</strong>.
+          </div>
+
+          <div *ngFor="let idioma of idiomasDominioList; let i = index; trackBy: trackByIdiomaDominioIndex"
+               class="idioma-dominio-item"
+               [class.mb-3]="i < idiomasDominioList.length - 1">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+              <div>
+                <h6 class="mb-1 text-borgona">{{ idioma.nombre }}</h6>
+                <div class="small text-muted">
+                  <span>Dominio: {{ idioma.dominioNombre || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Lectura: {{ idioma.lectura || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Escritura: {{ idioma.escritura || 'N/D' }}</span>
+                  <span class="mx-2">|</span>
+                  <span>Conversación: {{ idioma.conversacion || 'N/D' }}</span>
+                </div>
+                <div *ngIf="idioma.esCertificado" class="small text-success mt-1">
+                  <i class="fas fa-certificate me-1"></i>
+                  Certificado{{ idioma.certInstitucion ? ' por ' + idioma.certInstitucion : '' }}{{ idioma.certPuntuacion ? ' · ' + idioma.certPuntuacion : '' }}
+                  <span *ngIf="idioma.certDocumentoNombre"> · {{ idioma.certDocumentoNombre }}</span>
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="editarIdiomaDominio(i)">
+                  <i class="fas fa-edit me-1"></i> Editar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminarIdiomaDominio(i)">
+                  <i class="fas fa-trash me-1"></i> Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="text-center mt-4">
         <button type="button" class="btn btn-borgona px-5 d-flex align-items-center gap-2 justify-content-center mx-auto"
                 (click)="setView('estancias')">
@@ -1979,7 +2095,7 @@
         <p class="section-subtitle">Estancias académicas y de investigación</p>
       </div>
       <div class="section-progress-badge">
-        <span>{{ getSectionProgress('estancias') }}%</span>
+        <span>{{ getSectionProgressLabel('estancias') }}</span>
       </div>
     </div>
   </div>
@@ -2153,7 +2269,7 @@
         <p class="section-subtitle">Artículos y publicaciones</p>
       </div>
       <div class="section-progress-badge">
-        <span>{{ getSectionProgress('aportaciones') }}%</span>
+        <span>{{ getSectionProgressLabel('aportaciones') }}</span>
       </div>
     </div>
   <div class="main-wrapper">
@@ -2426,7 +2542,7 @@
         <p class="section-subtitle">Participación en eventos</p>
       </div>
       <div class="section-progress-badge">
-        <span>{{ getSectionProgress('congresos') }}%</span>
+        <span>{{ getSectionProgressLabel('congresos') }}</span>
       </div>
     </div>
   <div class="main-wrapper">
@@ -2534,7 +2650,7 @@
         <p class="section-subtitle">Actividades de divulgación</p>
       </div>
       <div class="section-progress-badge">
-        <span>{{ getSectionProgress('divulgacion') }}%</span>
+        <span>{{ getSectionProgressLabel('divulgacion') }}</span>
       </div>
     </div>
   </div>
@@ -2763,7 +2879,7 @@
         <p class="section-subtitle">Premios y distinciones</p>
       </div>
       <div class="section-progress-badge">
-        <span>{{ getSectionProgress('logros') }}%</span>
+        <span>{{ getSectionProgressLabel('logros') }}</span>
       </div>
     </div>
   </div>

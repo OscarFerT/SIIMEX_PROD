@@ -976,6 +976,13 @@
     background: #ffffff;
   }
 
+  .idioma-dominio-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: #ffffff;
+  }
+
   .articulo-cientifico-item {
     border: 1px solid #e5e7eb;
     border-radius: 10px;
@@ -1096,4 +1103,18 @@
   .submit-progress-value {
     font-size: 1.15rem;
   }
+}
+.catalogo-secihti-link {
+  color: #800020;
+  background: #fff;
+  border: 1px solid #800020;
+  font-weight: 600;
+}
+
+.catalogo-secihti-link:hover,
+.catalogo-secihti-link:focus-visible {
+  color: #fff;
+  background: #800020;
+  border-color: #800020;
+  box-shadow: 0 0 0 0.2rem rgba(128, 0, 32, 0.2);
 }

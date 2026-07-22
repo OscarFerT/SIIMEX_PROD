@@ -21,6 +21,8 @@ import {
 } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth.service';
 import { RegisterRequest, Registro1Request } from '../../core/auth.service';
 import Swal from 'sweetalert2';
@@ -163,9 +165,6 @@ type RegistroForm = FormGroup<{
   tipoPerfil: FormControl<TipoPerfil>;
   email: FormControl<string>;
   confirmCorreo: FormControl<string>;
-  paisNacimiento: FormControl<string>;
-  entidadFederativa: FormControl<string>;
-  municipio: FormControl<string>;
   nacionalidad: FormControl<string>;
   estadoCivil: FormControl<EstadoCivil>;
   telefono: FormControl<string>;
@@ -178,6 +177,11 @@ type RegistroForm = FormGroup<{
 
 // 🔥 Backend espera enum en MAYÚSCULAS exactas
 type GeneroBackend = 'MASCULINO' | 'FEMENINO';
+
+interface CatalogoNacionalidad {
+  clave: string;
+  nombre: string;
+}
 
 
 
@@ -214,21 +218,26 @@ export class RegisterComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private router = inject(Router);
   private auth = inject(AuthService);
+  private http = inject(HttpClient);
 
   isBrowser = false;
 
   submitting = signal(false);
   pwdVisible = signal(false);
   confirmPwdVisible = signal(false);
+  catalogoNacionalidades = signal<CatalogoNacionalidad[]>([]);
+  cargandoNacionalidades = signal(false);
+  errorCatalogoNacionalidades = signal(false);
+  nacionalidadCatalogoSeleccionada = signal('');
+  readonly catalogoOtroValue = '__OTRO__';
 
   /** Id de la sección cuyo ayuda está visible (null = ninguna) */
   openSectionHelp = signal<string | null>(null);
 
   /** Textos de ayuda por sección */
   readonly sectionHelpTexts: Record<string, string> = {
-    personal: 'Completa tu nombre completo (nombre y apellidos), fecha de nacimiento, sexo y estado civil tal como aparecen en tus documentos oficiales. Estos datos deben coincidir con tu CURP.',
+    personal: 'Completa tus datos personales tal como aparecen en tus documentos oficiales. La entidad de nacimiento se obtiene automáticamente de tu CURP.',
     tipoPerfil: 'Elige si te registras como personas investigadoras, como personas innovadoras o como perfil mixto (personas investigadoras e innovadoras).',
-    ubicacion: 'Indica tu país de nacimiento, entidad federativa, municipio y nacionalidad. Usa mayúsculas para país y nacionalidad (ej. MÉXICO, MEXICANA).',
     identificacion: 'Ingresa tu CURP (18 caracteres) y RFC (13 caracteres) exactamente como en tus documentos oficiales. El teléfono debe tener al menos 10 dígitos. La fecha de nacimiento contenida en ambos documentos debe coincidir.',
     contacto: 'Registra tu correo electrónico y repítelo para confirmar. Este correo será tu usuario o usuaria para iniciar sesión y recibir notificaciones.',
     seguridad: 'Crea una contraseña segura: mínimo 8 caracteres, con mayúsculas, minúsculas y números. Repítela para confirmar. Guárdala en un lugar seguro.'
@@ -243,43 +252,6 @@ export class RegisterComponent implements OnInit {
 
   today = new Date().toISOString().slice(0, 10);
   minDate = '1900-01-01';
-
-  // Lista de entidades federativas de México
-  entidadesFederativas: string[] = [
-    'Aguascalientes',
-    'Baja California',
-    'Baja California Sur',
-    'Campeche',
-    'Chiapas',
-    'Chihuahua',
-    'Ciudad de México',
-    'Distrito Federal',
-    'Coahuila',
-    'Colima',
-    'Durango',
-    'Estado de México',
-    'Guanajuato',
-    'Guerrero',
-    'Hidalgo',
-    'Jalisco',
-    'Michoacán',
-    'Morelos',
-    'Nayarit',
-    'Nuevo León',
-    'Oaxaca',
-    'Puebla',
-    'Querétaro',
-    'Quintana Roo',
-    'San Luis Potosí',
-    'Sinaloa',
-    'Sonora',
-    'Tabasco',
-    'Tamaulipas',
-    'Tlaxcala',
-    'Veracruz',
-    'Yucatán',
-    'Zacatecas'
-  ];
 
   form: RegistroForm = this.fb.nonNullable.group(
     {
@@ -305,9 +277,6 @@ export class RegisterComponent implements OnInit {
       curp: this.fb.nonNullable.control('', [Validators.required, curpValidator]),
       rfc: this.fb.nonNullable.control('', [Validators.required, rfcValidator]),
       genero: this.fb.nonNullable.control<Genero>('MASCULINO', [Validators.required]),
-      paisNacimiento: this.fb.nonNullable.control('', [Validators.required]),
-      entidadFederativa: this.fb.nonNullable.control('', [Validators.required]),
-      municipio: this.fb.nonNullable.control('', [Validators.required]),
       nacionalidad: this.fb.nonNullable.control('', [Validators.required]),
       estadoCivil: this.fb.nonNullable.control<EstadoCivil>('SOLTERO', [Validators.required]),
       password: this.fb.nonNullable.control('', [Validators.required, strongPassword]),
@@ -326,6 +295,8 @@ export class RegisterComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.cargarCatalogoNacionalidades();
+
     // Transformar a mayúsculas: Nombre
     this.f.nombre.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -353,14 +324,6 @@ export class RegisterComponent implements OnInit {
         }
       });
 
-    // Transformar a mayúsculas: País de nacimiento
-    this.f.paisNacimiento.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((v) => {
-        if (v && v !== v.toUpperCase()) {
-          this.f.paisNacimiento.setValue(v.toUpperCase(), { emitEvent: false });
-        }
-      });
 
     // Transformar a mayúsculas: Nacionalidad
     this.f.nacionalidad.valueChanges
@@ -418,6 +381,49 @@ export class RegisterComponent implements OnInit {
       });
   }
 
+  onNacionalidadCatalogoChange(event: Event): void {
+    const seleccion = (event.target as HTMLSelectElement).value;
+    const control = this.f.nacionalidad;
+    this.nacionalidadCatalogoSeleccionada.set(seleccion);
+
+    if (seleccion === this.catalogoOtroValue) {
+      control.setValue('');
+    } else {
+      control.setValue(seleccion.trim().toUpperCase());
+    }
+    control.markAsTouched();
+    control.updateValueAndValidity();
+  }
+
+  private cargarCatalogoNacionalidades(): void {
+    this.cargandoNacionalidades.set(true);
+    this.errorCatalogoNacionalidades.set(false);
+
+    this.http.get<CatalogoNacionalidad[]>(environment.apiBaseUrl + '/catalogos/nacionalidades').subscribe({
+      next: (items) => {
+        const unicas = new Map<string, CatalogoNacionalidad>();
+        (Array.isArray(items) ? items : []).forEach((item) => {
+          const nombre = (item?.nombre || '').trim();
+          if (!nombre || nombre.toLocaleLowerCase('es-MX') === 'otro') {
+            return;
+          }
+          const key = nombre.toLocaleUpperCase('es-MX');
+          if (!unicas.has(key)) {
+            unicas.set(key, { clave: (item?.clave || '').trim(), nombre });
+          }
+        });
+        this.catalogoNacionalidades.set(
+          Array.from(unicas.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es-MX', { sensitivity: 'base' }))
+        );
+        this.cargandoNacionalidades.set(false);
+      },
+      error: () => {
+        this.catalogoNacionalidades.set([]);
+        this.errorCatalogoNacionalidades.set(true);
+        this.cargandoNacionalidades.set(false);
+      }
+    });
+  }
   private focusFirstInvalid(): void {
     if (!this.isBrowser) return;
 
@@ -483,9 +489,6 @@ export class RegisterComponent implements OnInit {
       fechaNacimiento: this.f.fechaNacimiento.value, // yyyy-MM-dd
       genero: this.form.controls.genero.value,
       nacionalidad: this.f.nacionalidad.value.trim(),
-      paisNacimiento: this.f.paisNacimiento.value.trim(),
-      entidadFederativa: this.f.entidadFederativa.value.trim(),
-      municipio: this.f.municipio.value.trim(),
       estadoCivil: this.form.controls.estadoCivil.value,
       tipoPerfil: this.form.controls.tipoPerfil.value
     }
@@ -592,9 +595,7 @@ export class RegisterComponent implements OnInit {
       'registro.fechaNacimiento': 'Fecha de nacimiento',
       'registro.genero': 'Género',
       'registro.nacionalidad': 'Nacionalidad',
-      'registro.paisNacimiento': 'País de nacimiento',
       'registro.entidadFederativa': 'Entidad federativa',
-      'registro.municipio': 'Municipio',
       'registro.estadoCivil': 'Estado civil',
       'registro.tipoPerfil': 'Tipo de perfil (Personas investigadoras/personas innovadoras/mixto)'
     };
