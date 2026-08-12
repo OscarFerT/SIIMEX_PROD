@@ -1118,3 +1118,8 @@
   border-color: #800020;
   box-shadow: 0 0 0 0.2rem rgba(128, 0, 32, 0.2);
 }
+
+.author-order-input {
+  min-width: 56px;
+  font-variant-numeric: tabular-nums;
+}

@@ -56,7 +56,15 @@ public class AuthController {
                 "message", "Tu cuenta ha sido verificada. Ya puedes iniciar sesión."
         ));
     }
-
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(@RequestBody Map<String, String> body) {
+        String email = body != null ? body.get("email") : null;
+        authService.resendVerificationEmail(email);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Te enviamos un nuevo enlace de verificacion. Revisa tu bandeja de entrada."
+        ));
+    }
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest req, HttpServletRequest http) {
         String token = authService.login(req);

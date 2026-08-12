@@ -17,6 +17,8 @@ export class LoginComponent implements OnInit {
   readonly branding = BRANDING;
   loading = false;
   errorMsg = '';
+  canResendVerification = false;
+  verificationEmail = '';
   /** 1 = email + contraseña, 2 = código de verificación */
   step: 1 | 2 = 1;
   /** Email en espera de verificación (para step 2) */
@@ -50,6 +52,8 @@ export class LoginComponent implements OnInit {
   /** Paso 1: solicitar código de verificación (o login directo si tiene rememberToken) */
   submitStep1() {
     this.errorMsg = '';
+    this.canResendVerification = false;
+    this.verificationEmail = '';
     if (this.form.invalid) {
       Swal.fire({
         icon: 'warning',
@@ -117,6 +121,13 @@ export class LoginComponent implements OnInit {
         this.loading = false;
         Swal.close();
         const msg = err?.error?.message || 'Credenciales inválidas o error al enviar el código.';
+        this.errorMsg = msg;
+        if (this.isEmailVerificationRequired(err, msg)) {
+          this.canResendVerification = true;
+          this.verificationEmail = email;
+          this.showResendVerificationPrompt(msg);
+          return;
+        }
         Swal.fire({
           icon: 'error',
           title: 'Error',
@@ -190,10 +201,70 @@ export class LoginComponent implements OnInit {
   volverAlPaso1() {
     this.step = 1;
     this.pendingEmail = '';
+    this.canResendVerification = false;
+    this.verificationEmail = '';
     this.codeForm.reset();
     this.errorMsg = '';
   }
 
+
+  resendVerificationEmail() {
+    const email = (this.verificationEmail || this.form.value.email || '').trim().toLowerCase();
+    if (!email) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Correo requerido',
+        text: 'Ingresa tu correo para reenviar el enlace de verificación.',
+        confirmButtonColor: '#800020'
+      });
+      return;
+    }
+
+    this.loading = true;
+    this.auth.resendVerificationEmail(email).subscribe({
+      next: (res) => {
+        this.loading = false;
+        Swal.fire({
+          icon: 'success',
+          title: 'Correo reenviado',
+          text: res.message || 'Te enviamos un nuevo enlace de verificación.',
+          confirmButtonColor: '#800020'
+        });
+      },
+      error: (err) => {
+        this.loading = false;
+        const msg = err?.error?.message || 'No fue posible reenviar el correo de verificación.';
+        Swal.fire({
+          icon: 'error',
+          title: 'No se pudo reenviar',
+          text: msg,
+          confirmButtonColor: '#800020'
+        });
+      }
+    });
+  }
+
+  private isEmailVerificationRequired(err: any, msg: string): boolean {
+    const lowerMessage = (msg || '').toLowerCase();
+    return err?.status === 403 && lowerMessage.includes('verificar') && lowerMessage.includes('correo');
+  }
+
+  private showResendVerificationPrompt(message: string): void {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Cuenta pendiente de verificación',
+      text: message,
+      confirmButtonText: 'Reenviar correo',
+      cancelButtonText: 'Ahora no',
+      showCancelButton: true,
+      confirmButtonColor: '#800020',
+      cancelButtonColor: '#6c757d'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.resendVerificationEmail();
+      }
+    });
+  }
   /**
    * Determina a dónde redirigir según el estado del registro del usuario.
    * 1. Si es admin → /admin

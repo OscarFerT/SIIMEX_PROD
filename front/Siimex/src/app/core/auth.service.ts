@@ -217,7 +217,13 @@ export class AuthService {
       {}
     );
   }
-
+  /** Reenvia el enlace de activacion para cuentas registradas no verificadas. */
+  resendVerificationEmail(email: string) {
+    return this.http.post<{ success: boolean; message: string }>(
+      `${environment.apiBaseUrl}/auth/resend-verification`,
+      { email }
+    );
+  }
   /** Obtiene userId del usuario actual (localStorage) o del fallback (registro reciente) */
   getStoredUserId(): number | null {
     const raw = localStorage.getItem(this.USER_KEY);

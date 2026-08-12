@@ -387,19 +387,19 @@
             <div class="invalid-feedback">El folio de identificación es obligatorio.</div>
           </div>
           <div class="col-md-3">
-            <label class="form-label fw-bold small" for="ct_red_social">Clave red social</label>
+            <label class="form-label fw-bold small" for="ct_red_social">Red social</label>
             <select class="form-select input-custom mb-2"
                     [ngModel]="selectedRedSocialClave"
                     (ngModelChange)="onRedSocialCatalogoChange($event)"
                     [ngModelOptions]="{ standalone: true }">
-              <option value="">Selecciona del catálogo...</option>
+              <option value="">Selecciona red social...</option>
               <option [value]="catalogoOtroValue">Otro</option>
-              <option *ngFor="let red of catalogoVisibleSinOtro(catalogoRedesSociales)" [value]="red.clave">{{ red.nombre }} ({{ red.clave }})</option>
+              <option *ngFor="let red of catalogoVisibleSinOtro(catalogoRedesSociales)" [value]="red.clave">{{ red.nombre }}</option>
             </select>
             <input *ngIf="mostrarCampoManualCatalogo(selectedRedSocialClave)" type="text" id="ct_red_social" formControlName="claveRedSocial" class="form-control input-custom" placeholder="Catálogo" list="catalogoRedesSocialesList">
           </div>
           <div class="col-md-3">
-            <label class="form-label fw-bold small" for="red_social">Red social</label>
+            <label class="form-label fw-bold small" for="red_social">Usuario de red social o URL</label>
             <input type="text" id="red_social" formControlName="redSocial" class="form-control input-custom" placeholder="@usuario o URL">
           </div>
         </div>
@@ -408,6 +408,16 @@
 
     <div class="card border-borgona mb-3 shadow-sm">
       <div class="card-header bg-light text-borgona fw-bold">Domicilio</div>
+      <div class="alert alert-info mx-3 mt-3 mb-0 small d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span>
+          <i class="fas fa-info-circle me-1"></i>
+          Para domicilio de residencia se considera el Estado de México. Selecciona municipio y localidad del catálogo para completar las claves automáticamente.
+        </span>
+        <a class="btn btn-sm btn-outline-primary" href="assets/catalogos/CatalogoESYCA_claves_geoestadisticas.xlsx" download>
+          <i class="fas fa-download me-1"></i>
+          Descargar catálogo ESYCA
+        </a>
+      </div>
       <div class="card-body">
         <div class="row g-3">
           <div class="col-md-6">
@@ -448,9 +458,9 @@
                     (ngModelChange)="onEntidadFederativaDomicilioCatalogoChange($event)"
                     [ngModelOptions]="{ standalone: true }">
               <option value="">Selecciona entidad...</option>
-              <option *ngFor="let entidad of catalogoEntidadesFederativas" [value]="entidad.nombre">{{ entidad.nombre }}</option>
+              <option *ngFor="let entidad of catalogoEntidadesFederativasDomicilio" [value]="entidad.nombre">{{ entidad.nombre }}</option>
             </select>
-            <small class="text-muted d-block mt-1">La clave se llena con el catálogo oficial de entidades federativas.</small>
+            <small class="text-muted d-block mt-1">Para residencia, utiliza Estado de México; su clave se llena automáticamente.</small>
           </div>
           <div class="col-md-2">
             <label class="form-label fw-bold small" for="ct_entidad_padron">Clave entidad federativa</label>
@@ -470,13 +480,13 @@
             </select>
             <input *ngIf="mostrarCampoManualMunicipio()" type="text" id="municipio_padron" formControlName="municipioDomicilio" class="form-control input-custom"
                    [class.is-invalid]="isFieldInvalid('municipioDomicilio')" placeholder="Municipio" list="catalogoMunicipiosList">
-            <small class="text-muted d-block mt-1">{{ puedeSeleccionarMunicipioCatalogo() ? 'Al elegir municipio se completa su clave y se ordenan las localidades.' : 'Si la entidad no pertenece al padrón cargado, el municipio se captura manualmente.' }}</small>
+            <small class="text-muted d-block mt-1">{{ puedeSeleccionarMunicipioCatalogo() ? 'Al elegir municipio se completa su clave y se filtran sus localidades.' : 'Selecciona Estado de México para usar el catálogo de municipios.' }}</small>
             <div class="invalid-feedback">El municipio es obligatorio.</div>
           </div>
           <div class="col-md-2">
             <label class="form-label fw-bold small" for="ct_municipio_padron">Clave municipio</label>
             <input type="text" id="ct_municipio_padron" formControlName="claveMunicipio" class="form-control input-custom"
-                   [readonly]="esSeleccionCatalogo(selectedMunicipioNombre)" [class.bg-light]="esSeleccionCatalogo(selectedMunicipioNombre)" [placeholder]="puedeSeleccionarMunicipioCatalogo() ? 'Catálogo' : 'Captura manual'">
+                   [readonly]="esSeleccionCatalogo(selectedMunicipioNombre)" [class.bg-light]="esSeleccionCatalogo(selectedMunicipioNombre)" [placeholder]="puedeSeleccionarMunicipioCatalogo() ? 'Catálogo' : 'Selecciona entidad'">
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold small" for="localidad_padron">Localidad *</label>
@@ -485,19 +495,19 @@
                     (ngModelChange)="onLocalidadCatalogoChange($event)"
                     [ngModelOptions]="{ standalone: true }"
                     [disabled]="!puedeSeleccionarLocalidad()">
-              <option value="">{{ !puedeSeleccionarMunicipioCatalogo() ? 'Para esta entidad captura la localidad manualmente...' : (puedeSeleccionarLocalidad() ? 'Selecciona la localidad...' : 'Selecciona primero el municipio...') }}</option>
+              <option value="">{{ !puedeSeleccionarMunicipioCatalogo() ? 'Selecciona Estado de México primero...' : (puedeSeleccionarLocalidad() ? 'Selecciona la localidad...' : 'Selecciona primero el municipio...') }}</option>
               <option [value]="catalogoOtroValue">Otro</option>
               <option *ngFor="let localidadItem of catalogoVisibleSinOtro(catalogoLocalidadesFiltradas)" [value]="localidadItem.nombre">{{ localidadItem.nombre }}</option>
             </select>
             <input *ngIf="mostrarCampoManualLocalidad()" type="text" id="localidad_padron" formControlName="localidad" class="form-control input-custom"
                    [class.is-invalid]="isFieldInvalid('localidad')" placeholder="Localidad" list="catalogoLocalidadesList">
-            <small class="text-muted d-block mt-1">{{ puedeSeleccionarMunicipioCatalogo() ? 'La localidad puede completar su clave y el código postal cuando exista en el catálogo.' : 'Para entidades fuera del padrón, la localidad y el código postal se capturan manualmente.' }}</small>
+            <small class="text-muted d-block mt-1">{{ puedeSeleccionarMunicipioCatalogo() ? 'La localidad completa su clave y el código postal cuando exista en el catálogo.' : 'Selecciona Estado de México para usar el catálogo de localidades.' }}</small>
             <div class="invalid-feedback">La localidad es obligatoria.</div>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold small" for="ct_localidad_padron">Clave localidad</label>
             <input type="text" id="ct_localidad_padron" formControlName="claveLocalidad" class="form-control input-custom"
-                   [readonly]="esSeleccionCatalogo(selectedLocalidadNombre)" [class.bg-light]="esSeleccionCatalogo(selectedLocalidadNombre)" [placeholder]="puedeSeleccionarMunicipioCatalogo() ? 'Catálogo' : 'Captura manual'">
+                   [readonly]="esSeleccionCatalogo(selectedLocalidadNombre)" [class.bg-light]="esSeleccionCatalogo(selectedLocalidadNombre)" [placeholder]="puedeSeleccionarMunicipioCatalogo() ? 'Catálogo' : 'Selecciona entidad'">
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold small" for="cp_padron">Código postal *</label>
@@ -865,26 +875,8 @@
                   <div class="form-text small">Puedes seleccionar del catálogo, buscar por autocompletado o elegir Otro y escribir manualmente.</div>
                   <div class="invalid-feedback">El nombre de la institución es obligatorio.</div>
                 </div>
-                
-                <div [ngClass]="f['inst_pais_nombre'].value === 'México' ? 'col-md-4' : 'col-md-6'">
-                  <label class="form-label fw-bold small" for="inst_pais_nombre">País donde se ubica la institución *</label>
-                  <div class="input-group">
-                    <span class="input-group-text bg-light border-borgona">
-                      <img src="assets/img/paises.png" style="width:18px;">
-                    </span>
-                    <select id="inst_pais_nombre" formControlName="inst_pais_nombre" 
-                            class="form-select input-custom"
-                            [class.is-invalid]="isFieldInvalid('inst_pais_nombre')">
-                      <option value="">Selecciona el país...</option>
-                      <option value="México">México</option>
-                      <option value="Estados Unidos">Estados Unidos</option>
-                    </select>
-                    <div class="invalid-feedback">Seleccione un país.</div>
-                  </div>
-                </div>
-
-                <!-- Entidad federativa - Solo para México -->
-                <div class="col-md-4" *ngIf="f['inst_pais_nombre'].value === 'México'">
+                <!-- Entidad federativa de la institución -->
+                <div class="col-md-6">
                   <label class="form-label fw-bold small" for="inst_entidad_nombre">Estado o entidad federativa *</label>
                   <select id="inst_entidad_nombre" formControlName="inst_entidad_nombre" 
                           class="form-select input-custom"
@@ -893,10 +885,10 @@
                     <option *ngFor="let entidad of entidadesFederativas" [value]="entidad">{{ entidad }}</option>
                   </select>
                   <div class="invalid-feedback">Seleccione el estado o entidad federativa.</div>
-                  <small class="form-text text-muted mt-1 d-block">Selecciona el estado de la República Mexicana donde se ubica la institución.</small>
+                  <small class="form-text text-muted mt-1 d-block">La institución debe estar en México; selecciona su entidad federativa.</small>
                 </div>
 
-                <div class="col-md-4" *ngIf="f['inst_pais_nombre'].value === 'México' && !!f['inst_entidad_nombre'].value">
+                <div class="col-md-6" *ngIf="!!f['inst_entidad_nombre'].value">
                   <label class="form-label fw-bold small" for="inst_municipio_nombre">Municipio de la institución *</label>
                   <input type="text" id="inst_municipio_nombre" formControlName="inst_municipio_nombre"
                          class="form-control input-custom"
@@ -904,19 +896,6 @@
                          placeholder="Ej. Toluca, Ecatepec, Naucalpan">
                   <div class="invalid-feedback">Escribe el municipio de la institución.</div>
                   <small class="form-text text-muted mt-1 d-block">Este campo se habilita al seleccionar el estado.</small>
-                </div>
-
-                <!-- Estado de EUA - Solo para Estados Unidos -->
-                <div class="col-md-6" *ngIf="f['inst_pais_nombre'].value === 'Estados Unidos'">
-                  <label class="form-label fw-bold small" for="inst_estado_usa">Estado *</label>
-                  <select id="inst_estado_usa" formControlName="inst_estado_usa" 
-                          class="form-select input-custom"
-                          [class.is-invalid]="isFieldInvalid('inst_estado_usa')">
-                    <option value="">Selecciona el estado...</option>
-                    <option *ngFor="let estado of estadosEstadosUnidos" [value]="estado">{{ estado }}</option>
-                  </select>
-                  <div class="invalid-feedback">Seleccione el estado.</div>
-                  <small class="form-text text-muted mt-1 d-block">Selecciona el estado de Estados Unidos donde se ubica la institución.</small>
                 </div>
               </div>
             </div>
@@ -1014,16 +993,16 @@
             <small class="form-text text-muted mt-1 d-block">
               Versión del catálogo de Áreas de conocimiento que estás utilizando.
             </small>
-            <a href="https://recca-servicios.secihti.mx/api/v1/disciplinas-conocimiento"
+            <a href="https://recca-servicios.secihti.mx/"
                target="_blank"
                rel="noopener noreferrer"
                class="btn catalogo-secihti-link w-100 mt-3"
                aria-label="Consultar catálogo oficial de disciplinas SECIHTI en una pestaña nueva">
               <i class="fas fa-external-link-alt me-2"></i>
-              Consultar disciplinas en SECIHTI
+              Abrir catálogo de disciplinas SECIHTI
             </a>
             <small class="form-text text-muted mt-2 d-block">
-              El catálogo oficial se abrirá en una pestaña nueva.
+              Consulta el catálogo oficial de disciplinas de conocimiento SECIHTI en el portal RECCA. Se abrirá en una pestaña nueva.
             </small>
           </div>
         </div>
@@ -1300,7 +1279,7 @@
                      [class.is-invalid]="isFieldInvalid('cert1')">
               <div class="invalid-feedback">El documento probatorio de titulación es obligatorio.</div>
               <div *ngIf="f['cert1'].value" class="text-success small mt-1">
-                <i class="fas fa-check-circle"></i> Archivo listo
+                <i class="fas fa-check-circle"></i> Archivo seleccionado; se guardará al continuar.
               </div>
             </div>
           </div>
@@ -1389,11 +1368,12 @@
                 
                 <div class="col-md-4">
   <label class="form-label fw-bold small" for="acad_cedula_profesional">Cédula profesional</label>
-  <input type="text" id="acad_cedula_profesional" formControlName="acad_cedula_profesional" 
-         class="form-control input-custom" 
+  <input type="tel" id="acad_cedula_profesional" formControlName="acad_cedula_profesional"
+         class="form-control input-custom"
+         inputmode="numeric" pattern="[0-9]{1,10}" maxlength="10"
          [class.is-invalid]="isFieldInvalid('acad_cedula_profesional')"
          placeholder="No. de Cédula">
-  <div class="invalid-feedback">La cédula es obligatoria.</div>
+  <div class="invalid-feedback">La cédula debe contener solo números y máximo 10 dígitos.</div>
 </div>
               </div>
             </div>
@@ -2360,7 +2340,7 @@
               </div>
               <input type="file" (change)="onFileChange($event, 'cert1')" 
                      class="form-control form-control-sm" accept=".pdf">
-              <div *ngIf="f['cert1'].value" class="text-success small mt-1">Archivo listo.</div>
+              <div *ngIf="f['cert1'].value" class="text-success small mt-1">Archivo seleccionado; se guardará al continuar.</div>
             </div>
           </div>
         </div>
@@ -2390,11 +2370,13 @@
 
               <div class="col-md-4">
                 <label class="form-label fw-bold small" for="art_anio">Año de publicación</label>
-                <input type="number" id="art_anio" formControlName="art_anio" 
-                       class="form-control input-custom" 
-                       [class.is-invalid]="isFieldInvalid('art_anio')"
-                       placeholder="Ej: 2020">
-                <div class="invalid-feedback">El año debe ser mayor o igual a 1800.</div>
+                <select id="art_anio" formControlName="art_anio"
+                        class="form-select input-custom"
+                        [class.is-invalid]="isFieldInvalid('art_anio')">
+                  <option [ngValue]="null">Selecciona año...</option>
+                  <option *ngFor="let year of catalogoYears" [ngValue]="year">{{ year }}</option>
+                </select>
+                <div class="invalid-feedback">Selecciona un año válido.</div>
               </div>
 
               <div class="col-md-4">
@@ -2431,13 +2413,13 @@
               <div *ngFor="let autor of autoresList; let i = index; trackBy: trackByAutorIndex" 
                    class="row g-3 align-items-end" [class.mb-3]="i < autoresList.length - 1" 
                    [class.border-bottom]="i < autoresList.length - 1" [class.pb-3]="i < autoresList.length - 1">
-                <div class="col-md-1">
+                <div class="col-md-2 col-lg-1">
                   <label class="form-label small fw-bold">Orden</label>
-                  <input type="number" class="form-control input-custom text-center"
+                  <input type="number" class="form-control input-custom text-center author-order-input"
                          [(ngModel)]="autor.orden" [ngModelOptions]="{standalone: true}"
-                         min="1" placeholder="{{i + 1}}">
+                         min="1" step="1" placeholder="{{i + 1}}">
                 </div>
-                <div class="col-md-5">
+                <div class="col-md-4 col-lg-5">
                   <label class="form-label small fw-bold">Nombre completo</label>
                   <input type="text" class="form-control input-custom"
                          [(ngModel)]="autor.nombre" [ngModelOptions]="{standalone: true}"
@@ -2935,12 +2917,13 @@
                 </div>
                 <div class="col-md-6">
                   <label class="form-label fw-bold small" for="logro_anio">Año de obtención *</label>
-                  <input type="number" id="logro_anio" formControlName="logro_anio" 
-                         class="form-control input-custom"
-                         [class.is-invalid]="isFieldInvalid('logro_anio')"
-                         min="0"
-                         placeholder="AAAA">
-                  <div class="invalid-feedback">Año inválido. No se permiten valores negativos.</div>
+                  <select id="logro_anio" formControlName="logro_anio"
+                          class="form-select input-custom"
+                          [class.is-invalid]="isFieldInvalid('logro_anio')">
+                    <option [ngValue]="null">Selecciona año...</option>
+                    <option *ngFor="let year of catalogoYears" [ngValue]="year">{{ year }}</option>
+                  </select>
+                  <div class="invalid-feedback">Selecciona un año válido.</div>
                 </div>
               </div>
             </div>

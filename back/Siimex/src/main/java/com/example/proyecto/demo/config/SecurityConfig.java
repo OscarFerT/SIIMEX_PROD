@@ -91,6 +91,8 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/auth/verify-email",
                                 "/api/auth/verify-email",
+                                "/auth/resend-verification",
+                                "/api/auth/resend-verification",
                                 "/auth/login",
                                 "/api/auth/login",
                                 "/auth/login-admin",

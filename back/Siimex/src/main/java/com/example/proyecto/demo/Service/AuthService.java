@@ -47,6 +47,7 @@ import jakarta.transaction.Transactional;
 public class AuthService {
 
     private static final int VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
+    private static final int VERIFICATION_RESEND_COOLDOWN_SECONDS = 60;
     private static final int REMEMBER_TOKEN_DAYS = 30;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -224,14 +225,52 @@ public class AuthService {
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "El enlace de verificación no es válido o ya fue utilizado."));
         if (evt.isExpired()) {
             emailVerificationTokenRepo.delete(evt);
-            throw new ApiException(HttpStatus.BAD_REQUEST, "El enlace de verificación ha expirado. Regístrate nuevamente para recibir un nuevo correo.");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El enlace de verificación ha expirado. Solicita un nuevo correo de verificación desde la pantalla de inicio de sesión.");
         }
         AuthUser au = evt.getAuthUser();
         au.setEnabled(true);
         authUserRepo.save(au);
         emailVerificationTokenRepo.delete(evt);
     }
+    @Transactional
+    public void resendVerificationEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Correo electrónico requerido.");
+        }
 
+        String normalizedEmail = email.trim().toLowerCase();
+        AuthUser au = authUserRepo.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "No existe una cuenta registrada con ese correo."));
+
+        if (au.isEnabled()) {
+            throw new ApiException(HttpStatus.CONFLICT, "La cuenta ya está verificada. Puedes iniciar sesión.");
+        }
+
+        Instant now = Instant.now();
+        emailVerificationTokenRepo.findTopByAuthUser_IdOrderByCreatedAtDesc(au.getId())
+                .filter(lastToken -> now.isBefore(lastToken.getCreatedAt().plusSeconds(VERIFICATION_RESEND_COOLDOWN_SECONDS)))
+                .ifPresent(lastToken -> {
+                    long remaining = Math.max(1, now.until(
+                            lastToken.getCreatedAt().plusSeconds(VERIFICATION_RESEND_COOLDOWN_SECONDS),
+                            ChronoUnit.SECONDS));
+                    throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
+                            "Espera " + remaining + " segundos antes de solicitar otro correo de verificación.");
+                });
+
+        emailVerificationTokenRepo.deleteByAuthUser_Id(au.getId());
+        String verificationToken = UUID.randomUUID().toString().replace("-", "");
+        EmailVerificationToken evt = EmailVerificationToken.builder()
+                .authUser(au)
+                .token(verificationToken)
+                .expiresAt(now.plusSeconds(VERIFICATION_TOKEN_EXPIRY_HOURS * 3600L))
+                .createdAt(now)
+                .build();
+        emailVerificationTokenRepo.save(evt);
+
+        String verificationLink = frontendUrl.replaceAll("/$", "") + "/verificar-email?token=" + verificationToken;
+        String nombreUsuario = au.getUsuario() != null ? au.getUsuario().getNombre() : null;
+        microsoftGraphEmailService.sendRegistrationVerificationEmail(normalizedEmail, verificationLink, nombreUsuario, null);
+    }
 
     public String login(LoginRequest req) {
         String email = req.email().trim().toLowerCase();

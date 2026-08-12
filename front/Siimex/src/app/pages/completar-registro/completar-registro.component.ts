@@ -232,6 +232,11 @@ export class CompletarRegistroComponent implements OnInit {
   editingLogroIndex: number | null = null;
 
   catalogoEntidadesFederativas: CatalogItem[] = [];
+  get catalogoEntidadesFederativasDomicilio(): CatalogItem[] {
+    const entidadPadron = this.obtenerEntidadFederativaPadronDomicilio();
+    return entidadPadron ? [entidadPadron] : this.catalogoEntidadesFederativas;
+  }
+
   catalogoNacionalidades: CatalogItem[] = [];
   catalogoEstadosCiviles: CatalogItem[] = [
     { clave: 'SOLTERO', nombre: 'Soltero(a)' },
@@ -381,7 +386,7 @@ export class CompletarRegistroComponent implements OnInit {
     'Wyoming'
   ];
 
-  // Años disponibles para "Año del catálogo" (de actual a 1990)
+  // Años disponibles para publicaciones y logros (de 2030 a 1990).
   readonly catalogoYears: number[] = this.generarCatalogoYears();
 
   ngOnInit(): void {
@@ -404,21 +409,12 @@ export class CompletarRegistroComponent implements OnInit {
       this.form.get('rfcNum')?.setValue(val, { emitEvent: false });
     });
 
-    // Limpiar campos de estado/entidad cuando cambie el país
+    // La institución se limita a México; el campo se conserva interno para el payload.
     this.form.get('inst_pais_nombre')?.valueChanges.subscribe(pais => {
-      if (pais === 'México') {
-        // Si se selecciona México, limpiar el campo de estado de EUA
-        this.form.get('inst_estado_usa')?.setValue('', { emitEvent: false });
-      } else if (pais === 'Estados Unidos') {
-        // Si se selecciona EUA, limpiar campos de ubicación de México
-        this.form.get('inst_entidad_nombre')?.setValue('', { emitEvent: false });
-        this.form.get('inst_municipio_nombre')?.setValue('', { emitEvent: false });
-      } else {
-        // Si no hay país seleccionado, limpiar campos de ubicación
-        this.form.get('inst_entidad_nombre')?.setValue('', { emitEvent: false });
-        this.form.get('inst_estado_usa')?.setValue('', { emitEvent: false });
-        this.form.get('inst_municipio_nombre')?.setValue('', { emitEvent: false });
+      if (pais !== 'México') {
+        this.form.get('inst_pais_nombre')?.setValue('México', { emitEvent: false });
       }
+      this.form.get('inst_estado_usa')?.setValue('', { emitEvent: false });
     });
 
     // Si cambia el estado de México, reiniciar municipio para evitar inconsistencias
@@ -447,7 +443,7 @@ export class CompletarRegistroComponent implements OnInit {
     });
 
     // Validar que todos los campos numéricos no acepten valores negativos
-    // art_anio tiene un mínimo especial de 1800
+    // Los años se eligen desde un catálogo descendente para evitar capturas inválidas.
     const numericFields = ['art_total_citas', 'art_autor_orden', 'logro_anio'];
     numericFields.forEach(fieldName => {
       this.form.get(fieldName)?.valueChanges.subscribe(val => {
@@ -458,6 +454,13 @@ export class CompletarRegistroComponent implements OnInit {
           }
         }
       });
+    });
+
+    this.form.get('acad_cedula_profesional')?.valueChanges.subscribe(val => {
+      const sanitized = (val || '').toString().replace(/\D/g, '').slice(0, 10);
+      if (val !== sanitized) {
+        this.form.get('acad_cedula_profesional')?.setValue(sanitized, { emitEvent: false });
+      }
     });
 
 
@@ -988,13 +991,9 @@ export class CompletarRegistroComponent implements OnInit {
     if (institucion.claveOficial) patch['inst_clave_oficial'] = institucion.claveOficial;
     if (institucion.tipoId) patch['inst_tipo_id'] = institucion.tipoId;
     if (institucion.tipoNombre) patch['inst_tipo_nombre'] = institucion.tipoNombre;
-    if (institucion.paisNombre) patch['inst_pais_nombre'] = institucion.paisNombre;
-    if (institucion.paisNombre === 'Estados Unidos') {
-      if (institucion.entidadNombre) patch['inst_estado_usa'] = institucion.entidadNombre;
-    } else {
-      if (institucion.entidadNombre) patch['inst_entidad_nombre'] = institucion.entidadNombre;
-      if (institucion.municipioNombre) patch['inst_municipio_nombre'] = institucion.municipioNombre;
-    }
+    patch['inst_pais_nombre'] = 'México';
+    if (institucion.entidadNombre) patch['inst_entidad_nombre'] = institucion.entidadNombre;
+    if (institucion.municipioNombre) patch['inst_municipio_nombre'] = institucion.municipioNombre;
     if (institucion.nivelUnoNombre) patch['inst_nivel_uno_nombre'] = institucion.nivelUnoNombre;
     if (institucion.nivelDosNombre) patch['inst_nivel_dos_nombre'] = institucion.nivelDosNombre;
 
@@ -1254,7 +1253,7 @@ export class CompletarRegistroComponent implements OnInit {
       inst_clave_oficial: ['', [Validators.required]],
       inst_nombre: ['', [Validators.required]],
       inst_tipo_id: ['', [Validators.required]], inst_tipo_nombre: [''],
-      inst_pais_nombre: ['', [Validators.required]], inst_entidad_nombre: [''],
+      inst_pais_nombre: ['México', [Validators.required]], inst_entidad_nombre: [''],
       inst_municipio_nombre: [''],
       inst_estado_usa: [''],
       inst_nivel_uno_nombre: [''], inst_nivel_dos_nombre: [''],
@@ -1264,7 +1263,7 @@ export class CompletarRegistroComponent implements OnInit {
       acad_titulo: ['', [Validators.required]],
       acad_estatus_nombre: ['', [Validators.required]],
       acad_institucion: [''],
-      acad_cedula_profesional: [''],
+      acad_cedula_profesional: ['', [Validators.pattern(/^\d{1,10}$/)]],
       acad_es_perfil_snii: [false],
       acad_constancia_snii: [null],
       acad_opcion_titulacion: [''], acad_titulo_tesis: [''], acad_fecha_obtencion: [''],
@@ -1317,7 +1316,7 @@ export class CompletarRegistroComponent implements OnInit {
 
       // 11. PRODUCCIÓN CIENTÍFICA (Aportaciones)
       art_id_externo: [''], art_eje: [''], art_tipo: [''], art_producto_principal: [false],
-      art_anio: [null, [Validators.min(1800)]],
+      art_anio: [null, [Validators.min(1990), Validators.max(2030)]],
       art_issn: [''], art_issn_electronico: [''], art_doi: [''],
       art_nombre_revista: ['', [Validators.required]],
       art_titulo: ['', [Validators.required]],
@@ -1333,7 +1332,7 @@ export class CompletarRegistroComponent implements OnInit {
       // 13. LOGROS
       logro_tipo: [''], 
       logro_nombre: ['', [Validators.required]],
-      logro_anio: [null, [Validators.required]],
+      logro_anio: [null, [Validators.required, Validators.min(1990), Validators.max(2030)]],
 
       // 14. DOCUMENTOS Y ARCHIVOS
       doc_nombre_archivo: [''],
@@ -2065,7 +2064,7 @@ export class CompletarRegistroComponent implements OnInit {
   }
 
   private generarCatalogoYears(): number[] {
-    const actual = new Date().getFullYear();
+    const actual = 2030;
     const min = 1990;
     const years: number[] = [];
     for (let y = actual; y >= min; y--) {
@@ -2436,7 +2435,7 @@ export class CompletarRegistroComponent implements OnInit {
       }
       if (institucion.pais) {
         const pais = typeof institucion.pais === 'object' ? institucion.pais.nombre : institucion.pais;
-        if (pais) datosMapeados['inst_pais_nombre'] = pais;
+        datosMapeados['inst_pais_nombre'] = 'México';
       }
       if (institucion.entidad) {
         const entidad = typeof institucion.entidad === 'object' ? institucion.entidad.nombre : institucion.entidad;
@@ -3239,10 +3238,8 @@ export class CompletarRegistroComponent implements OnInit {
   }
 
   private construirPayloadInstitucion(): Record<string, unknown> {
-    const pais = this.obtenerTextoFormulario('inst_pais_nombre');
-    const entidadOEstado = pais === 'Estados Unidos'
-      ? this.obtenerTextoFormulario('inst_estado_usa')
-      : this.obtenerTextoFormulario('inst_entidad_nombre');
+    const pais = 'México';
+    const entidadOEstado = this.obtenerTextoFormulario('inst_entidad_nombre');
 
     return {
       instClaveOficial: this.obtenerTextoFormulario('inst_clave_oficial'),
@@ -4504,15 +4501,14 @@ export class CompletarRegistroComponent implements OnInit {
 
   private isConditionalFieldActive(fieldName: string): boolean {
     if (fieldName === 'inst_entidad_nombre') {
-      return this.form.get('inst_pais_nombre')?.value === 'México';
+      return true;
     }
     if (fieldName === 'inst_municipio_nombre') {
-      const pais = this.form.get('inst_pais_nombre')?.value;
       const entidad = (this.form.get('inst_entidad_nombre')?.value || '').toString().trim();
-      return pais === 'México' && entidad !== '';
+      return entidad !== '';
     }
     if (fieldName === 'inst_estado_usa') {
-      return this.form.get('inst_pais_nombre')?.value === 'Estados Unidos';
+      return false;
     }
     if (fieldName === 'idioma_cert_institucion' || fieldName === 'idioma_cert_puntuacion') {
       const esCertificado = !!this.form.get('idioma_es_certificado')?.value;
@@ -5865,7 +5861,7 @@ export class CompletarRegistroComponent implements OnInit {
 
     this.http.get<any[]>(`${environment.apiBaseUrl}/catalogos/identificaciones-oficiales`).subscribe({
       next: (data) => {
-        const items = this.mapCatalogItems(data);
+        const items = this.normalizarIdentificacionesOficiales(this.mapCatalogItems(data));
         if (items.length > 0) {
           this.catalogoIdentificaciones = items;
         }
@@ -5891,7 +5887,7 @@ export class CompletarRegistroComponent implements OnInit {
 
     this.http.get<any[]>(`${environment.apiBaseUrl}/catalogos/localidades`).subscribe({
       next: (data) => {
-        this.catalogoLocalidades = this.mapCatalogItems(data);
+        this.catalogoLocalidades = this.normalizarCatalogoLocalidades(this.mapCatalogItems(data));
         this.actualizarLocalidadesFiltradas();
         this.sincronizarValoresCatalogoActuales();
       },
@@ -6330,10 +6326,35 @@ export class CompletarRegistroComponent implements OnInit {
       }
     }
 
-    this.catalogoLocalidadesFiltradas = items.slice(0, 500);
+    this.catalogoLocalidadesFiltradas = this.normalizarCatalogoLocalidades(items).slice(0, 500);
     this.actualizarSeleccionLocalidadDesdeTexto();
   }
 
+
+  private asegurarEntidadDomicilioPadron(): void {
+    const entidadPadron = this.obtenerEntidadFederativaPadronDomicilio();
+    if (!entidadPadron) {
+      return;
+    }
+
+    const entidadActual = this.buscarCatalogoPorNombre(this.catalogoEntidadesFederativas, this.selectedEntidadDomicilioNombre || '');
+    if (entidadActual && this.esEntidadFederativaPadronDomicilio(entidadActual)) {
+      return;
+    }
+
+    this.selectedEntidadDomicilioNombre = entidadPadron.nombre;
+    this.form.patchValue({
+      claveEntidadFederativa: entidadPadron.clave || '',
+      municipioDomicilio: '',
+      claveMunicipio: '',
+      localidad: '',
+      claveLocalidad: '',
+      codigoPostal: ''
+    }, { emitEvent: false });
+    this.selectedMunicipioNombre = '';
+    this.selectedLocalidadNombre = '';
+    this.actualizarLocalidadesFiltradas();
+  }
   private obtenerCatalogoLocalidadesDisponibles(): CatalogItem[] {
     return this.catalogoLocalidadesFiltradas.length > 0 ? this.catalogoLocalidadesFiltradas : this.catalogoLocalidades;
   }
@@ -6395,6 +6416,25 @@ export class CompletarRegistroComponent implements OnInit {
         } as CatalogItem))
         .filter((item) => !!(item.clave || item.nombre))
     );
+  }
+  private normalizarIdentificacionesOficiales(items: CatalogItem[]): CatalogItem[] {
+    const normalizados = items.map((item) => {
+      const etiqueta = this.normalizarCatalogo(`${item.clave} ${item.nombre}`);
+      if (etiqueta.includes('ife') || etiqueta.includes('ine')) {
+        return { ...item, nombre: 'INE' };
+      }
+      return item;
+    });
+
+    const unicos = new Map<string, CatalogItem>();
+    normalizados.forEach((item) => {
+      const key = this.normalizarCatalogo(item.nombre || item.clave);
+      if (!unicos.has(key)) {
+        unicos.set(key, item);
+      }
+    });
+
+    return this.ordenarCatalogosPorNombre(Array.from(unicos.values()));
   }
 
   private mapInstitucionesEducativas(data: any[]): InstitucionEducativaItem[] {
@@ -6590,6 +6630,47 @@ export class CompletarRegistroComponent implements OnInit {
 
   catalogoVisibleSinOtro(items: CatalogItem[]): CatalogItem[] {
     return items.filter(item => !this.esOpcionOtroCatalogoItem(item));
+  }
+
+  private normalizarCatalogoLocalidades(items: CatalogItem[]): CatalogItem[] {
+    const unicos = new Map<string, CatalogItem>();
+
+    items.forEach(item => {
+      const localidad: CatalogItem = {
+        ...item,
+        nombre: this.corregirOrtografiaLocalidad(item.nombre)
+      };
+      const key = `${this.normalizarCatalogo(localidad.parentKey)}|${this.normalizarCatalogo(localidad.nombre)}`;
+      const existente = unicos.get(key);
+
+      if (!existente || this.calcularDetalleCatalogo(localidad) > this.calcularDetalleCatalogo(existente)) {
+        unicos.set(key, localidad);
+      }
+    });
+
+    return this.ordenarCatalogosPorNombre(Array.from(unicos.values()));
+  }
+
+  private corregirOrtografiaLocalidad(nombre: string): string {
+    return (nombre || '')
+      .replace(/\bPanteon\b/gi, 'Panteón')
+      .replace(/\bJaguey\b/gi, 'Jagüey')
+      .replace(/\bJagueyes\b/gi, 'Jagüeyes')
+      .replace(/\bMexico\b/gi, 'México')
+      .replace(/\bAlvaro\b/gi, 'Álvaro')
+      .replace(/\bAngel\b/gi, 'Ángel')
+      .replace(/\bJose\b/gi, 'José')
+      .replace(/\bJesus\b/gi, 'Jesús')
+      .replace(/\bNicolas\b/gi, 'Nicolás')
+      .replace(/\bSebastian\b/gi, 'Sebastián')
+      .replace(/\bTomas\b/gi, 'Tomás')
+      .replace(/\bMaria\b/gi, 'María')
+      .replace(/\bMartin\b/gi, 'Martín');
+  }
+
+  private calcularDetalleCatalogo(item: CatalogItem): number {
+    return [item.clave, item.nombre, item.parentKey, item.extra1, item.extra2, item.extra3]
+      .filter(value => !!(value || '').toString().trim()).length;
   }
 
   private esOpcionOtroCatalogoItem(item: CatalogItem | null | undefined): boolean {

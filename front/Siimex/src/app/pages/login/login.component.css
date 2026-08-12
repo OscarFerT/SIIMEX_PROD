@@ -362,6 +362,28 @@
   animation: slideDown 0.3s ease-out;
 }
 
+
+.btn-resend-verification {
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-borgona);
+  background: var(--color-blanco);
+  border: 1px solid var(--color-borgona);
+  border-radius: 10px;
+  transition: var(--transition);
+}
+
+.btn-resend-verification:hover:not(:disabled) {
+  color: var(--color-blanco);
+  background: var(--color-borgona);
+}
+
+.btn-resend-verification:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .login-divider {
   margin: 2rem 0 1rem;
   text-align: center;

@@ -120,8 +120,18 @@
         <!-- Mensaje de error -->
         <div class="alert-error" *ngIf="errorMsg">
           <i class="fas fa-exclamation-triangle me-2"></i>
-          {{ errorMsg }}
+          <span>{{ errorMsg }}</span>
         </div>
+
+        <button
+          *ngIf="canResendVerification"
+          type="button"
+          class="btn-resend-verification"
+          [disabled]="loading"
+          (click)="resendVerificationEmail()">
+          <i class="fas fa-paper-plane me-2"></i>
+          Reenviar correo de verificación
+        </button>
       </form>
 
       <!-- Paso 2: Código de verificación -->
