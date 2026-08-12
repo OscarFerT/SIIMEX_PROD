@@ -1232,7 +1232,7 @@ public class UsuarioController {
             List<Usuario> usuarios = usuarioRepo.findAllWithRelations();
             
             List<InvestigadorDTO> investigadores = usuarios.stream()
-                    .filter(u -> u.getAuthUser() != null) // Solo usuarios con autenticación
+                    .filter(u -> u.getAuthUser() != null && u.getAuthUser().isEnabled()) // Solo cuentas con correo validado
                     .map(u -> {
                         // Obtener email
                         String email = u.getAuthUser() != null ? u.getAuthUser().getEmail() : null;

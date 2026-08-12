@@ -200,7 +200,7 @@ export class ContactoComponent implements AfterViewInit {
     new Modal(modalEl).show();
   }
 
-  // Horario: L–V 9:00–17:00 local
+  // Horario: L–V 9:00–18:00 local
   private updateOpenStatus() {
     const el = document.getElementById('openStatus');
     const pill = document.getElementById('openNowPill');
@@ -211,10 +211,10 @@ export class ContactoComponent implements AfterViewInit {
     const hour = now.getHours();
     const minute = now.getMinutes();
     const inRange = (h: number, m: number) =>
-      (h > 9 && h < 17) || (h === 9 && m >= 0) || (h === 17 && m === 0);
+      (h > 9 && h < 18) || (h === 9 && m >= 0) || (h === 18 && m === 0);
 
     const abierto = day >= 1 && day <= 5 && inRange(hour, minute);
-    el.textContent = abierto ? 'Abierto ahora' : 'Cerrado (L–V 9:00–17:00)';
+    el.textContent = abierto ? 'Abierto ahora' : 'Cerrado (L–V 9:00–18:00)';
     if (pill) {
       pill.textContent = abierto ? 'Abierto' : 'Cerrado';
       pill.classList.toggle('bg-open-now', abierto);
