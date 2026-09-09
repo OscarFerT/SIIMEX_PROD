@@ -131,9 +131,9 @@ export class AdminConvocatoriaGestionComponent implements OnInit {
         ruta: id ? ['/admin/convocatorias', id, 'comite'] : ['/admin/convocatorias/listado']
       },
       {
-        nombre: 'Información bancaria',
-        descripcion: 'Captura y validación bancaria de solicitudes aprobadas.',
-        icono: 'fa-building-columns',
+        nombre: 'Entrega de apoyo y recibo',
+        descripcion: 'Registra la entrega del apoyo económico, valida datos bancarios y recibos de pago.',
+        icono: 'fa-money-bill-transfer',
         estado: 'activo',
         alcance: 'convocatoria',
         moduloReglaClave: 'modulo_bancaria_activo',
@@ -167,6 +167,42 @@ export class AdminConvocatoriaGestionComponent implements OnInit {
         ruta: id ? ['/admin/convocatorias', id, 'renuncias'] : ['/admin/convocatorias/listado']
       },
       {
+        nombre: 'Seguro médico',
+        descripcion: 'Seguimiento y documentación relacionada con seguro médico.',
+        icono: 'fa-kit-medical',
+        estado: 'activo',
+        alcance: 'convocatoria',
+        moduloReglaClave: 'modulo_seguro_medico_activo',
+        ruta: id ? ['/admin/convocatorias', id, 'seguro-medico'] : ['/admin/convocatorias/listado']
+      },
+      {
+        nombre: 'Aceptación',
+        descripcion: 'Envío de correo de aceptación y documento específico para personas aceptadas.',
+        icono: 'fa-envelope-circle-check',
+        estado: 'activo',
+        alcance: 'convocatoria',
+        moduloReglaClave: 'modulo_aceptacion_activo',
+        ruta: id ? ['/admin/convocatorias', id, 'aceptacion'] : ['/admin/convocatorias/listado']
+      },
+      {
+        nombre: 'Constancias y cierre final',
+        descripcion: 'Carta de cierre y constancias cuando la persona finaliza el proceso.',
+        icono: 'fa-certificate',
+        estado: 'activo',
+        alcance: 'convocatoria',
+        moduloReglaClave: 'modulo_constancias_activo',
+        ruta: id ? ['/admin/convocatorias', id, 'constancias'] : ['/admin/convocatorias/listado']
+      },
+      {
+        nombre: 'Actualización de estatus académico',
+        descripcion: 'Control de actualización del estatus académico de la persona beneficiaria.',
+        icono: 'fa-graduation-cap',
+        estado: 'activo',
+        alcance: 'convocatoria',
+        moduloReglaClave: 'modulo_status_academico_activo',
+        ruta: id ? ['/admin/convocatorias', id, 'status-academico'] : ['/admin/convocatorias/listado']
+      },
+      {
         nombre: 'Consultas',
         descripcion: 'Reportes y consulta consolidada de postulaciones.',
         icono: 'fa-chart-line',
@@ -184,8 +220,8 @@ export class AdminConvocatoriaGestionComponent implements OnInit {
         ruta: ['/admin/registros']
       },
       {
-        nombre: 'Instituciones educativas',
-        descripcion: 'Catálogo, validación y alta de escuelas.',
+        nombre: 'Instituciones de adscripción',
+        descripcion: 'Catálogo, validación y alta de instituciones de adscripción.',
         icono: 'fa-school',
         estado: 'activo',
         alcance: 'general',
@@ -298,7 +334,11 @@ export class AdminConvocatoriaGestionComponent implements OnInit {
       modulo_cotejo_activo: ['modulo_cotejo', 'requiere_cotejo'],
       modulo_informes_activo: ['modulo_informes', 'requiere_informes'],
       modulo_bancaria_activo: ['modulo_bancaria', 'requiere_bancaria'],
-      modulo_renuncia_activo: ['modulo_renuncia', 'requiere_renuncia']
+      modulo_renuncia_activo: ['modulo_renuncia', 'requiere_renuncia'],
+      modulo_seguro_medico_activo: ['modulo_seguro_medico', 'requiere_seguro_medico'],
+      modulo_aceptacion_activo: ['modulo_aceptacion', 'requiere_aceptacion'],
+      modulo_constancias_activo: ['modulo_constancias', 'requiere_constancias', 'modulo_carta_cierre_activo', 'modulo_carta_cierre', 'requiere_carta_cierre'],
+      modulo_status_academico_activo: ['modulo_status_academico', 'requiere_status_academico', 'modulo_estatus_academico_activo', 'modulo_estatus_academico', 'requiere_estatus_academico']
     };
     const claves = [clavePrincipal, ...(aliasMap[clavePrincipal] || [])];
     for (const clave of claves) {
@@ -405,9 +445,31 @@ export class AdminConvocatoriaGestionComponent implements OnInit {
     window.print();
   }
 
+  private parseFechaLocal(s: string): Date | null {
+    const value = String(s).trim();
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+    if (!match) return null;
+    const [, y, m, d, hh = '00', mm = '00'] = match;
+    const fecha = new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm));
+    return isNaN(fecha.getTime()) ? null : fecha;
+  }
+
+  formatearFecha(s: string | null | undefined): string {
+    if (!s) return '—';
+    try {
+      const d = this.parseFechaLocal(s);
+      return d ? d.toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : s;
+    } catch {
+      return s;
+    }
+  }
   private timestamp(): string {
     const d = new Date();
     const pad = (n: number) => n.toString().padStart(2, '0');
     return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
   }
 }
+
+
+
+

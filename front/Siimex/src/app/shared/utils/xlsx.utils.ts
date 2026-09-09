@@ -23,6 +23,17 @@ function computeColumnWidths(headers: string[], rows: XlsxCellValue[][]): number
   });
 }
 
+function normalizeTextForExport(value: string): string {
+  return (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+}
+
+function normalizeValueForExport(value: XlsxCellValue): XlsxCellValue {
+  return typeof value === 'string' ? normalizeTextForExport(value) : value;
+}
+
 function downloadBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -65,11 +76,13 @@ export function exportRowsAsXlsx(
   fileName: string,
   sheetName = 'Datos'
 ): Promise<void> {
+  const normalizedHeaders = headers.map((header) => normalizeTextForExport(header));
+  const normalizedRows = rows.map((row) => row.map((cell) => normalizeValueForExport(cell)));
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet(sanitizeSheetName(sheetName));
-  worksheet.addRow(headers);
-  rows.forEach((row) => worksheet.addRow(row));
-  worksheet.columns = computeColumnWidths(headers, rows).map((width) => ({ width }));
+  worksheet.addRow(normalizedHeaders);
+  normalizedRows.forEach((row) => worksheet.addRow(row));
+  worksheet.columns = computeColumnWidths(normalizedHeaders, normalizedRows).map((width) => ({ width }));
 
   return workbook.xlsx.writeBuffer().then((buffer) => {
     const blob = new Blob([buffer], {

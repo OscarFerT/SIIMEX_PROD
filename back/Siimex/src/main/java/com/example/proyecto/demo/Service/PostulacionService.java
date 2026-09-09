@@ -1,8 +1,11 @@
 package com.example.proyecto.demo.Service;
 
 import com.example.proyecto.demo.Entity.Convocatoria;
+import com.example.proyecto.demo.Entity.ConvocatoriaFormato;
 import com.example.proyecto.demo.Entity.AreaConocimiento;
 import com.example.proyecto.demo.Entity.Documento;
+import com.example.proyecto.demo.Entity.Estancia;
+import com.example.proyecto.demo.Entity.Institucion;
 import com.example.proyecto.demo.Entity.Notificacion;
 import com.example.proyecto.demo.Entity.Postulacion;
 import com.example.proyecto.demo.Entity.PostulacionDocumento;
@@ -10,6 +13,8 @@ import com.example.proyecto.demo.Entity.AuthUser;
 import com.example.proyecto.demo.Entity.Usuario;
 import com.example.proyecto.demo.Repository.AuthUserRepository;
 import com.example.proyecto.demo.Repository.AreaConocimientoRepository;
+import com.example.proyecto.demo.Repository.EstanciaRepository;
+import com.example.proyecto.demo.Repository.InstitucionRepository;
 import com.example.proyecto.demo.Repository.PostulacionDocumentoRepository;
 import com.example.proyecto.demo.Repository.PostulacionRepository;
 import com.example.proyecto.demo.Repository.UsuarioRepository;
@@ -37,7 +42,6 @@ public class PostulacionService {
     private static final int PLAZO_CORRECCION_HORAS_DEFAULT = 120;
     private static final int PLAZO_CORRECCION_HORAS_MIN = 1;
     private static final int PLAZO_CORRECCION_HORAS_MAX = 24 * 30;
-    private static final long MAX_DOC_EVAL_FIRMADO_BYTES = 8L * 1024L * 1024L;
     private static final String CLAVE_CARTA_EVALUADOR_FIRMADA = "carta_evaluador_firmada";
     private static final String CLAVE_DICTAMEN_EVALUACION_FIRMADO = "dictamen_evaluacion_firmado";
 
@@ -46,8 +50,12 @@ public class PostulacionService {
     private final UsuarioRepository usuarioRepo;
     private final AuthUserRepository authUserRepository;
     private final AreaConocimientoRepository areaConocimientoRepository;
+    private final InstitucionRepository institucionRepository;
+    private final EstanciaRepository estanciaRepository;
     private final ConvocatoriaService convocatoriaService;
+    private final ConvocatoriaFormatoService convocatoriaFormatoService;
     private final DocumentoService documentoService;
+    private final ConfiguracionSistemaService configuracionSistemaService;
     private final CompatibilidadService compatibilidadService;
     private final MicrosoftGraphEmailService emailService;
     private final NotificacionService notificacionService;
@@ -67,7 +75,8 @@ public class PostulacionService {
         Usuario usuario = usuarioRepo.findByAuthUserIdWithRegistro1(authUserId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
         Convocatoria convocatoria = convocatoriaService.obtenerPorId(convocatoriaId);
-        validarCandadosYFechas(convocatoria, fechaEvento);
+        LocalDate fechaEventoNormalizada = normalizarFechaEvento(convocatoria, fechaEvento);
+        validarCandadosYFechas(convocatoria, fechaEventoNormalizada);
         validarNoEsEvaluadorEnConvocatoria(convocatoriaId, authUserId);
         listaNegraService.validarNoBloqueado(usuario, correo, curp);
 
@@ -79,9 +88,9 @@ public class PostulacionService {
         validarDocumentosRequeridos(requisitos, documentosAdjuntos != null ? documentosAdjuntos : Map.of());
 
         String tipoApoyoValidado = validarTipoApoyoConvocatoria(convocatoria, tipoApoyo);
-        String tipoSolicitudNormalizada = normalizarTipoSolicitud(tipoSolicitud);
-        String tituloProyectoNormalizado = normalizarTextoRequerido(tituloProyecto, "El título del proyecto es obligatorio", 220);
-        String descripcionProyectoNormalizada = normalizarTextoRequerido(descripcionProyecto, "La descripción del proyecto es obligatoria", 4000);
+        String tipoSolicitudNormalizada = normalizarTipoSolicitud(convocatoria, tipoSolicitud);
+        String tituloProyectoNormalizado = normalizarTituloProyecto(convocatoria, tituloProyecto);
+        String descripcionProyectoNormalizada = normalizarDescripcionProyecto(convocatoria, descripcionProyecto);
         String observacionesNormalizadas = observaciones != null ? observaciones.trim() : null;
         String criteriosJsonNormalizado = criteriosJson != null ? criteriosJson.trim() : null;
         validarReglasConfigurablesConvocatoria(
@@ -92,7 +101,7 @@ public class PostulacionService {
                 telefono,
                 tipoApoyoValidado,
                 tipoSolicitudNormalizada,
-                fechaEvento,
+                fechaEventoNormalizada,
                 tituloProyectoNormalizado,
                 descripcionProyectoNormalizada,
                 observacionesNormalizadas,
@@ -113,7 +122,7 @@ public class PostulacionService {
                 .telefono(telefono != null ? telefono.trim() : null)
                 .tipoApoyo(tipoApoyoValidado)
                 .tipoSolicitud(tipoSolicitudNormalizada)
-                .fechaEvento(fechaEvento)
+                .fechaEvento(fechaEventoNormalizada)
                 .tituloProyecto(tituloProyectoNormalizado)
                 .descripcionProyecto(descripcionProyectoNormalizada)
                 .observaciones(observacionesNormalizadas)
@@ -200,13 +209,14 @@ public class PostulacionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Solo puedes editar postulaciones en estado: " + String.join(", ", estadosEditables));
         }
         validarVigenciaCorrecciones(p);
-        validarCandadosYFechas(p.getConvocatoria(), fechaEvento);
+        LocalDate fechaEventoNormalizada = normalizarFechaEvento(p.getConvocatoria(), fechaEvento);
+        validarCandadosYFechas(p.getConvocatoria(), fechaEventoNormalizada);
         listaNegraService.validarNoBloqueado(usuario, correo, curp);
 
         String tipoApoyoValidado = validarTipoApoyoConvocatoria(p.getConvocatoria(), tipoApoyo);
-        String tipoSolicitudNormalizada = normalizarTipoSolicitud(tipoSolicitud);
-        String tituloProyectoNormalizado = normalizarTextoRequerido(tituloProyecto, "El título del proyecto es obligatorio", 220);
-        String descripcionProyectoNormalizada = normalizarTextoRequerido(descripcionProyecto, "La descripción del proyecto es obligatoria", 4000);
+        String tipoSolicitudNormalizada = normalizarTipoSolicitud(p.getConvocatoria(), tipoSolicitud);
+        String tituloProyectoNormalizado = normalizarTituloProyecto(p.getConvocatoria(), tituloProyecto);
+        String descripcionProyectoNormalizada = normalizarDescripcionProyecto(p.getConvocatoria(), descripcionProyecto);
         String observacionesNormalizadas = observaciones != null ? observaciones.trim() : null;
         String criteriosJsonNormalizado = criteriosJson != null ? criteriosJson.trim() : null;
         validarReglasConfigurablesConvocatoria(
@@ -217,7 +227,7 @@ public class PostulacionService {
                 telefono,
                 tipoApoyoValidado,
                 tipoSolicitudNormalizada,
-                fechaEvento,
+                fechaEventoNormalizada,
                 tituloProyectoNormalizado,
                 descripcionProyectoNormalizada,
                 observacionesNormalizadas,
@@ -230,7 +240,7 @@ public class PostulacionService {
         p.setTelefono(telefono != null ? telefono.trim() : null);
         p.setTipoApoyo(tipoApoyoValidado);
         p.setTipoSolicitud(tipoSolicitudNormalizada);
-        p.setFechaEvento(fechaEvento);
+        p.setFechaEvento(fechaEventoNormalizada);
         p.setTituloProyecto(tituloProyectoNormalizado);
         p.setDescripcionProyecto(descripcionProyectoNormalizada);
         p.setObservaciones(observacionesNormalizadas);
@@ -291,7 +301,7 @@ public class PostulacionService {
                 p.setTipoApoyo("No especificado");
                 actualizados = true;
             }
-            if (p.getTipoSolicitud() == null || p.getTipoSolicitud().isBlank()) {
+            if (tipoSolicitudActivo(p.getConvocatoria()) && (p.getTipoSolicitud() == null || p.getTipoSolicitud().isBlank())) {
                 p.setTipoSolicitud("NACIONAL");
                 actualizados = true;
             }
@@ -314,10 +324,17 @@ public class PostulacionService {
 
     @Transactional
     public Postulacion aceptar(Long postulacionId) {
+        return aceptar(postulacionId, null, null);
+    }
+
+    @Transactional
+    public Postulacion aceptar(Long postulacionId, String mensajeCorreo, MultipartFile documentoAceptacionAdjunto) {
+        validarDocumentoAceptacion(documentoAceptacionAdjunto);
+        String mensajeNormalizado = normalizarTextoOpcional(mensajeCorreo, 4000);
         Postulacion p = postulacionRepo.findById(postulacionId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Postulaci\u00f3n no encontrada"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Postulacion no encontrada"));
         if ("ACEPTADA".equals(p.getEstado())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "La postulaci\u00f3n ya est\u00e1 aceptada");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "La postulacion ya esta aceptada");
         }
         if (moduloComiteActivo(p.getConvocatoria())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Esta convocatoria tiene comite activo; registra la aprobacion desde el modulo de comite");
@@ -327,32 +344,37 @@ public class PostulacionService {
         if (limite != null && limite > 0) {
             long yaAceptados = postulacionRepo.countByConvocatoriaIdAndEstado(p.getConvocatoria().getId(), "ACEPTADA");
             if (yaAceptados >= limite) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Se alcanz\u00f3 el l\u00edmite de " + limite + " aceptados para esta convocatoria.");
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Se alcanzo el limite de " + limite + " aceptados para esta convocatoria.");
             }
         }
         p.setEstado("ACEPTADA");
+        p.setFechaAceptacionPostulacion(LocalDateTime.now());
         p.setFechaLimiteCorreccion(null);
+        p.setObservacionesAceptacion(mensajeNormalizado);
         postulacionRepo.save(p);
         try {
             notificacionService.crear(
                     p.getUsuario() != null ? p.getUsuario().getAuthUser() : null,
-                    "Postulaci\u00f3n aceptada",
-                    "Tu postulaci\u00f3n a \"" + p.getConvocatoria().getTitulo() + "\" fue aceptada.",
+                    "Postulacion aceptada",
+                    "Tu postulacion a \"" + p.getConvocatoria().getTitulo() + "\" fue aceptada.",
                     Notificacion.TipoNotificacion.POSTULACION_ACEPTADA,
                     "/app/convocatorias");
         } catch (Exception e) {
-            log.warn("No se pudo crear notificaci\u00f3n de aceptaci\u00f3n: {}", e.getMessage());
+            log.warn("No se pudo crear notificacion de aceptacion: {}", e.getMessage());
         }
         try {
-            String nombre = obtenerNombreUsuario(p);
-            emailService.sendPostulacionAceptada(p.getCorreo(), nombre, p.getConvocatoria().getTitulo());
-            log.info("Postulaci\u00f3n {} aceptada y correo enviado a {}", postulacionId, p.getCorreo());
+            Convocatoria convocatoria = p.getConvocatoria();
+            if (moduloAceptacionActivo(convocatoria)) {
+                enviarCorreoAceptacion(p, mensajeNormalizado, documentoAceptacionAdjunto);
+                log.info("Postulacion {} aceptada y correo enviado a {}", postulacionId, p.getCorreo());
+            } else {
+                log.info("Modulo de aceptacion desactivado para la postulacion {}; no se envio correo de aceptacion", postulacionId);
+            }
         } catch (Exception e) {
-            log.warn("No se pudo enviar correo de aceptaci\u00f3n: {}", e.getMessage());
+            log.warn("No se pudo enviar correo de aceptacion: {}", e.getMessage());
         }
         return p;
     }
-
     @Transactional
     public Postulacion rechazar(Long postulacionId) {
         return rechazar(postulacionId, null);
@@ -370,23 +392,6 @@ public class PostulacionService {
         p.setObservacionesRevision(motivoRechazo != null ? motivoRechazo.trim() : null);
         p.setFechaRevision(LocalDateTime.now());
         postulacionRepo.save(p);
-        try {
-            notificacionService.crear(
-                    p.getUsuario() != null ? p.getUsuario().getAuthUser() : null,
-                    "Postulaci\u00f3n rechazada",
-                    "Tu postulaci\u00f3n a \"" + p.getConvocatoria().getTitulo() + "\" fue rechazada.",
-                    Notificacion.TipoNotificacion.POSTULACION_RECHAZADA,
-                    "/app/convocatorias");
-        } catch (Exception e) {
-            log.warn("No se pudo crear notificaci\u00f3n de rechazo: {}", e.getMessage());
-        }
-        try {
-            String nombre = obtenerNombreUsuario(p);
-            emailService.sendPostulacionRechazada(p.getCorreo(), nombre, p.getConvocatoria().getTitulo());
-            log.info("Postulaci\u00f3n {} rechazada y correo enviado a {}", postulacionId, p.getCorreo());
-        } catch (Exception e) {
-            log.warn("No se pudo enviar correo de rechazo: {}", e.getMessage());
-        }
         return p;
     }
 
@@ -443,23 +448,6 @@ public class PostulacionService {
         p.setFechaLimiteCorreccion(null);
         p.setFechaRevision(LocalDateTime.now());
         postulacionRepo.save(p);
-        try {
-            notificacionService.crear(
-                    p.getUsuario() != null ? p.getUsuario().getAuthUser() : null,
-                    "Solicitud revisada",
-                    "Tu solicitud " + (p.getFolio() != null ? p.getFolio() : "#" + p.getId()) + " fue marcada como revisada.",
-                    Notificacion.TipoNotificacion.SISTEMA,
-                    "/app/convocatorias");
-        } catch (Exception e) {
-            log.warn("No se pudo crear notificación de revisión: {}", e.getMessage());
-        }
-        try {
-            String nombre = obtenerNombreUsuario(p);
-            String convocatoria = p.getConvocatoria() != null ? p.getConvocatoria().getTitulo() : null;
-            emailService.sendPostulacionRevisada(p.getCorreo(), nombre, convocatoria);
-        } catch (Exception e) {
-            log.warn("No se pudo enviar correo de revisión: {}", e.getMessage());
-        }
         return p;
     }
 
@@ -471,23 +459,6 @@ public class PostulacionService {
         p.setFechaLimiteCorreccion(null);
         p.setFechaRevision(LocalDateTime.now());
         postulacionRepo.save(p);
-        try {
-            notificacionService.crear(
-                    p.getUsuario() != null ? p.getUsuario().getAuthUser() : null,
-                    "Solicitud en estado pendiente",
-                    "Tu solicitud " + (p.getFolio() != null ? p.getFolio() : "#" + p.getId()) + " fue regresada a pendiente.",
-                    Notificacion.TipoNotificacion.SISTEMA,
-                    "/app/postulacion/" + (p.getConvocatoria() != null ? p.getConvocatoria().getId() : ""));
-        } catch (Exception e) {
-            log.warn("No se pudo crear notificación de pendiente: {}", e.getMessage());
-        }
-        try {
-            String nombre = obtenerNombreUsuario(p);
-            String convocatoria = p.getConvocatoria() != null ? p.getConvocatoria().getTitulo() : null;
-            emailService.sendPostulacionPendiente(p.getCorreo(), nombre, convocatoria);
-        } catch (Exception e) {
-            log.warn("No se pudo enviar correo de pendiente: {}", e.getMessage());
-        }
         return p;
     }
 
@@ -563,8 +534,11 @@ public class PostulacionService {
         }
 
         String resultadoNormalizado = normalizarResultadoEvaluacion(resultado);
-        int puntajeMaximo = obtenerPuntajeMaximoEvaluacion(p);
-        if (puntaje == null || puntaje < 0 || puntaje > puntajeMaximo) {
+        Integer puntajeMaximo = obtenerPuntajeMaximoEvaluacion(p);
+        if (puntaje == null || puntaje < 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El puntaje debe ser mayor o igual a 0");
+        }
+        if (puntajeMaximo != null && puntaje > puntajeMaximo) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El puntaje debe estar entre 0 y " + puntajeMaximo);
         }
 
@@ -635,9 +609,7 @@ public class PostulacionService {
         if (!esPdf(archivo)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Solo se permiten archivos PDF");
         }
-        if (archivo.getSize() > MAX_DOC_EVAL_FIRMADO_BYTES) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "El archivo firmado no puede superar 8 MB");
-        }
+        validarLimitePdf(archivo, "evaluacion.documentos", "El archivo firmado");
 
         String tipo = tipoDocumento != null ? tipoDocumento.trim().toUpperCase(Locale.ROOT) : "";
         String clave;
@@ -736,26 +708,13 @@ public class PostulacionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Solo puedes emitir oficio para solicitudes aprobadas");
         }
         String folio = p.getFolio() != null ? p.getFolio() : "SOL-" + p.getId();
-        String convocatoria = p.getConvocatoria() != null && p.getConvocatoria().getTitulo() != null
-                ? p.getConvocatoria().getTitulo()
-                : "Convocatoria SIIMEX";
-        String nombre = obtenerNombreUsuarioCompleto(p);
-        List<String> lineas = List.of(
-                "Oficio de aprobacion",
-                "Folio de solicitud: " + folio,
-                "Persona aprobada: " + nombre,
-                "Convocatoria: " + convocatoria,
-                "Monto de apoyo asignado: " + (p.getMontoApoyoAsignado() != null ? "$" + p.getMontoApoyoAsignado() : "No especificado"),
-                "Fecha de emision: " + LocalDate.now(),
-                "El COMECYT informa que la solicitud fue aprobada conforme a la mecanica operativa del programa SIIMEX."
-        );
         try {
             Documento doc = documentoService.guardarDocumentoGenerado(
                     p.getUsuario().getId(),
                     Documento.TipoDocumento.OFICIO_APROBACION,
                     "oficio_aprobacion_" + folio + ".pdf",
                     "application/pdf",
-                    SimplePdfGenerator.generarDocumento("SIIMEX - Oficio de aprobacion", lineas),
+                    generarPdfOficioAprobacionSiimex(p),
                     true
             );
             p.setOficioAprobacionDocumento(doc);
@@ -821,7 +780,8 @@ public class PostulacionService {
             String titularCuenta,
             String cuentaBancaria,
             String clabeInterbancaria,
-            String medioNotificacion) {
+            MultipartFile estadoCuentaArchivo,
+            String medioNotificacion) throws IOException {
         Postulacion p = postulacionRepo.findById(postulacionId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Postulacion no encontrada"));
 
@@ -844,23 +804,34 @@ public class PostulacionService {
         String titularNorm = normalizarTextoOpcional(titularCuenta, 180);
         String cuentaNorm = normalizarCuenta(cuentaBancaria);
         String clabeNorm = normalizarClabe(clabeInterbancaria);
-        String medioNorm = normalizarTextoOpcional(medioNotificacion, 50);
 
-        if (bancoNorm == null || titularNorm == null || cuentaNorm == null || clabeNorm == null || medioNorm == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Debes capturar banco, titular, cuenta, CLABE y medio de notificacion");
+        if (bancoNorm == null || titularNorm == null || cuentaNorm == null || clabeNorm == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Debes capturar banco, titular, numero de cuenta y CLABE");
+        }
+        validarEstadoCuentaArchivo(estadoCuentaArchivo, p.getEstadoCuentaDocumento() == null);
+
+        if (estadoCuentaArchivo != null && !estadoCuentaArchivo.isEmpty()) {
+            String folio = p.getFolio() != null ? p.getFolio() : "SOL-" + p.getId();
+            Documento doc = documentoService.guardarDocumento(
+                    p.getUsuario().getId(),
+                    estadoCuentaArchivo,
+                    Documento.TipoDocumento.ESTADO_CUENTA,
+                    "estado_cuenta_" + folio + "_" + System.currentTimeMillis() + extensionArchivo(estadoCuentaArchivo.getOriginalFilename()),
+                    false
+            );
+            p.setEstadoCuentaDocumento(doc);
         }
 
         p.setBanco(bancoNorm);
         p.setTitularCuenta(titularNorm);
         p.setCuentaBancaria(cuentaNorm);
         p.setClabeInterbancaria(clabeNorm);
-        p.setMedioNotificacion(medioNorm);
+        p.setMedioNotificacion(null);
         p.setFechaActualizacionBancaria(LocalDateTime.now());
         postulacionRepo.save(p);
 
         return p;
     }
-
     @Transactional
     public Postulacion registrarEntregaApoyo(Long postulacionId, String observacionesEntregaApoyo) {
         Postulacion p = postulacionRepo.findByIdWithCurriculum(postulacionId)
@@ -884,16 +855,6 @@ public class PostulacionService {
             p.setEstadoReciboPago("PENDIENTE_RECIBO");
         }
         p = postulacionRepo.save(p);
-        try {
-            notificacionService.crear(
-                    p.getUsuario() != null ? p.getUsuario().getAuthUser() : null,
-                    "Apoyo economico entregado",
-                    "El apoyo economico de tu solicitud " + (p.getFolio() != null ? p.getFolio() : "#" + p.getId()) + " fue registrado como entregado. Ya puedes cargar tu recibo de pago.",
-                    Notificacion.TipoNotificacion.SISTEMA,
-                    "/app/postulacion/" + (p.getConvocatoria() != null ? p.getConvocatoria().getId() : ""));
-        } catch (Exception e) {
-            log.warn("No se pudo crear notificacion de entrega de apoyo: {}", e.getMessage());
-        }
         return p;
     }
 
@@ -914,6 +875,9 @@ public class PostulacionService {
         }
         if (!"APOYO_ENTREGADO".equalsIgnoreCase(p.getEstadoEntregaApoyo())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El recibo se habilita cuando COMECYT registre la entrega del apoyo economico");
+        }
+        if (p.getReciboPagoDocumento() != null && !"RECIBO_RECHAZADO".equalsIgnoreCase(p.getEstadoReciboPago())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El recibo ya fue cargado y queda bloqueado hasta su revisión. Solo puede reemplazarse si COMECYT lo rechaza.");
         }
         validarReciboArchivo(archivo);
         Documento doc = documentoService.guardarDocumento(
@@ -953,15 +917,17 @@ public class PostulacionService {
         p.setFechaValidacionReciboPago(LocalDateTime.now());
         p.setObservacionesReciboPago(normalizarTextoOpcional(observacionesReciboPago, 3000));
         p = postulacionRepo.save(p);
-        try {
-            notificacionService.crear(
-                    p.getUsuario() != null ? p.getUsuario().getAuthUser() : null,
-                    "Revision de recibo de pago",
-                    "Tu recibo de pago fue marcado como " + estado + ".",
-                    Notificacion.TipoNotificacion.SISTEMA,
-                    "/app/postulacion/" + (p.getConvocatoria() != null ? p.getConvocatoria().getId() : ""));
-        } catch (Exception e) {
-            log.warn("No se pudo crear notificacion de recibo: {}", e.getMessage());
+        if (p.getObservacionesReciboPago() != null && !p.getObservacionesReciboPago().isBlank()) {
+            try {
+                notificacionService.crear(
+                        p.getUsuario() != null ? p.getUsuario().getAuthUser() : null,
+                        "Observaciones de recibo de pago",
+                        "Tu recibo de pago tiene observaciones: " + p.getObservacionesReciboPago(),
+                        Notificacion.TipoNotificacion.SISTEMA,
+                        "/app/postulacion/" + (p.getConvocatoria() != null ? p.getConvocatoria().getId() : ""));
+            } catch (Exception e) {
+                log.warn("No se pudo crear notificacion de observaciones de recibo: {}", e.getMessage());
+            }
         }
         return p;
     }
@@ -1053,9 +1019,7 @@ public class PostulacionService {
         if (!esPdf(archivo)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El informe parcial debe ser un PDF");
         }
-        if (archivo.getSize() > 8 * 1024 * 1024) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "El informe parcial no puede superar 8 MB");
-        }
+        validarLimitePdf(archivo, "postulacion.informes", "El informe parcial");
         Documento doc = documentoService.guardarDocumento(
                 p.getUsuario().getId(),
                 archivo,
@@ -1097,9 +1061,7 @@ public class PostulacionService {
         if (!esPdf(archivo)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El informe final debe ser un PDF");
         }
-        if (archivo.getSize() > 8 * 1024 * 1024) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "El informe final no puede superar 8 MB");
-        }
+        validarLimitePdf(archivo, "postulacion.informes", "El informe final");
         Documento doc = documentoService.guardarDocumento(
                 p.getUsuario().getId(),
                 archivo,
@@ -1126,7 +1088,7 @@ public class PostulacionService {
     }
 
     @Transactional
-    public Postulacion solicitarRenuncia(Long postulacionId, Long authUserId, String motivoRenuncia) {
+    public Postulacion solicitarRenuncia(Long postulacionId, Long authUserId, String motivoRenuncia, MultipartFile oficioBaja) throws IOException {
         Postulacion p = obtenerPostulacionDeUsuario(postulacionId, authUserId);
         if (!moduloRenunciaActivo(p.getConvocatoria())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Esta convocatoria no tiene activo el módulo de renuncia");
@@ -1142,12 +1104,31 @@ public class PostulacionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "La renuncia ya fue aceptada");
         }
         String motivo = normalizarTextoRequerido(motivoRenuncia, "Debes capturar el motivo de renuncia", 3000);
+        if (oficioBaja == null || oficioBaja.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Debes adjuntar el oficio formal de baja en PDF");
+        }
+        if (!esPdf(oficioBaja)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El oficio formal de baja debe ser un PDF");
+        }
+        validarLimitePdf(oficioBaja, "postulacion.documentos", "El oficio formal de baja");
+        Documento oficioAnterior = p.getRenunciaDocumento();
+        Documento oficio = documentoService.guardarDocumento(
+                p.getUsuario().getId(),
+                oficioBaja,
+                Documento.TipoDocumento.RENUNCIA_APOYO,
+                "oficio_baja_postulacion_" + p.getId() + "_" + System.currentTimeMillis() + ".pdf",
+                false
+        );
         p.setEstadoRenuncia("SOLICITADA");
         p.setMotivoRenuncia(motivo);
         p.setFechaSolicitudRenuncia(LocalDateTime.now());
         p.setFechaResolucionRenuncia(null);
         p.setObservacionesRenuncia(null);
+        p.setRenunciaDocumento(oficio);
         p = postulacionRepo.save(p);
+        if (oficioAnterior != null && oficioAnterior.getId() != null) {
+            eliminarDocumentoPostulacion(oficioAnterior.getId(), p.getUsuario().getId());
+        }
         try {
             notificacionService.crearParaAdmins(
                     "Solicitud de renuncia",
@@ -1202,6 +1183,507 @@ public class PostulacionService {
         return p;
     }
 
+    @Transactional
+    public Postulacion reenviarCorreoAceptacion(Long convocatoriaId, Long postulacionId) {
+        return reenviarCorreoAceptacion(convocatoriaId, postulacionId, null, null);
+    }
+
+    @Transactional
+    public Postulacion reenviarCorreoAceptacion(Long convocatoriaId, Long postulacionId, String mensajeCorreo, MultipartFile documentoAceptacionAdjunto) {
+        validarDocumentoAceptacion(documentoAceptacionAdjunto);
+        String mensajeNormalizado = normalizarTextoOpcional(mensajeCorreo, 4000);
+        Postulacion p = postulacionRepo.findById(postulacionId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Postulacion no encontrada"));
+        validarPostulacionPerteneceConvocatoria(p, convocatoriaId);
+        if (!moduloAceptacionActivo(p.getConvocatoria())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Esta convocatoria no tiene activo el modulo de aceptacion");
+        }
+        if (!"ACEPTADA".equalsIgnoreCase(p.getEstado())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Solo puedes enviar aceptacion a solicitudes aceptadas");
+        }
+        enviarCorreoAceptacion(p, mensajeNormalizado, documentoAceptacionAdjunto);
+        p.setFechaAceptacionPostulacion(LocalDateTime.now());
+        p.setObservacionesAceptacion(mensajeNormalizado != null ? mensajeNormalizado : "Correo de aceptacion reenviado por el administrador");
+        return postulacionRepo.save(p);
+    }
+    @Transactional
+    public Postulacion subirSeguroMedico(Long postulacionId, Long authUserId, String numeroSeguroMedico, MultipartFile archivo) throws IOException {
+        Postulacion p = obtenerPostulacionDeUsuario(postulacionId, authUserId);
+        if (!moduloSeguroMedicoActivo(p.getConvocatoria())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Esta convocatoria no tiene activo el módulo de seguro médico");
+        }
+        validarSolicitudAceptadaParaModulo(p, "subir seguro médico");
+        String numero = normalizarTextoOpcional(numeroSeguroMedico, 100);
+        if (numero == null || numero.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Captura el número de seguro médico");
+        }
+        if (!esPdf(archivo)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "La evidencia de seguro médico debe ser un PDF");
+        }
+        validarLimitePdf(archivo, "postulacion.documentos", "La evidencia de seguro médico");
+        Documento doc = documentoService.guardarDocumento(
+                p.getUsuario().getId(),
+                archivo,
+                Documento.TipoDocumento.SEGURO_MEDICO,
+                "seguro_medico_postulacion_" + p.getId() + "_" + System.currentTimeMillis() + ".pdf",
+                false
+        );
+        p.setNumeroSeguroMedico(numero);
+        p.setSeguroMedicoDocumento(doc);
+        p.setEstadoSeguroMedico("SOLICITADO");
+        p.setFechaSeguroMedico(LocalDateTime.now());
+        postulacionRepo.save(p);
+
+        try {
+            notificacionService.crearParaAdmins(
+                    "Seguro médico recibido",
+                    "La solicitud " + (p.getFolio() != null ? p.getFolio() : "#" + p.getId()) + " cargó evidencia de seguro médico.",
+                    Notificacion.TipoNotificacion.SISTEMA,
+                    "/admin/convocatorias");
+        } catch (Exception e) {
+            log.warn("No se pudo crear notificacion admin de seguro medico: {}", e.getMessage());
+        }
+        return p;
+    }
+
+
+    private void validarSolicitudAceptadaParaModulo(Postulacion p, String accion) {
+        String estado = p != null && p.getEstado() != null ? p.getEstado().trim().toUpperCase(Locale.ROOT) : "";
+        String estadoComite = p != null && p.getEstadoComite() != null ? p.getEstadoComite().trim().toUpperCase(Locale.ROOT) : "";
+        if (!"ACEPTADA".equals(estado) && !"APROBADA".equals(estadoComite)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Solo puedes " + accion + " cuando tu solicitud esté aceptada");
+        }
+    }
+    @Transactional
+    public Postulacion actualizarSeguroMedico(Long convocatoriaId, Long postulacionId, String estadoSeguroMedico, String observacionesSeguroMedico) {
+        try {
+            return actualizarSeguroMedico(convocatoriaId, postulacionId, estadoSeguroMedico, observacionesSeguroMedico, null, null);
+        } catch (IOException e) {
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo guardar la evidencia del seguro médico");
+        }
+    }
+
+    @Transactional
+    public Postulacion actualizarSeguroMedico(Long convocatoriaId,
+                                             Long postulacionId,
+                                             String estadoSeguroMedico,
+                                             String observacionesSeguroMedico,
+                                             String numeroSeguroMedico,
+                                             MultipartFile evidenciaSeguroMedico) throws IOException {
+        Postulacion p = postulacionRepo.findById(postulacionId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Postulacion no encontrada"));
+        validarPostulacionPerteneceConvocatoria(p, convocatoriaId);
+        if (!moduloSeguroMedicoActivo(p.getConvocatoria())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Esta convocatoria no tiene activo el módulo de seguro médico");
+        }
+        String estado = normalizarEstadoSeguroMedico(estadoSeguroMedico);
+        p.setEstadoSeguroMedico(estado);
+        p.setNumeroSeguroMedico(normalizarTextoOpcional(numeroSeguroMedico, 100));
+        p.setObservacionesSeguroMedico(normalizarTextoOpcional(observacionesSeguroMedico, 3000));
+        if (evidenciaSeguroMedico != null && !evidenciaSeguroMedico.isEmpty()) {
+            Documento doc = documentoService.guardarDocumento(
+                    p.getUsuario().getId(),
+                    evidenciaSeguroMedico,
+                    Documento.TipoDocumento.SEGURO_MEDICO,
+                    evidenciaSeguroMedico.getOriginalFilename(),
+                    false);
+            p.setSeguroMedicoDocumento(doc);
+        }
+        p.setFechaSeguroMedico(LocalDateTime.now());
+        notificarSeguimientoModulo(p, "Seguro médico actualizado", "El seguimiento de seguro médico de tu solicitud fue actualizado: " + estado + ".");
+        return postulacionRepo.save(p);
+    }
+
+    @Transactional
+    public Postulacion subirStatusAcademico(Long postulacionId, Long authUserId, String informacionStatusAcademico, MultipartFile archivo) throws IOException {
+        Postulacion p = obtenerPostulacionDeUsuario(postulacionId, authUserId);
+        if (!moduloStatusAcademicoActivo(p.getConvocatoria())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Esta convocatoria no tiene activo el módulo de estatus académico");
+        }
+        validarSolicitudAceptadaParaModulo(p, "actualizar estatus académico");
+        String informacion = normalizarTextoOpcional(informacionStatusAcademico, 4000);
+        if (informacion == null || informacion.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Captura la informacion de actualización del estatus académico");
+        }
+        p.setInformacionStatusAcademico(informacion);
+        if (archivo != null && !archivo.isEmpty()) {
+            if (!esPdf(archivo)) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "La evidencia de estatus académico debe ser PDF");
+            }
+            validarLimitePdf(archivo, "postulacion.documentos", "La evidencia de estatus académico");
+            Documento doc = documentoService.guardarDocumento(
+                    p.getUsuario().getId(),
+                    archivo,
+                    Documento.TipoDocumento.STATUS_ACADEMICO,
+                    "estatus_academico_postulacion_" + p.getId() + "_" + System.currentTimeMillis() + ".pdf",
+                    false
+            );
+            p.setStatusAcademicoDocumento(doc);
+        }
+        p.setEstadoStatusAcademico("ACTUALIZADO");
+        p.setFechaStatusAcademico(LocalDateTime.now());
+        p = postulacionRepo.save(p);
+        try {
+            notificacionService.crearParaAdmins(
+                    "Estatus académico actualizado",
+                    "La solicitud " + (p.getFolio() != null ? p.getFolio() : "#" + p.getId()) + " actualizó información de estatus académico.",
+                    Notificacion.TipoNotificacion.SISTEMA,
+                    "/admin/convocatorias");
+        } catch (Exception e) {
+            log.warn("No se pudo crear notificacion admin de estatus academico: {}", e.getMessage());
+        }
+        return p;
+    }
+    @Transactional
+    public Postulacion actualizarStatusAcademico(Long convocatoriaId, Long postulacionId, String estadoStatusAcademico, String observacionesStatusAcademico) {
+        Postulacion p = postulacionRepo.findById(postulacionId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Postulacion no encontrada"));
+        validarPostulacionPerteneceConvocatoria(p, convocatoriaId);
+        if (!moduloStatusAcademicoActivo(p.getConvocatoria())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Esta convocatoria no tiene activo el módulo de actualización de estatus académico");
+        }
+        String estado = normalizarEstadoStatusAcademico(estadoStatusAcademico);
+        p.setEstadoStatusAcademico(estado);
+        p.setObservacionesStatusAcademico(normalizarTextoOpcional(observacionesStatusAcademico, 3000));
+        p.setFechaStatusAcademico(LocalDateTime.now());
+        notificarSeguimientoModulo(p, "Estatus académico actualizado", "El estatus académico de tu solicitud fue actualizado: " + estado + ".");
+        return postulacionRepo.save(p);
+    }
+
+    @Transactional
+    public Postulacion actualizarConstanciaFinal(Long convocatoriaId, Long postulacionId, String estadoConstanciaFinal, String observacionesConstanciaFinal) {
+        Postulacion p = postulacionRepo.findById(postulacionId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Postulacion no encontrada"));
+        validarPostulacionPerteneceConvocatoria(p, convocatoriaId);
+        if (!moduloConstanciasActivo(p.getConvocatoria())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Esta convocatoria no tiene activo el módulo de constancias y cierre final");
+        }
+        String estado = normalizarEstadoConstanciaFinal(estadoConstanciaFinal);
+        p.setEstadoConstanciaFinal(estado);
+        p.setObservacionesConstanciaFinal(normalizarTextoOpcional(observacionesConstanciaFinal, 3000));
+        return postulacionRepo.save(p);
+    }
+
+    @Transactional
+    public Postulacion generarDocumentoFinal(Long convocatoriaId, Long postulacionId, String tipo, String observacionesConstanciaFinal) {
+        Postulacion p = postulacionRepo.findByIdWithCurriculum(postulacionId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Postulacion no encontrada"));
+        validarPostulacionPerteneceConvocatoria(p, convocatoriaId);
+        if (!moduloConstanciasActivo(p.getConvocatoria())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Esta convocatoria no tiene activo el módulo de constancias y cierre final");
+        }
+        if (!"ACEPTADA".equalsIgnoreCase(p.getEstado())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Solo puedes emitir documentos finales para solicitudes aceptadas");
+        }
+        String tipoNormalizado = tipo != null ? tipo.trim().toUpperCase(Locale.ROOT) : "CONSTANCIA";
+        boolean cartaCierre = "CARTA_CIERRE".equals(tipoNormalizado) || "CARTA".equals(tipoNormalizado);
+        String folio = p.getFolio() != null ? p.getFolio() : "SOL-" + p.getId();
+        try {
+            Documento.TipoDocumento tipoDocumento = cartaCierre ? Documento.TipoDocumento.CARTA_CIERRE : Documento.TipoDocumento.CONSTANCIA_FINAL;
+            Optional<ConvocatoriaFormato> formatoOficial = !cartaCierre && p.getConvocatoria() != null && p.getConvocatoria().getId() != null
+                    ? convocatoriaFormatoService.obtenerFormatoConstanciaFinal(p.getConvocatoria().getId())
+                    : Optional.empty();
+            Documento doc;
+            if (!cartaCierre && formatoOficial.isPresent()) {
+                ConvocatoriaFormato formato = formatoOficial.get();
+                String nombreArchivo = (cartaCierre ? "carta_cierre_" : "constancia_final_") + folio + extensionArchivo(formato.getNombreArchivo());
+                doc = documentoService.guardarDocumentoEmitidoDesdeFormato(
+                        p.getUsuario().getId(),
+                        tipoDocumento,
+                        nombreArchivo,
+                        formato.getContentType(),
+                        formato.getContenido(),
+                        true
+                );
+            } else {
+                String nombreArchivo = (cartaCierre ? "carta_cierre_" : "constancia_final_") + folio + ".pdf";
+                doc = documentoService.guardarDocumentoGenerado(
+                        p.getUsuario().getId(),
+                        tipoDocumento,
+                        nombreArchivo,
+                        "application/pdf",
+                        generarPdfDocumentoFinalSiimex(p, cartaCierre),
+                        true
+                );
+            }
+            if (cartaCierre) {
+                p.setCartaCierreDocumento(doc);
+                p.setFechaCartaCierre(LocalDateTime.now());
+                p.setEstadoConstanciaFinal("CARTA_EMITIDA");
+            } else {
+                p.setConstanciaFinalDocumento(doc);
+                p.setFechaConstanciaFinal(LocalDateTime.now());
+                p.setEstadoConstanciaFinal("CONSTANCIA_EMITIDA");
+            }
+            p.setObservacionesConstanciaFinal(normalizarTextoOpcional(observacionesConstanciaFinal, 3000));
+            Postulacion guardada = postulacionRepo.save(p);
+            String etiquetaDocumento = cartaCierre ? "Carta de cierre" : "Constancia final";
+            notificarDocumentoEmitido(
+                    guardada,
+                    etiquetaDocumento + " emitida",
+                    "Tu " + etiquetaDocumento.toLowerCase(Locale.ROOT) + " SIIMEX esta disponible para descarga.");
+            enviarCorreoDocumentoEmitido(guardada, doc, etiquetaDocumento + " SIIMEX");
+            return guardada;
+        } catch (IOException e) {
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo generar el documento final");
+        }
+    }
+
+    private byte[] generarPdfOficioAprobacionSiimex(Postulacion p) {
+        String folio = p.getFolio() != null ? p.getFolio() : "SOL-" + p.getId();
+        String convocatoria = obtenerTituloConvocatoria(p);
+        String nombre = obtenerNombreUsuarioCompleto(p);
+        String programa = resolverProgramaConvocatoria(p);
+        String periodo = resolverPeriodoApoyo(p);
+        String monto = formatearMonto(p.getMontoApoyoAsignado());
+        boolean proyectoActivo = informacionProyectoActiva(p.getConvocatoria());
+        String tituloProyecto = proyectoActivo ? valorOpcional(p.getTituloProyecto()) : null;
+
+        List<SimplePdfGenerator.Campo> campos = new ArrayList<>();
+        campos.add(new SimplePdfGenerator.Campo("Fecha", "Toluca, Estado de México, " + formatearFechaLarga(LocalDate.now())));
+        campos.add(new SimplePdfGenerator.Campo("Persona beneficiaria", nombre));
+        campos.add(new SimplePdfGenerator.Campo("Folio", folio));
+        campos.add(new SimplePdfGenerator.Campo("Convocatoria", convocatoria));
+        campos.add(new SimplePdfGenerator.Campo("Tipo de apoyo", valorDocumento(p.getTipoApoyo())));
+        campos.add(new SimplePdfGenerator.Campo("Monto autorizado", monto));
+        if (tituloProyecto != null) {
+            campos.add(new SimplePdfGenerator.Campo("Título del proyecto", tituloProyecto));
+        }
+
+        List<String> parrafos = new ArrayList<>();
+        parrafos.add("Con fundamento en las Reglas de Operación del programa " + programa + ", el Consejo Mexiquense de Ciencia y Tecnología (COMECyT) comunica que la solicitud registrada en SIIMEX ha sido APROBADA por el proceso de selección correspondiente.");
+        if (tituloProyecto != null) {
+            parrafos.add("El beneficio consiste en un apoyo económico de " + monto + " para desarrollar el proyecto denominado \"" + tituloProyecto + "\", durante el periodo " + periodo + ".");
+        } else {
+            parrafos.add("El beneficio consiste en un apoyo económico de " + monto + " correspondiente a la solicitud aprobada, durante el periodo " + periodo + ".");
+        }
+        parrafos.add("El apoyo se otorgará mediante transferencia bancaria, conforme a la disponibilidad presupuestal autorizada y al calendario operativo establecido por el COMECyT.");
+        parrafos.add("Por lo anterior, se solicita que en un lapso no mayor a 5 días hábiles ingrese al sistema SIIMEX y actualice los apartados de Cuenta bancaria y Seguro médico. La cuenta bancaria deberá estar a nombre de la persona beneficiaria y el documento de seguro médico deberá contener nombre completo y vigencia.");
+        parrafos.add("A partir de este momento obtiene la calidad de persona beneficiaria, por lo que deberá conocer y cumplir los derechos, obligaciones, causas de incumplimiento, sanciones y corresponsabilidades establecidas en la convocatoria y sus reglas aplicables.");
+
+        SimplePdfGenerator.Tabla tabla = new SimplePdfGenerator.Tabla(
+                List.of("Concepto", "Registro en sistema"),
+                construirCalendarioPagos(p)
+        );
+        return SimplePdfGenerator.generarMachoteSiimex(
+                "OFICIO DE APROBACIÓN",
+                programa,
+                campos,
+                parrafos,
+                tabla,
+                "A T E N T A M E N T E\nCONSEJO MEXIQUENSE DE CIENCIA Y TECNOLOGÍA"
+        );
+    }
+
+    private byte[] generarPdfDocumentoFinalSiimex(Postulacion p, boolean cartaCierre) {
+        if (!cartaCierre) {
+            String folio = p.getFolio() != null ? p.getFolio() : "SOL-" + p.getId();
+            List<String> lineas = List.of(
+                    "Constancia final SIIMEX",
+                    "Folio de solicitud: " + folio,
+                    "Persona beneficiaria: " + obtenerNombreUsuarioCompleto(p),
+                    "Convocatoria: " + obtenerTituloConvocatoria(p),
+                    "Fecha de emisión: " + formatearFechaLarga(LocalDate.now()),
+                    "Se emite la presente constancia final por su participación en el proceso SIIMEX."
+            );
+            return SimplePdfGenerator.generarDocumento("SIIMEX - Constancia final", lineas);
+        }
+
+        String folio = p.getFolio() != null ? p.getFolio() : "SOL-" + p.getId();
+        String programa = resolverProgramaConvocatoria(p);
+        boolean proyectoActivo = informacionProyectoActiva(p.getConvocatoria());
+        String tituloProyecto = proyectoActivo ? valorOpcional(p.getTituloProyecto()) : null;
+        String asesor = valorOpcional(resolverAsesorResponsable(p));
+
+        List<SimplePdfGenerator.Campo> campos = new ArrayList<>();
+        campos.add(new SimplePdfGenerator.Campo("Persona beneficiaria", obtenerNombreUsuarioCompleto(p)));
+        campos.add(new SimplePdfGenerator.Campo("Folio", folio));
+        String institucion = valorOpcional(resolverInstitucionReceptora(p));
+        if (institucion != null) {
+            campos.add(new SimplePdfGenerator.Campo("Institución receptora", institucion));
+        }
+        if (tituloProyecto != null) {
+            campos.add(new SimplePdfGenerator.Campo("Título del proyecto", tituloProyecto));
+        }
+        if (asesor != null) {
+            campos.add(new SimplePdfGenerator.Campo("Asesor(a) responsable", asesor));
+        }
+        campos.add(new SimplePdfGenerator.Campo("Periodo de apoyo", resolverPeriodoApoyo(p)));
+        campos.add(new SimplePdfGenerator.Campo("Apoyo económico entregado", formatearMonto(p.getMontoApoyoAsignado())));
+        campos.add(new SimplePdfGenerator.Campo("Convocatoria", obtenerTituloConvocatoria(p)));
+
+        List<String> parrafos = new ArrayList<>();
+        parrafos.add("Con base en las Reglas de Operación aplicables al programa " + programa + ", la persona beneficiaria debe registrar en el sistema electrónico el informe final de resultados, sus evidencias y los productos comprometidos durante el periodo de apoyo recibido.");
+        parrafos.add("El Consejo Mexiquense de Ciencia y Tecnología, a través de la Dirección de Investigación Científica y Formación de Recursos Humanos, hace constar que la documentación final fue entregada y cotejada dentro del proceso correspondiente.");
+        if (tituloProyecto != null) {
+            parrafos.add("Derivado de lo anterior, se da por concluido el proyecto \"" + tituloProyecto + "\" registrado en SIIMEX, quedando cerrada la solicitud identificada con el folio " + folio + ".");
+        } else {
+            parrafos.add("Derivado de lo anterior, se da por concluida la solicitud identificada con el folio " + folio + " dentro del proceso registrado en SIIMEX.");
+        }
+        parrafos.add("Se hace explícito que, respecto de esta solicitud, la persona beneficiaria no mantiene sanciones ni adeudos administrativos con el Consejo Mexiquense de Ciencia y Tecnología.");
+        parrafos.add("Se expide la presente carta de cierre en Toluca, Estado de México, a " + formatearFechaLarga(LocalDate.now()) + ".");
+
+        return SimplePdfGenerator.generarMachoteSiimex(
+                "CARTA DE CIERRE",
+                programa,
+                campos,
+                parrafos,
+                null,
+                "ATENTAMENTE\nDIRECCIÓN DE INVESTIGACIÓN CIENTÍFICA Y FORMACIÓN DE RECURSOS HUMANOS"
+        );
+    }
+
+    private String obtenerTituloConvocatoria(Postulacion p) {
+        return p.getConvocatoria() != null && p.getConvocatoria().getTitulo() != null && !p.getConvocatoria().getTitulo().isBlank()
+                ? p.getConvocatoria().getTitulo().trim()
+                : "Convocatoria SIIMEX";
+    }
+
+    private String resolverProgramaConvocatoria(Postulacion p) {
+        String titulo = obtenerTituloConvocatoria(p);
+        int year = p.getConvocatoria() != null && p.getConvocatoria().getFechaCierre() != null
+                ? p.getConvocatoria().getFechaCierre().getYear()
+                : LocalDate.now().getYear();
+        return titulo + " - Promoción " + year;
+    }
+
+    private String resolverInstitucionReceptora(Postulacion p) {
+        if (p == null || p.getUsuario() == null || p.getUsuario().getId() == null) {
+            return null;
+        }
+        Long usuarioId = p.getUsuario().getId();
+        try {
+            Optional<String> institucionPerfil = institucionRepository.findByUsuarioId(usuarioId).stream()
+                    .map(Institucion::getNombre)
+                    .filter(v -> v != null && !v.trim().isBlank())
+                    .map(String::trim)
+                    .findFirst();
+            if (institucionPerfil.isPresent()) return institucionPerfil.get();
+        } catch (Exception e) {
+            log.warn("No se pudo leer institución del perfil para usuario {}: {}", usuarioId, e.getMessage());
+        }
+        if (p.getUsuario().getPerfilMigracion() != null) {
+            String institucion = p.getUsuario().getPerfilMigracion().getInstitucionReceptora();
+            if (institucion != null && !institucion.isBlank()) return institucion.trim();
+        }
+        try {
+            return estanciaRepository.findByUsuarioId(usuarioId).stream()
+                    .map(Estancia::getInstitucionReceptora)
+                    .filter(v -> v != null && !v.trim().isBlank())
+                    .map(String::trim)
+                    .findFirst()
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("No se pudo leer estancia del perfil para usuario {}: {}", usuarioId, e.getMessage());
+            return null;
+        }
+    }
+
+    private String resolverAsesorResponsable(Postulacion p) {
+        Map<String, Object> criterios = parseCriteriosRespuestas(p != null ? p.getCriteriosJson() : null);
+        return valorCriterio(criterios,
+                "asesor",
+                "asesor_responsable",
+                "nombre_asesor",
+                "tutor",
+                "tutor_responsable",
+                "director_proyecto");
+    }
+
+    private String valorCriterio(Map<String, Object> criterios, String... claves) {
+        if (criterios == null || criterios.isEmpty() || claves == null) return null;
+        Set<String> buscadas = new LinkedHashSet<>();
+        for (String clave : claves) {
+            String normalizada = normalizarClaveRegla(clave);
+            if (!normalizada.isBlank()) buscadas.add(normalizada);
+        }
+        for (Map.Entry<String, Object> entry : criterios.entrySet()) {
+            String key = normalizarClaveRegla(entry.getKey());
+            if (!buscadas.contains(key)) continue;
+            Object raw = entry.getValue();
+            String value = raw != null ? String.valueOf(raw).trim() : "";
+            if (!value.isBlank()) return value;
+        }
+        return null;
+    }
+
+    private String resolverPeriodoApoyo(Postulacion p) {
+        if (p.getConvocatoria() != null && p.getConvocatoria().getFechaApertura() != null && p.getConvocatoria().getFechaCierre() != null) {
+            return "del " + formatearFechaLarga(p.getConvocatoria().getFechaApertura().toLocalDate())
+                    + " al " + formatearFechaLarga(p.getConvocatoria().getFechaCierre().toLocalDate());
+        }
+        if (p.getFechaEvento() != null) {
+            return "a partir del " + formatearFechaLarga(p.getFechaEvento());
+        }
+        return "No especificado";
+    }
+
+    private List<List<String>> construirCalendarioPagos(Postulacion p) {
+        List<List<String>> filas = new ArrayList<>();
+        filas.add(List.of("Monto autorizado", formatearMonto(p != null ? p.getMontoApoyoAsignado() : null)));
+        filas.add(List.of("Estatus de entrega", formatearEstadoSistema(
+                p != null ? p.getEstadoEntregaApoyo() : null,
+                "Pendiente de entrega")));
+        if (p != null && p.getFechaEntregaApoyo() != null) {
+            filas.add(List.of("Fecha de entrega", formatearFechaHoraDocumento(p.getFechaEntregaApoyo())));
+        }
+        filas.add(List.of("Recibo de pago", p != null && p.getReciboPagoDocumento() != null
+                ? "Cargado en sistema"
+                : "Pendiente de carga"));
+        if (p != null && valorOpcional(p.getEstadoReciboPago()) != null) {
+            filas.add(List.of("Validación de recibo", formatearEstadoSistema(p.getEstadoReciboPago(), "Pendiente")));
+        }
+        if (p != null && p.getFechaValidacionReciboPago() != null) {
+            filas.add(List.of("Fecha de validación", formatearFechaHoraDocumento(p.getFechaValidacionReciboPago())));
+        }
+        return filas;
+    }
+
+    private String formatearMonto(BigDecimal monto) {
+        if (monto == null) return "No especificado";
+        java.text.NumberFormat nf = java.text.NumberFormat.getCurrencyInstance(new Locale("es", "MX"));
+        return nf.format(monto) + " MXN";
+    }
+
+    private String formatearFechaLarga(LocalDate fecha) {
+        if (fecha == null) return "No especificada";
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy", new Locale("es", "MX"));
+        return fecha.format(fmt);
+    }
+    private String formatearFechaHoraDocumento(LocalDateTime fecha) {
+        if (fecha == null) return "No especificada";
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy HH:mm", new Locale("es", "MX"));
+        return fecha.format(fmt);
+    }
+
+    private String formatearEstadoSistema(String value, String fallback) {
+        String limpio = valorOpcional(value);
+        if (limpio == null) return fallback;
+        String clave = limpio.trim().toUpperCase(Locale.ROOT);
+        return switch (clave) {
+            case "APOYO_ENTREGADO" -> "Apoyo entregado";
+            case "PENDIENTE_RECIBO" -> "Pendiente de recibo";
+            case "RECIBO_CARGADO" -> "Recibo cargado";
+            case "RECIBO_VALIDADO" -> "Recibo validado";
+            case "RECIBO_RECHAZADO" -> "Recibo rechazado";
+            default -> {
+                String[] partes = limpio.replace('_', ' ').toLowerCase(Locale.ROOT).split("\\s+");
+                List<String> normalizadas = new ArrayList<>();
+                for (String parte : partes) {
+                    if (parte.isBlank()) continue;
+                    normalizadas.add(parte.substring(0, 1).toUpperCase(Locale.ROOT) + parte.substring(1));
+                }
+                yield normalizadas.isEmpty() ? fallback : String.join(" ", normalizadas);
+            }
+        };
+    }
+
+    private String valorOpcional(String value) {
+        return value != null && !value.trim().isBlank() ? value.trim() : null;
+    }
+    private String valorDocumento(String value) {
+        return value != null && !value.trim().isBlank() ? value.trim() : "No especificado";
+    }
     @Transactional
     public Postulacion marcarIncumplimientoInformes(Long postulacionId, String motivo) {
         Postulacion p = postulacionRepo.findById(postulacionId)
@@ -1307,6 +1789,34 @@ public class PostulacionService {
         Convocatoria convocatoria = convocatoriaService.obtenerPorId(convocatoriaId);
         return moduloRenunciaActivo(convocatoria);
     }
+    public boolean moduloSeguroMedicoActivoPorConvocatoria(Long convocatoriaId) {
+        Convocatoria convocatoria = convocatoriaService.obtenerPorId(convocatoriaId);
+        return moduloSeguroMedicoActivo(convocatoria);
+    }
+
+    public boolean moduloAceptacionActivoPorConvocatoria(Long convocatoriaId) {
+        Convocatoria convocatoria = convocatoriaService.obtenerPorId(convocatoriaId);
+        return moduloAceptacionActivo(convocatoria);
+    }
+
+    public boolean moduloConstanciasActivoPorConvocatoria(Long convocatoriaId) {
+        Convocatoria convocatoria = convocatoriaService.obtenerPorId(convocatoriaId);
+        return moduloConstanciasActivo(convocatoria);
+    }
+
+    public boolean moduloStatusAcademicoActivoPorConvocatoria(Long convocatoriaId) {
+        Convocatoria convocatoria = convocatoriaService.obtenerPorId(convocatoriaId);
+        return moduloStatusAcademicoActivo(convocatoria);
+    }
+
+    private void validarPostulacionPerteneceConvocatoria(Postulacion postulacion, Long convocatoriaId) {
+        Long convocatoriaRealId = postulacion != null && postulacion.getConvocatoria() != null
+                ? postulacion.getConvocatoria().getId()
+                : null;
+        if (convocatoriaId == null || convocatoriaRealId == null || !convocatoriaRealId.equals(convocatoriaId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "La solicitud no pertenece a esta convocatoria");
+        }
+    }
 
     private void validarNoEsEvaluadorEnConvocatoria(Long convocatoriaId, Long authUserId) {
         if (convocatoriaId == null || authUserId == null) {
@@ -1328,13 +1838,77 @@ public class PostulacionService {
     @Transactional
     public void eliminar(Long postulacionId) {
         Postulacion p = postulacionRepo.findById(postulacionId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Postulaci\u00f3n no encontrada"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Postulación no encontrada"));
+        Long usuarioId = p.getUsuario() != null ? p.getUsuario().getId() : null;
+        Set<Long> documentosParaEliminar = recolectarDocumentosDePostulacion(p);
         List<PostulacionDocumento> docs = postulacionDocumentoRepo.findByPostulacionId(postulacionId);
+        docs.forEach(pd -> agregarDocumentoParaEliminar(documentosParaEliminar, pd.getDocumento()));
+
         if (!docs.isEmpty()) {
             postulacionDocumentoRepo.deleteAll(docs);
+            postulacionDocumentoRepo.flush();
         }
+        desvincularDocumentosPostulacion(p);
+        postulacionRepo.saveAndFlush(p);
         postulacionRepo.delete(p);
-        log.info("Postulaci\u00f3n {} eliminada con {} documentos adjuntos", postulacionId, docs.size());
+        postulacionRepo.flush();
+
+        if (usuarioId != null) {
+            documentosParaEliminar.forEach(documentoId -> eliminarDocumentoPostulacion(documentoId, usuarioId));
+        }
+        log.info("Postulación {} eliminada con {} vinculo(s) y {} documento(s) asociado(s)", postulacionId, docs.size(), documentosParaEliminar.size());
+    }
+
+    private Set<Long> recolectarDocumentosDePostulacion(Postulacion p) {
+        Set<Long> ids = new LinkedHashSet<>();
+        agregarDocumentoParaEliminar(ids, p.getCurriculumDocumento());
+        agregarDocumentoParaEliminar(ids, p.getCartaEvaluadorDocumento());
+        agregarDocumentoParaEliminar(ids, p.getDictamenEvaluacionDocumento());
+        agregarDocumentoParaEliminar(ids, p.getConstanciaEvaluadorDocumento());
+        agregarDocumentoParaEliminar(ids, p.getOficioAprobacionDocumento());
+        agregarDocumentoParaEliminar(ids, p.getNombramientoDocumento());
+        agregarDocumentoParaEliminar(ids, p.getInformeParcialDocumento());
+        agregarDocumentoParaEliminar(ids, p.getInformeFinalDocumento());
+        agregarDocumentoParaEliminar(ids, p.getEstadoCuentaDocumento());
+        agregarDocumentoParaEliminar(ids, p.getReciboPagoDocumento());
+        agregarDocumentoParaEliminar(ids, p.getSeguroMedicoDocumento());
+        agregarDocumentoParaEliminar(ids, p.getConstanciaFinalDocumento());
+        agregarDocumentoParaEliminar(ids, p.getCartaCierreDocumento());
+        agregarDocumentoParaEliminar(ids, p.getStatusAcademicoDocumento());
+        agregarDocumentoParaEliminar(ids, p.getRenunciaDocumento());
+        return ids;
+    }
+
+    private void agregarDocumentoParaEliminar(Set<Long> ids, Documento documento) {
+        if (documento != null && documento.getId() != null) {
+            ids.add(documento.getId());
+        }
+    }
+
+    private void desvincularDocumentosPostulacion(Postulacion p) {
+        p.setCurriculumDocumento(null);
+        p.setCartaEvaluadorDocumento(null);
+        p.setDictamenEvaluacionDocumento(null);
+        p.setConstanciaEvaluadorDocumento(null);
+        p.setOficioAprobacionDocumento(null);
+        p.setNombramientoDocumento(null);
+        p.setInformeParcialDocumento(null);
+        p.setInformeFinalDocumento(null);
+        p.setEstadoCuentaDocumento(null);
+        p.setReciboPagoDocumento(null);
+        p.setSeguroMedicoDocumento(null);
+        p.setConstanciaFinalDocumento(null);
+        p.setCartaCierreDocumento(null);
+        p.setStatusAcademicoDocumento(null);
+        p.setRenunciaDocumento(null);
+    }
+
+    private void eliminarDocumentoPostulacion(Long documentoId, Long usuarioId) {
+        try {
+            documentoService.eliminarDocumento(documentoId, usuarioId);
+        } catch (Exception e) {
+            log.warn("No se pudo eliminar documento {} asociado a postulacion eliminada: {}", documentoId, e.getMessage());
+        }
     }
 
     private String obtenerNombreUsuario(Postulacion p) {
@@ -1356,6 +1930,95 @@ public class PostulacionService {
         return !nombre.isBlank() ? nombre : (p.getCorreo() != null ? p.getCorreo() : "");
     }
 
+    private void enviarCorreoAceptacion(Postulacion p) {
+        enviarCorreoAceptacion(p, null, null);
+    }
+
+    private void enviarCorreoAceptacion(Postulacion p, String mensajePersonalizado, MultipartFile documentoAceptacionAdjunto) {
+        Convocatoria convocatoria = p.getConvocatoria();
+        String nombre = obtenerNombreUsuario(p);
+        String tituloConvocatoria = convocatoria != null ? convocatoria.getTitulo() : null;
+        if (documentoAceptacionAdjunto != null && !documentoAceptacionAdjunto.isEmpty()) {
+            try {
+                String nombreArchivo = FileSecurityUtils.sanitizeFilename(
+                        documentoAceptacionAdjunto.getOriginalFilename(),
+                        "aceptacion_siimex.pdf");
+                String contentType = documentoAceptacionAdjunto.getContentType();
+                if (contentType == null || contentType.isBlank()) {
+                    contentType = FileSecurityUtils.safeContentTypeForFilename(nombreArchivo);
+                }
+                emailService.sendPostulacionAceptadaPersonalizada(
+                        p.getCorreo(),
+                        nombre,
+                        tituloConvocatoria,
+                        mensajePersonalizado,
+                        nombreArchivo,
+                        contentType,
+                        documentoAceptacionAdjunto.getBytes());
+                return;
+            } catch (IOException e) {
+                throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo adjuntar el documento de aceptacion");
+            }
+        }
+
+        Optional<ConvocatoriaFormato> documentoAceptacion = convocatoria != null && convocatoria.getId() != null
+                ? convocatoriaFormatoService.obtenerDocumentoAceptacion(convocatoria.getId())
+                : Optional.empty();
+        if (documentoAceptacion.isPresent()) {
+            ConvocatoriaFormato doc = documentoAceptacion.get();
+            emailService.sendPostulacionAceptadaPersonalizada(
+                    p.getCorreo(),
+                    nombre,
+                    tituloConvocatoria,
+                    mensajePersonalizado,
+                    doc.getNombreArchivo(),
+                    doc.getContentType(),
+                    doc.getContenido());
+        } else {
+            emailService.sendPostulacionAceptadaPersonalizada(
+                    p.getCorreo(),
+                    nombre,
+                    tituloConvocatoria,
+                    mensajePersonalizado,
+                    null,
+                    null,
+                    null);
+        }
+    }
+
+    private void validarEstadoCuentaArchivo(MultipartFile archivo, boolean requerido) {
+        if (archivo == null || archivo.isEmpty()) {
+            if (requerido) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Debes adjuntar el estado de cuenta");
+            }
+            return;
+        }
+        if (!esFormatoSolicitud(archivo)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El estado de cuenta debe ser PDF, DOCX o XLSX");
+        }
+        validarLimitePdf(archivo, "postulacion.documentos", "El estado de cuenta");
+    }
+
+    private void validarDocumentoAceptacion(MultipartFile archivo) {
+        if (archivo == null || archivo.isEmpty()) return;
+        if (!esFormatoSolicitud(archivo)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "El documento de aceptacion debe ser PDF, DOCX o XLSX");
+        }
+        validarLimitePdf(archivo, "postulacion.documentos", "El documento de aceptacion");
+    }
+    private void notificarSeguimientoModulo(Postulacion p, String titulo, String mensaje) {
+        try {
+            notificacionService.crear(
+                    p.getUsuario() != null ? p.getUsuario().getAuthUser() : null,
+                    titulo,
+                    mensaje,
+                    Notificacion.TipoNotificacion.SISTEMA,
+                    "/app/postulacion/" + (p.getConvocatoria() != null ? p.getConvocatoria().getId() : ""));
+        } catch (Exception e) {
+            log.warn("No se pudo crear notificacion de seguimiento: {}", e.getMessage());
+        }
+    }
+
     private void notificarDocumentoEmitido(Postulacion p, String titulo, String mensaje) {
         try {
             notificacionService.crear(
@@ -1369,6 +2032,11 @@ public class PostulacionService {
         }
     }
 
+
+    private String extensionArchivo(String nombreArchivo) {
+        String ext = FileSecurityUtils.extensionOf(nombreArchivo);
+        return ext == null || ext.isBlank() ? ".pdf" : "." + ext;
+    }
     private void enviarCorreoDocumentoEmitido(Postulacion p, Documento doc, String tipoDocumento) {
         try {
             String correo = p != null ? p.getCorreo() : null;
@@ -1386,9 +2054,7 @@ public class PostulacionService {
         if (!esPdf(cvFile)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El curr\u00edculum debe ser un PDF");
         }
-        if (cvFile.getSize() > 5 * 1024 * 1024) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "El archivo no puede superar 5 MB");
-        }
+        validarLimitePdf(cvFile, "postulacion.curriculum", "El curriculum");
         return documentoService.guardarDocumento(
                 usuarioId, cvFile,
                 Documento.TipoDocumento.CV_POSTULACION,
@@ -1552,6 +2218,8 @@ public class PostulacionService {
         m.put("titularCuenta", p.getTitularCuenta());
         m.put("cuentaBancaria", p.getCuentaBancaria());
         m.put("clabeInterbancaria", p.getClabeInterbancaria());
+        m.put("estadoCuentaDocumentoId", p.getEstadoCuentaDocumento() != null ? p.getEstadoCuentaDocumento().getId() : null);
+        m.put("estadoCuentaNombreArchivo", p.getEstadoCuentaDocumento() != null ? p.getEstadoCuentaDocumento().getNombreArchivo() : null);
         m.put("medioNotificacion", p.getMedioNotificacion());
         m.put("fechaActualizacionBancaria", p.getFechaActualizacionBancaria() != null ? p.getFechaActualizacionBancaria().toString() : null);
         m.put("estadoEntregaApoyo", p.getEstadoEntregaApoyo());
@@ -1580,6 +2248,8 @@ public class PostulacionService {
         m.put("fechaSolicitudRenuncia", p.getFechaSolicitudRenuncia() != null ? p.getFechaSolicitudRenuncia().toString() : null);
         m.put("fechaResolucionRenuncia", p.getFechaResolucionRenuncia() != null ? p.getFechaResolucionRenuncia().toString() : null);
         m.put("observacionesRenuncia", p.getObservacionesRenuncia());
+        m.put("renunciaDocumentoId", p.getRenunciaDocumento() != null ? p.getRenunciaDocumento().getId() : null);
+        m.put("renunciaNombreArchivo", p.getRenunciaDocumento() != null ? p.getRenunciaDocumento().getNombreArchivo() : null);
         m.put("avisoPrivacidadAceptado", p.isAvisoPrivacidadAceptado());
         m.put("fechaAceptacionAvisoPrivacidad", p.getFechaAceptacionAvisoPrivacidad() != null ? p.getFechaAceptacionAvisoPrivacidad().toString() : null);
         m.put("informeParcialDocumentoId", p.getInformeParcialDocumento() != null ? p.getInformeParcialDocumento().getId() : null);
@@ -1592,6 +2262,12 @@ public class PostulacionService {
         m.put("fechaReciboPago", p.getFechaReciboPago() != null ? p.getFechaReciboPago().toString() : null);
         m.put("fechaValidacionReciboPago", p.getFechaValidacionReciboPago() != null ? p.getFechaValidacionReciboPago().toString() : null);
         m.put("observacionesReciboPago", p.getObservacionesReciboPago());
+        m.put("estadoStatusAcademico", p.getEstadoStatusAcademico());
+        m.put("fechaStatusAcademico", p.getFechaStatusAcademico() != null ? p.getFechaStatusAcademico().toString() : null);
+        m.put("observacionesStatusAcademico", p.getObservacionesStatusAcademico());
+        m.put("informacionStatusAcademico", p.getInformacionStatusAcademico());
+        m.put("statusAcademicoDocumentoId", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getId() : null);
+        m.put("statusAcademicoNombreArchivo", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getNombreArchivo() : null);
         m.put("fechaCreacion", p.getFechaCreacion() != null ? p.getFechaCreacion().toString() : null);
         return m;
     }
@@ -1628,9 +2304,7 @@ public class PostulacionService {
             if (!esFormatoSolicitud(f)) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, r.etiqueta() + ": solo se permiten archivos PDF, DOCX o XLSX");
             }
-            if (f.getSize() > 10 * 1024 * 1024) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, r.etiqueta() + ": el archivo no puede superar 10 MB");
-            }
+            validarLimitePdf(f, "postulacion.documentos", r.etiqueta());
         }
     }
 
@@ -1643,9 +2317,7 @@ public class PostulacionService {
             if (!esFormatoSolicitud(f)) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "Documento adjunto (" + clave + "): solo se permiten archivos PDF, DOCX o XLSX");
             }
-            if (f.getSize() > 10 * 1024 * 1024) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Documento adjunto (" + clave + "): el archivo no puede superar 10 MB");
-            }
+            validarLimitePdf(f, "postulacion.documentos", "Documento adjunto (" + clave + ")");
 
             String ext = f.getOriginalFilename() != null && f.getOriginalFilename().contains(".")
                     ? f.getOriginalFilename().substring(f.getOriginalFilename().lastIndexOf('.'))
@@ -1661,6 +2333,12 @@ public class PostulacionService {
                     .documento(doc)
                     .build();
             postulacionDocumentoRepo.save(pd);
+        }
+    }
+
+    private void validarLimitePdf(MultipartFile archivo, String limiteKey, String etiqueta) {
+        if (archivo != null && !archivo.isEmpty() && archivo.getSize() > configuracionSistemaService.obtenerLimitePdfBytes(limiteKey)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, configuracionSistemaService.mensajeLimitePdf(etiqueta, limiteKey));
         }
     }
 
@@ -1714,7 +2392,9 @@ public class PostulacionService {
     }
 
     private record ReglaConfigurableConvocatoria(String clave, String valor, String descripcion) {}
+
     private record CriterioFormularioConfig(String clave, String etiqueta, boolean requerido) {}
+
     private enum TipoInformesRequeridos { NINGUNO, PARCIAL, FINAL, AMBOS }
 
     private List<ReglaConfigurableConvocatoria> parseReglasConfigurables(String json) {
@@ -1807,12 +2487,16 @@ public class PostulacionService {
         String telefonoNorm = telefono != null ? telefono.trim() : "";
         String tipoApoyoNorm = tipoApoyo != null ? tipoApoyo.trim() : "";
         String tipoSolicitudNorm = tipoSolicitud != null ? tipoSolicitud.trim().toUpperCase(Locale.ROOT) : "";
+        boolean tipoSolicitudActiva = tipoSolicitudActivo(convocatoria);
+        boolean fechaEventoActiva = fechaEventoActivo(convocatoria);
+        boolean informacionProyectoActiva = informacionProyectoActiva(convocatoria);
         String tituloNorm = tituloProyecto != null ? tituloProyecto.trim() : "";
         String descripcionNorm = descripcionProyecto != null ? descripcionProyecto.trim() : "";
         String observacionesNorm = observaciones != null ? observaciones.trim() : "";
 
         Long diasAnticipacion = null;
         LocalDate hoy = LocalDate.now();
+        LocalDateTime ahora = LocalDateTime.now();
 
         for (ReglaConfigurableConvocatoria regla : reglas) {
             String key = normalizarClaveRegla(regla.clave());
@@ -1845,24 +2529,28 @@ public class PostulacionService {
                     }
                 }
                 case "titulo_proyecto_min_chars" -> {
+                    if (!informacionProyectoActiva) break;
                     int min = resolverEnteroNoNegativo(regla);
                     if (tituloNorm.length() < min) {
                         throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "el título del proyecto debe tener al menos " + min + " caracteres"));
                     }
                 }
                 case "titulo_proyecto_max_chars" -> {
+                    if (!informacionProyectoActiva) break;
                     int max = resolverEnteroNoNegativo(regla);
                     if (tituloNorm.length() > max) {
                         throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "el título del proyecto no debe superar " + max + " caracteres"));
                     }
                 }
                 case "descripcion_proyecto_min_chars" -> {
+                    if (!informacionProyectoActiva) break;
                     int min = resolverEnteroNoNegativo(regla);
                     if (descripcionNorm.length() < min) {
                         throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "la descripción del proyecto debe tener al menos " + min + " caracteres"));
                     }
                 }
                 case "descripcion_proyecto_max_chars" -> {
+                    if (!informacionProyectoActiva) break;
                     int max = resolverEnteroNoNegativo(regla);
                     if (descripcionNorm.length() > max) {
                         throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "la descripción del proyecto no debe superar " + max + " caracteres"));
@@ -1884,6 +2572,7 @@ public class PostulacionService {
                     }
                 }
                 case "tipo_solicitud_permitida", "tipo_solicitud_permitido" -> {
+                    if (!tipoSolicitudActiva) break;
                     Set<String> permitidos = parseListaValores(regla.valor());
                     if (!permitidos.isEmpty() && !permitidos.contains(tipoSolicitudNorm.toLowerCase(Locale.ROOT))) {
                         throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "el tipo de solicitud no está permitido"));
@@ -1896,6 +2585,7 @@ public class PostulacionService {
                     }
                 }
                 case "fecha_evento_no_fin_semana" -> {
+                    if (!fechaEventoActiva) break;
                     if (resolverBooleano(regla.valor(), false) && fechaEvento != null) {
                         java.time.DayOfWeek dow = fechaEvento.getDayOfWeek();
                         if (dow == java.time.DayOfWeek.SATURDAY || dow == java.time.DayOfWeek.SUNDAY) {
@@ -1904,32 +2594,38 @@ public class PostulacionService {
                     }
                 }
                 case "fecha_evento_min_dias" -> {
-                    int min = resolverEnteroNoNegativo(regla);
-                    if (fechaEvento != null) {
-                        if (diasAnticipacion == null) diasAnticipacion = feriadoService.diasNaturalesSinFeriados(hoy, fechaEvento);
-                        if (diasAnticipacion < min) {
-                            throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "la fecha del evento requiere al menos " + min + " días de anticipación"));
+                    if (!fechaEventoActiva) break;
+                    if (!Boolean.FALSE.equals(convocatoria.getDiasMinAnticipacionHabilitado())) {
+                        int min = resolverEnteroNoNegativo(regla);
+                        if (fechaEvento != null) {
+                            if (diasAnticipacion == null) diasAnticipacion = feriadoService.diasNaturalesSinFeriados(hoy, fechaEvento);
+                            if (diasAnticipacion < min) {
+                                throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "la fecha del evento requiere al menos " + min + " días de anticipación"));
+                            }
                         }
                     }
                 }
                 case "fecha_evento_max_dias" -> {
-                    int max = resolverEnteroNoNegativo(regla);
-                    if (fechaEvento != null) {
-                        if (diasAnticipacion == null) diasAnticipacion = feriadoService.diasNaturalesSinFeriados(hoy, fechaEvento);
-                        if (diasAnticipacion > max) {
-                            throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "la fecha del evento no debe superar " + max + " días de anticipación"));
+                    if (!fechaEventoActiva) break;
+                    if (!Boolean.FALSE.equals(convocatoria.getDiasMaxAnticipacionHabilitado())) {
+                        int max = resolverEnteroNoNegativo(regla);
+                        if (fechaEvento != null) {
+                            if (diasAnticipacion == null) diasAnticipacion = feriadoService.diasNaturalesSinFeriados(hoy, fechaEvento);
+                            if (diasAnticipacion > max) {
+                                throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "la fecha del evento no debe superar " + max + " días de anticipación"));
+                            }
                         }
                     }
                 }
                 case "postulacion_fecha_inicio", "fecha_inicio_postulacion", "solicitud_fecha_inicio", "postulacion_desde" -> {
-                    LocalDate fechaInicio = resolverFechaRegla(regla);
-                    if (hoy.isBefore(fechaInicio)) {
+                    LocalDateTime fechaInicio = resolverFechaHoraRegla(regla, false);
+                    if (ahora.isBefore(fechaInicio)) {
                         throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "la recepción de solicitudes inicia el " + fechaInicio));
                     }
                 }
                 case "postulacion_fecha_fin", "fecha_fin_postulacion", "solicitud_fecha_fin", "postulacion_hasta", "limite_solicitud_fecha" -> {
-                    LocalDate fechaFin = resolverFechaRegla(regla);
-                    if (hoy.isAfter(fechaFin)) {
+                    LocalDateTime fechaFin = resolverFechaHoraRegla(regla, true);
+                    if (ahora.isAfter(fechaFin)) {
                         throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "la recepción de solicitudes cerró el " + fechaFin));
                     }
                 }
@@ -2063,6 +2759,39 @@ public class PostulacionService {
         throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "fecha inválida. Usa formato yyyy-MM-dd o dd/MM/yyyy"));
     }
 
+    private LocalDateTime resolverFechaHoraRegla(ReglaConfigurableConvocatoria regla, boolean finDelDia) {
+        String raw = regla != null && regla.valor() != null ? regla.valor().trim() : "";
+        if (raw.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "debe incluir una fecha y hora"));
+        }
+        String normalized = raw.replace(' ', 'T');
+        try {
+            return LocalDateTime.parse(normalized);
+        } catch (Exception ignored) {
+            // Intentar formatos alternos comunes.
+        }
+        try {
+            LocalDate fecha = LocalDate.parse(raw);
+            return finDelDia ? fecha.atTime(23, 59, 59) : fecha.atStartOfDay();
+        } catch (Exception ignored) {
+            // Intentar formato mexicano.
+        }
+        try {
+            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+            return LocalDateTime.parse(raw, fmt);
+        } catch (Exception ignored) {
+            // Intentar fecha mexicana sin hora.
+        }
+        try {
+            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            LocalDate fecha = LocalDate.parse(raw, fmt);
+            return finDelDia ? fecha.atTime(23, 59, 59) : fecha.atStartOfDay();
+        } catch (Exception ignored) {
+            // Continúa con error final.
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, construirMensajeRegla(regla, "fecha/hora inválida. Usa formato yyyy-MM-ddTHH:mm o dd/MM/yyyy HH:mm"));
+    }
+
     private boolean resolverBooleano(Object value, boolean fallback) {
         if (value == null) return fallback;
         String v = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
@@ -2172,6 +2901,52 @@ public class PostulacionService {
                 "modulo_bancaria_activo",
                 "modulo_bancaria",
                 "requiere_bancaria"
+        );
+    }
+
+    private boolean moduloSeguroMedicoActivo(Convocatoria convocatoria) {
+        return resolverModuloActivoConvocatoria(
+                convocatoria,
+                true,
+                "modulo_seguro_medico_activo",
+                "modulo_seguro_medico",
+                "requiere_seguro_medico"
+        );
+    }
+
+    private boolean moduloAceptacionActivo(Convocatoria convocatoria) {
+        return resolverModuloActivoConvocatoria(
+                convocatoria,
+                true,
+                "modulo_aceptacion_activo",
+                "modulo_aceptacion",
+                "requiere_aceptacion"
+        );
+    }
+
+    private boolean moduloConstanciasActivo(Convocatoria convocatoria) {
+        return resolverModuloActivoConvocatoria(
+                convocatoria,
+                true,
+                "modulo_constancias_activo",
+                "modulo_constancias",
+                "requiere_constancias",
+                "modulo_carta_cierre_activo",
+                "modulo_carta_cierre",
+                "requiere_carta_cierre"
+        );
+    }
+
+    private boolean moduloStatusAcademicoActivo(Convocatoria convocatoria) {
+        return resolverModuloActivoConvocatoria(
+                convocatoria,
+                true,
+                "modulo_status_academico_activo",
+                "modulo_status_academico",
+                "requiere_status_academico",
+                "modulo_estatus_academico_activo",
+                "modulo_estatus_academico",
+                "requiere_estatus_academico"
         );
     }
 
@@ -2302,7 +3077,58 @@ public class PostulacionService {
         return value.format(fmt);
     }
 
-    private String normalizarTipoSolicitud(String tipoSolicitud) {
+    private boolean fechaEventoActivo(Convocatoria convocatoria) {
+        return resolverModuloActivoConvocatoria(
+                convocatoria,
+                true,
+                "fecha_evento_activa",
+                "fecha_evento_habilitada",
+                "solicitar_fecha_evento"
+        );
+    }
+
+    private LocalDate normalizarFechaEvento(Convocatoria convocatoria, LocalDate fechaEvento) {
+        return fechaEventoActivo(convocatoria) ? fechaEvento : null;
+    }
+
+    private boolean informacionProyectoActiva(Convocatoria convocatoria) {
+        return resolverModuloActivoConvocatoria(
+                convocatoria,
+                true,
+                "informacion_proyecto_activa",
+                "proyecto_info_activo",
+                "solicitar_informacion_proyecto"
+        );
+    }
+
+    private String normalizarTituloProyecto(Convocatoria convocatoria, String value) {
+        if (!informacionProyectoActiva(convocatoria)) {
+            return null;
+        }
+        return normalizarTextoRequerido(value, "El título del proyecto es obligatorio", 220);
+    }
+
+    private String normalizarDescripcionProyecto(Convocatoria convocatoria, String value) {
+        if (!informacionProyectoActiva(convocatoria)) {
+            return null;
+        }
+        return normalizarTextoRequerido(value, "La descripción del proyecto es obligatoria", 4000);
+    }
+
+    private boolean tipoSolicitudActivo(Convocatoria convocatoria) {
+        return resolverModuloActivoConvocatoria(
+                convocatoria,
+                true,
+                "tipo_solicitud_activo",
+                "tipo_solicitud_habilitado",
+                "solicitar_tipo_solicitud"
+        );
+    }
+
+    private String normalizarTipoSolicitud(Convocatoria convocatoria, String tipoSolicitud) {
+        if (!tipoSolicitudActivo(convocatoria)) {
+            return null;
+        }
         String v = tipoSolicitud != null ? tipoSolicitud.trim().toUpperCase(Locale.ROOT) : "";
         if (!"NACIONAL".equals(v) && !"INTERNACIONAL".equals(v)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El tipo de solicitud debe ser NACIONAL o INTERNACIONAL");
@@ -2350,6 +3176,30 @@ public class PostulacionService {
         throw new ApiException(HttpStatus.BAD_REQUEST, "El estado del recibo debe ser RECIBO_VALIDADO o RECIBO_RECHAZADO");
     }
 
+    private String normalizarEstadoSeguroMedico(String estadoSeguroMedico) {
+        String v = estadoSeguroMedico != null ? estadoSeguroMedico.trim().toUpperCase(Locale.ROOT) : "";
+        if (Set.of("PENDIENTE", "SOLICITADO", "ENTREGADO", "VALIDADO", "NO_APLICA").contains(v)) {
+            return v;
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "El estado de seguro médico debe ser PENDIENTE, SOLICITADO, ENTREGADO, VALIDADO o NO_APLICA");
+    }
+
+    private String normalizarEstadoStatusAcademico(String estadoStatusAcademico) {
+        String v = estadoStatusAcademico != null ? estadoStatusAcademico.trim().toUpperCase(Locale.ROOT) : "";
+        if (Set.of("PENDIENTE", "SOLICITADO", "ACTUALIZADO", "VALIDADO", "OBSERVADO", "NO_APLICA").contains(v)) {
+            return v;
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "El estado académico debe ser PENDIENTE, SOLICITADO, ACTUALIZADO, VALIDADO, OBSERVADO o NO_APLICA");
+    }
+
+    private String normalizarEstadoConstanciaFinal(String estadoConstanciaFinal) {
+        String v = estadoConstanciaFinal != null ? estadoConstanciaFinal.trim().toUpperCase(Locale.ROOT) : "";
+        if (Set.of("PENDIENTE", "EN_PROCESO", "CONSTANCIA_EMITIDA", "CARTA_EMITIDA", "COMPLETO", "NO_APLICA").contains(v)) {
+            return v;
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "El estado de constancias debe ser PENDIENTE, EN_PROCESO, CONSTANCIA_EMITIDA, CARTA_EMITIDA, COMPLETO o NO_APLICA");
+    }
+
     private void validarReciboArchivo(MultipartFile archivo) {
         if (archivo == null || archivo.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Debes adjuntar el recibo de pago");
@@ -2357,9 +3207,7 @@ public class PostulacionService {
         if (!esPdf(archivo)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El recibo de pago debe ser un PDF");
         }
-        if (archivo.getSize() > 8L * 1024L * 1024L) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "El recibo de pago no puede superar 8 MB");
-        }
+        validarLimitePdf(archivo, "postulacion.reciboPago", "El recibo de pago");
     }
 
     private boolean puedeSolicitarRenuncia(Postulacion p) {
@@ -2595,12 +3443,16 @@ public class PostulacionService {
         return limpio;
     }
 
-    private int obtenerPuntajeMaximoEvaluacion(Postulacion p) {
-        if (p == null || p.getConvocatoria() == null || p.getConvocatoria().getPuntajeMaximoEvaluacion() == null) {
+    private Integer obtenerPuntajeMaximoEvaluacion(Postulacion p) {
+        if (p == null || p.getConvocatoria() == null) {
             return 100;
         }
-        Integer max = p.getConvocatoria().getPuntajeMaximoEvaluacion();
-        if (max <= 0) return 100;
+        Convocatoria convocatoria = p.getConvocatoria();
+        if (Boolean.FALSE.equals(convocatoria.getPuntajeMaximoEvaluacionHabilitado())) {
+            return null;
+        }
+        Integer max = convocatoria.getPuntajeMaximoEvaluacion();
+        if (max == null || max <= 0) return 100;
         return max;
     }
 
@@ -2620,20 +3472,31 @@ public class PostulacionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "La convocatoria no está vigente");
         }
         LocalDate hoy = LocalDate.now();
-        if (convocatoria.getFechaApertura() != null && hoy.isBefore(convocatoria.getFechaApertura())) {
+        LocalDateTime ahora = LocalDateTime.now();
+        if (convocatoria.getFechaApertura() != null && ahora.isBefore(convocatoria.getFechaApertura())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "La convocatoria aún no abre");
         }
-        if (convocatoria.getFechaCierre() != null && hoy.isAfter(convocatoria.getFechaCierre())) {
+        if (convocatoria.getFechaCierre() != null && ahora.isAfter(convocatoria.getFechaCierre())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "La convocatoria ya cerró; la solicitud está bloqueada por fechas");
+        }
+        if (!fechaEventoActivo(convocatoria)) {
+            return;
         }
         if (fechaEvento == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "La fecha del evento es obligatoria");
         }
         long diasAnticipacion = feriadoService.diasNaturalesSinFeriados(hoy, fechaEvento);
+        boolean validarMin = !Boolean.FALSE.equals(convocatoria.getDiasMinAnticipacionHabilitado());
+        boolean validarMax = !Boolean.FALSE.equals(convocatoria.getDiasMaxAnticipacionHabilitado());
         int diasMin = convocatoria.getDiasMinAnticipacion() != null ? Math.max(0, convocatoria.getDiasMinAnticipacion()) : 20;
-        int diasMax = convocatoria.getDiasMaxAnticipacion() != null ? Math.max(diasMin, convocatoria.getDiasMaxAnticipacion()) : 60;
-        if (diasAnticipacion < diasMin || diasAnticipacion > diasMax) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "La fecha del evento debe estar entre " + diasMin + " y " + diasMax + " días hábiles (excluyendo feriados configurados) a partir de hoy");
+        int diasMax = convocatoria.getDiasMaxAnticipacion() != null
+                ? (validarMin ? Math.max(diasMin, convocatoria.getDiasMaxAnticipacion()) : Math.max(0, convocatoria.getDiasMaxAnticipacion()))
+                : 60;
+        if (validarMin && diasAnticipacion < diasMin) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "La fecha del evento debe tener al menos " + diasMin + " días hábiles de anticipación (excluyendo feriados configurados)");
+        }
+        if (validarMax && diasAnticipacion > diasMax) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "La fecha del evento no puede exceder " + diasMax + " días hábiles de anticipación (excluyendo feriados configurados)");
         }
     }
 
@@ -2649,6 +3512,18 @@ public class PostulacionService {
         m.put("fechaLimiteCorreccion", p.getFechaLimiteCorreccion() != null ? p.getFechaLimiteCorreccion().toString() : null);
         m.put("descripcionProyecto", p.getDescripcionProyecto());
         m.put("criteriosJson", p.getCriteriosJson());
+        m.put("estadoSeguroMedico", p.getEstadoSeguroMedico());
+        m.put("fechaSeguroMedico", p.getFechaSeguroMedico() != null ? p.getFechaSeguroMedico().toString() : null);
+        m.put("numeroSeguroMedico", p.getNumeroSeguroMedico());
+        m.put("seguroMedicoDocumentoId", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getId() : null);
+        m.put("seguroMedicoNombreArchivo", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getNombreArchivo() : null);
+        m.put("observacionesSeguroMedico", p.getObservacionesSeguroMedico());
+        m.put("estadoStatusAcademico", p.getEstadoStatusAcademico());
+        m.put("fechaStatusAcademico", p.getFechaStatusAcademico() != null ? p.getFechaStatusAcademico().toString() : null);
+        m.put("observacionesStatusAcademico", p.getObservacionesStatusAcademico());
+        m.put("informacionStatusAcademico", p.getInformacionStatusAcademico());
+        m.put("statusAcademicoDocumentoId", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getId() : null);
+        m.put("statusAcademicoNombreArchivo", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getNombreArchivo() : null);
         m.put("curriculumDocumentoId", p.getCurriculumDocumento() != null ? p.getCurriculumDocumento().getId() : null);
         m.put("curriculumNombreArchivo", p.getCurriculumDocumento() != null ? p.getCurriculumDocumento().getNombreArchivo() : null);
         m.put("documentosAdjuntos", listarDocumentosAdjuntos(p.getId()));
@@ -2667,3 +3542,37 @@ public class PostulacionService {
                 .toList();
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

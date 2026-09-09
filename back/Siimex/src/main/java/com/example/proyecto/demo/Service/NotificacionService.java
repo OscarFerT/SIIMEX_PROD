@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -45,19 +46,25 @@ public class NotificacionService {
 
     public List<Map<String, Object>> listarUsuario(Long authUserId) {
         return notificacionRepo.findByAuthUserId(authUserId).stream()
+                .filter(this::esNotificacionUsuarioVisible)
                 .map(this::toMap)
                 .toList();
     }
 
     public List<Map<String, Object>> listarUsuarioRecientes(Long authUserId, Integer limit) {
         int size = sanitizeLimit(limit);
-        return notificacionRepo.findByAuthUserId(authUserId, PageRequest.of(0, size)).stream()
+        return notificacionRepo.findByAuthUserId(authUserId).stream()
+                .filter(this::esNotificacionUsuarioVisible)
+                .limit(size)
                 .map(this::toMap)
                 .toList();
     }
 
     public long contarNoLeidas(Long authUserId) {
-        return notificacionRepo.countNoLeidasByAuthUserId(authUserId);
+        return notificacionRepo.findByAuthUserId(authUserId).stream()
+                .filter(this::esNotificacionUsuarioVisible)
+                .filter(n -> !n.isLeida())
+                .count();
     }
 
     public List<Map<String, Object>> listarAdmin(Long authUserId) {
@@ -93,6 +100,23 @@ public class NotificacionService {
     @Transactional
     public void marcarTodasLeidasAdmin(Long authUserId) {
         notificacionRepo.marcarTodasLeidasAdmin(authUserId);
+    }
+
+    private boolean esNotificacionUsuarioVisible(Notificacion n) {
+        if (n == null || n.getTipo() == null) return false;
+        if (n.getTipo() == TipoNotificacion.POSTULACION_ACEPTADA) return true;
+        if (n.getTipo() != TipoNotificacion.SISTEMA) return false;
+        String titulo = n.getTitulo() != null ? n.getTitulo().toLowerCase(Locale.ROOT) : "";
+        String mensaje = n.getMensaje() != null ? n.getMensaje().toLowerCase(Locale.ROOT) : "";
+        return titulo.contains("observaciones")
+                || titulo.contains("correcciones")
+                || titulo.contains("constancia")
+                || titulo.contains("carta de cierre")
+                || titulo.contains("oficio")
+                || titulo.contains("nombramiento")
+                || mensaje.contains("disponible para descarga")
+                || mensaje.contains("requiere correcciones")
+                || mensaje.contains("observaciones");
     }
 
     private Map<String, Object> toMap(Notificacion n) {

@@ -1099,3 +1099,46 @@ app-root {
     transition-duration: 0.01ms !important;
   }
 }
+/* ============================================
+   MODAL OVERLAY GLOBAL FIX
+   Evita que footer e indicador de scroll se encimen sobre modales.
+   ============================================ */
+body.modal-open app-footer,
+body.modal-open .site-footer,
+body.swal2-shown app-footer,
+body.swal2-shown .site-footer,
+body:has(.modal.show) app-footer,
+body:has(.modal.show) .site-footer,
+body:has(.swal2-container) app-footer,
+body:has(.swal2-container) .site-footer {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body.modal-open app-scroll-indicator,
+body.modal-open .scroll-indicator,
+body.swal2-shown app-scroll-indicator,
+body.swal2-shown .scroll-indicator,
+body:has(.modal.show) app-scroll-indicator,
+body:has(.modal.show) .scroll-indicator,
+body:has(.swal2-container) app-scroll-indicator,
+body:has(.swal2-container) .scroll-indicator {
+  display: none !important;
+}
+
+body .modal.show {
+  z-index: 200000 !important;
+}
+
+body > .modal-backdrop.show {
+  z-index: 199999 !important;
+}
+
+body .modal.show .modal-backdrop {
+  z-index: 200001 !important;
+}
+
+body .modal.show .modal-dialog {
+  position: relative !important;
+  z-index: 200002 !important;
+}

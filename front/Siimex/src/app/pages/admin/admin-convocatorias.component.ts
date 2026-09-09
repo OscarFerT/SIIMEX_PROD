@@ -20,8 +20,13 @@ export interface CriterioFormulario {
   etiqueta: string;
   tipo: 'texto' | 'numero' | 'select' | 'checkbox' | 'textarea';
   opciones?: string[];
+  minimo?: number | null;
   peso: number;
   requerido: boolean;
+}
+
+interface CriterioSugerido extends CriterioFormulario {
+  descripcion: string;
 }
 
 export interface ReglaConfigurable {
@@ -35,6 +40,7 @@ export interface FormatoConvocatoria {
   convocatoriaId?: number;
   nombre: string;
   descripcion?: string | null;
+  uso?: string | null;
   nombreArchivo: string;
   contentType?: string | null;
   sizeBytes?: number | null;
@@ -45,6 +51,7 @@ interface FormatoPendiente {
   file: File;
   nombre: string;
   descripcion: string;
+  uso: 'SOLICITUD' | 'ACEPTACION' | 'CONSTANCIA' | 'CARTA_CIERRE';
 }
 
 interface ResumenReglaOperativaItem {
@@ -83,12 +90,16 @@ export interface Convocatoria {
   tiposApoyo?: string | null;
   reglasConfigurables?: string | null;
   puntajeMaximoEvaluacion?: number | null;
+  puntajeMaximoEvaluacionHabilitado?: boolean | null;
   diasMinAnticipacion?: number | null;
+  diasMinAnticipacionHabilitado?: boolean | null;
   diasMaxAnticipacion?: number | null;
+  diasMaxAnticipacionHabilitado?: boolean | null;
   avisoPrivacidadObligatorio?: boolean;
   avisoPrivacidadTexto?: string | null;
   avisoPrivacidadUrl?: string | null;
   limiteAceptados?: number | null;
+  limiteAceptadosHabilitado?: boolean | null;
   diasNaturalesVigencia?: number | null;
   feriadosEnVigencia?: number | null;
   diasSinFeriadosVigencia?: number | null;
@@ -144,6 +155,36 @@ export class AdminConvocatoriasComponent implements OnInit {
     { value: 'checkbox', label: 'Casilla de verificación' }
   ];
 
+  readonly CRITERIOS_SIIMEX_PRESET: CriterioSugerido[] = [
+    { clave: 'grado_academico', etiqueta: 'Grado académico', tipo: 'select', opciones: ['Licenciatura', 'Maestría', 'Doctorado'], peso: 25, requerido: true, descripcion: 'Compara contra la trayectoria académica registrada en el perfil.' },
+    { clave: 'area_conocimiento', etiqueta: 'Área de conocimiento', tipo: 'select', opciones: ['Energías', 'Educación', 'Tecnología', 'Salud', 'Medio ambiente'], peso: 25, requerido: true, descripcion: 'Compara contra el área principal capturada en el perfil completo.' },
+    { clave: 'tipo_perfil', etiqueta: 'Tipo de perfil', tipo: 'select', opciones: ['INVESTIGADOR', 'INNOVADOR', 'HIBRIDO'], peso: 20, requerido: true, descripcion: 'Usa el perfil definido al crear la cuenta.' },
+    { clave: 'anios_experiencia', etiqueta: 'Años de experiencia', tipo: 'numero', minimo: 1, peso: 15, requerido: false, descripcion: 'Valida experiencia profesional acumulada; ajusta el mínimo si aplica.' },
+    { clave: 'idiomas', etiqueta: 'Idiomas registrados', tipo: 'select', opciones: ['Inglés', 'Francés', 'Alemán', 'Portugués', 'Italiano'], peso: 15, requerido: false, descripcion: 'Compara contra los idiomas guardados en Dominio de idiomas.' },
+    { clave: 'estatus_academico', etiqueta: 'Estatus académico', tipo: 'select', opciones: ['Titulado', 'En curso', 'Concluido', 'Pasante'], peso: 8, requerido: false, descripcion: 'Valida el estatus capturado en trayectoria académica.' },
+    { clave: 'cedula_profesional', etiqueta: 'Cédula profesional registrada', tipo: 'checkbox', opciones: ['SI'], peso: 5, requerido: false, descripcion: 'Identifica si existe cédula profesional en el perfil académico.' },
+    { clave: 'perfil_snii', etiqueta: 'Perfil SNII', tipo: 'checkbox', opciones: ['SI'], peso: 8, requerido: false, descripcion: 'Valida si la trayectoria académica marca perfil SNII.' },
+    { clave: 'disciplina', etiqueta: 'Disciplina SECIHTI', tipo: 'texto', opciones: ['Ciencias de la educación', 'Ingeniería', 'Biotecnología', 'Energías renovables', 'Medio ambiente'], peso: 10, requerido: false, descripcion: 'Permite buscar coincidencia por disciplina o campo específico.' },
+    { clave: 'experiencia_actual', etiqueta: 'Experiencia laboral vigente', tipo: 'checkbox', opciones: ['SI'], peso: 6, requerido: false, descripcion: 'Confirma si la persona tiene trayectoria profesional actual.' },
+    { clave: 'institucion_adscripcion', etiqueta: 'Institución de adscripción', tipo: 'texto', opciones: ['Universidad', 'Tecnológico', 'Centro de investigación', 'Instituto'], peso: 8, requerido: false, descripcion: 'Compara nombre, tipo, municipio o entidad de la institución registrada.' },
+    { clave: 'tipo_institucion', etiqueta: 'Tipo de institución', tipo: 'select', opciones: ['Pública', 'Privada', 'Centro de investigación', 'Institución educativa'], peso: 6, requerido: false, descripcion: 'Valida el tipo de institución de adscripción.' },
+    { clave: 'idiomas_count', etiqueta: 'Cantidad mínima de idiomas', tipo: 'numero', minimo: 1, peso: 5, requerido: false, descripcion: 'Valida que exista al menos cierto número de idiomas registrados.' },
+    { clave: 'idioma_certificado', etiqueta: 'Idioma certificado', tipo: 'checkbox', opciones: ['SI'], peso: 7, requerido: false, descripcion: 'Valida si existe al menos un idioma con certificación.' },
+    { clave: 'cursos_count', etiqueta: 'Cursos o capacitaciones', tipo: 'numero', minimo: 1, peso: 6, requerido: false, descripcion: 'Cuenta cursos/capacitaciones registrados en desarrollo y formación.' },
+    { clave: 'horas_cursos', etiqueta: 'Horas de capacitación', tipo: 'numero', minimo: 20, peso: 6, requerido: false, descripcion: 'Suma horas totales de cursos registrados.' },
+    { clave: 'articulos_count', etiqueta: 'Artículos publicados', tipo: 'numero', minimo: 1, peso: 10, requerido: false, descripcion: 'Cuenta artículos registrados en producción académica.' },
+    { clave: 'articulos', etiqueta: 'Eje o tipo de artículo', tipo: 'texto', opciones: ['Investigación', 'Innovación', 'Desarrollo tecnológico', 'Educación', 'Salud', 'Energía'], peso: 6, requerido: false, descripcion: 'Busca coincidencias en título, revista, eje, tipo u objetivo del artículo.' },
+    { clave: 'congresos_count', etiqueta: 'Participación en congresos', tipo: 'numero', minimo: 1, peso: 6, requerido: false, descripcion: 'Cuenta participaciones en congresos registradas.' },
+    { clave: 'divulgacion_count', etiqueta: 'Actividades de divulgación', tipo: 'numero', minimo: 1, peso: 6, requerido: false, descripcion: 'Cuenta actividades de divulgación registradas.' },
+    { clave: 'estancias_count', etiqueta: 'Estancias académicas/profesionales', tipo: 'numero', minimo: 1, peso: 6, requerido: false, descripcion: 'Cuenta estancias registradas.' },
+    { clave: 'herramientas', etiqueta: 'Herramientas o habilidades técnicas', tipo: 'texto', opciones: ['Python', 'R', 'SPSS', 'Excel', 'GIS', 'MATLAB'], peso: 6, requerido: false, descripcion: 'Busca coincidencias en herramientas registradas por la persona.' },
+    { clave: 'logros_count', etiqueta: 'Logros o reconocimientos', tipo: 'numero', minimo: 1, peso: 5, requerido: false, descripcion: 'Cuenta logros registrados.' },
+    { clave: 'propiedad_intelectual_count', etiqueta: 'Propiedad intelectual', tipo: 'numero', minimo: 1, peso: 8, requerido: false, descripcion: 'Cuenta patentes, registros u otros elementos de propiedad intelectual.' },
+    { clave: 'incidencia_social_count', etiqueta: 'Incidencia social', tipo: 'numero', minimo: 1, peso: 8, requerido: false, descripcion: 'Cuenta proyectos o actividades de incidencia social.' },
+    { clave: 'intereses_habilidades', etiqueta: 'Intereses y habilidades', tipo: 'texto', opciones: ['Investigación', 'Innovación', 'Desarrollo tecnológico', 'Transferencia tecnológica'], peso: 5, requerido: false, descripcion: 'Busca coincidencias en intereses, habilidades y nivel declarados.' }
+  ];
+  readonly CRITERIOS_SIIMEX_RECOMENDADOS = ['grado_academico', 'area_conocimiento', 'tipo_perfil', 'anios_experiencia', 'idiomas'];
+
   readonly INFORMES_REQUERIDOS_OPTIONS = [
     { value: 'NINGUNO', label: 'Ninguno' },
     { value: 'PARCIAL', label: 'Solo parcial' },
@@ -158,7 +199,6 @@ export class AdminConvocatoriasComponent implements OnInit {
     { value: 'REVISADA', label: 'Revisada' },
     { value: 'ACEPTADA', label: 'Aceptada' }
   ];
-
   readonly MODULOS_CONVOCATORIA_OPTIONS: ModuloConvocatoriaOption[] = [
     {
       control: 'reglaModuloEvaluadores',
@@ -195,13 +235,40 @@ export class AdminConvocatoriasComponent implements OnInit {
       regla: 'modulo_renuncia_activo',
       etiqueta: 'Módulo de renuncia',
       descripcion: 'Permite solicitudes y resolución de renuncia.'
+    },
+    {
+      control: 'reglaModuloSeguroMedico',
+      regla: 'modulo_seguro_medico_activo',
+      etiqueta: 'Módulo de seguro médico',
+      descripcion: 'Habilita seguimiento y documentos relacionados con seguro médico.'
+    },
+    {
+      control: 'reglaModuloAceptacion',
+      regla: 'modulo_aceptacion_activo',
+      etiqueta: 'Módulo de aceptación',
+      descripcion: 'Envía correo de aceptación y permite adjuntar documento de aceptación.'
+    },
+    {
+      control: 'reglaModuloConstancias',
+      regla: 'modulo_constancias_activo',
+      etiqueta: 'Módulo de constancias y cierre final',
+      descripcion: 'Habilita carta de cierre y constancias cuando la persona finaliza.'
+    },
+    {
+      control: 'reglaModuloStatusAcademico',
+      regla: 'modulo_status_academico_activo',
+      etiqueta: 'Módulo de actualización de estatus académico',
+      descripcion: 'Solicita o actualiza el estatus académico de la persona beneficiaria.'
     }
   ];
 
   readonly REGLAS_BASE_PRESET: ReglaConfigurable[] = [
-    { clave: 'postulacion_fecha_inicio', valor: '2026-01-01', descripcion: 'Fecha de inicio para recepción de solicitudes (yyyy-MM-dd)' },
-    { clave: 'postulacion_fecha_fin', valor: '2026-12-31', descripcion: 'Fecha de cierre para recepción de solicitudes (yyyy-MM-dd)' },
+    { clave: 'postulacion_fecha_inicio', valor: '2026-01-01T00:00', descripcion: 'Fecha y hora de inicio para recepción de solicitudes (yyyy-MM-ddTHH:mm)' },
+    { clave: 'postulacion_fecha_fin', valor: '2026-12-31T23:59', descripcion: 'Fecha y hora de cierre para recepción de solicitudes (yyyy-MM-ddTHH:mm)' },
     { clave: 'postulacion_estados_editables', valor: 'PENDIENTE,CON_OBSERVACIONES', descripcion: 'Estados donde la persona puede editar su solicitud' },
+    { clave: 'tipo_solicitud_activo', valor: 'true', descripcion: 'Solicita Nacional o Internacional en la postulación' },
+    { clave: 'fecha_evento_activa', valor: 'true', descripcion: 'Solicita fecha del evento en la postulación' },
+    { clave: 'informacion_proyecto_activa', valor: 'true', descripcion: 'Solicita título y descripción del proyecto' },
     { clave: 'plazo_correccion_horas_default', valor: '120', descripcion: 'Horas por defecto para corregir observaciones' },
     { clave: 'plazo_correccion_horas_min', valor: '24', descripcion: 'Horas mínimas permitidas para corrección' },
     { clave: 'plazo_correccion_horas_max', valor: '720', descripcion: 'Horas máximas permitidas para corrección' },
@@ -212,6 +279,10 @@ export class AdminConvocatoriasComponent implements OnInit {
     { clave: 'modulo_informes_activo', valor: 'true', descripcion: 'Activa módulo de informes' },
     { clave: 'modulo_bancaria_activo', valor: 'true', descripcion: 'Activa módulo bancario' },
     { clave: 'modulo_renuncia_activo', valor: 'true', descripcion: 'Activa módulo de renuncia' },
+    { clave: 'modulo_seguro_medico_activo', valor: 'true', descripcion: 'Activa módulo de seguro médico' },
+    { clave: 'modulo_aceptacion_activo', valor: 'true', descripcion: 'Activa módulo de aceptación' },
+    { clave: 'modulo_constancias_activo', valor: 'true', descripcion: 'Activa módulo de constancias y cierre final' },
+    { clave: 'modulo_status_academico_activo', valor: 'true', descripcion: 'Activa módulo de actualización de estatus académico' },
     { clave: 'requerir_cedula', valor: 'true', descripcion: 'Exige cédula profesional' },
     { clave: 'requerir_curp', valor: 'true', descripcion: 'Exige CURP válida' },
     { clave: 'requerir_telefono', valor: 'true', descripcion: 'Exige teléfono de contacto' },
@@ -223,8 +294,7 @@ export class AdminConvocatoriasComponent implements OnInit {
     { clave: 'tipo_solicitud_permitida', valor: 'NACIONAL,INTERNACIONAL', descripcion: 'Tipos de solicitud permitidos' },
     { clave: 'observaciones_max_chars', valor: '500', descripcion: 'Máximo de caracteres en observaciones' }
   ];
-
-  readonly ICONOS_DISPONIBLES = [
+readonly ICONOS_DISPONIBLES = [
     { label: 'Tecnología', url: 'assets/img/devops.png' },
     { label: 'Energías', url: 'assets/img/solar-energy.png' },
     { label: 'Educación', url: 'assets/img/creative-education.png' },
@@ -247,12 +317,17 @@ export class AdminConvocatoriasComponent implements OnInit {
       fechaApertura: [''],
       fechaCierre: ['', Validators.required],
       area: [''],
+      areaOtro: ['', [Validators.maxLength(120)]],
       folioConvocatoria: ['', [Validators.maxLength(40)]],
       folioPrefijo: ['', [Validators.maxLength(30)]],
       keywords: ['', [Validators.maxLength(300)]],
+      limiteAceptadosHabilitado: [false],
       limiteAceptados: [''],
+      puntajeMaximoEvaluacionHabilitado: [true],
       puntajeMaximoEvaluacion: [100, [Validators.min(1)]],
+      diasMinAnticipacionHabilitado: [true],
       diasMinAnticipacion: [20, [Validators.min(0)]],
+      diasMaxAnticipacionHabilitado: [true],
       diasMaxAnticipacion: [60, [Validators.min(0)]],
       avisoPrivacidadObligatorio: [false],
       avisoPrivacidadTexto: [''],
@@ -268,17 +343,25 @@ export class AdminConvocatoriasComponent implements OnInit {
       reglaPlazoCorreccionHorasMin: [24, [Validators.min(1), Validators.max(720)]],
       reglaPlazoCorreccionHorasMax: [720, [Validators.min(1), Validators.max(720)]],
       reglaEstadosEditables: [['PENDIENTE', 'CON_OBSERVACIONES']],
+      reglaTipoSolicitudActivo: [true],
+      reglaFechaEventoActiva: [true],
+      reglaProyectoInfoActivo: [true],
       reglaModuloEvaluadores: [true],
       reglaModuloComite: [true],
       reglaModuloCotejo: [true],
       reglaModuloInformes: [true],
       reglaModuloBancaria: [true],
-      reglaModuloRenuncia: [true]
+      reglaModuloRenuncia: [true],
+      reglaModuloSeguroMedico: [true],
+      reglaModuloAceptacion: [true],
+      reglaModuloConstancias: [true],
+      reglaModuloStatusAcademico: [true]
     });
     this.criteriosArray = this.fb.array([]);
     this.formModal.addControl('criterios', this.criteriosArray);
     this.requisitosDocsArray = this.fb.array([]);
     this.formModal.addControl('requisitosDocumentos', this.requisitosDocsArray);
+    this.inicializarChecksParametros();
     this.tiposApoyoArray = this.fb.array([]);
     this.formModal.addControl('tiposApoyo', this.tiposApoyoArray);
     this.reglasArray = this.fb.array([]);
@@ -435,7 +518,7 @@ export class AdminConvocatoriasComponent implements OnInit {
   }
 
   private inyectarReglasGuiadas(reglasLibres: ReglaConfigurable[]): ReglaConfigurable[] {
-    const v = this.formModal.value || {};
+    const v = this.formModal.getRawValue() || {};
     const out: ReglaConfigurable[] = [...(reglasLibres || [])];
 
     const upsert = (clave: string, valor: string | number | null | undefined, descripcion: string) => {
@@ -455,17 +538,26 @@ export class AdminConvocatoriasComponent implements OnInit {
       ? v.reglaEstadosEditables.map((x: string) => (x || '').trim()).filter(Boolean)
       : [];
     upsert('postulacion_estados_editables', estados.join(','), 'Estados donde la persona puede editar su solicitud');
+    upsert('tipo_solicitud_activo', v.reglaTipoSolicitudActivo ? 'true' : 'false', 'Solicita Nacional o Internacional en la postulación');
+    upsert('fecha_evento_activa', v.reglaFechaEventoActiva ? 'true' : 'false', 'Solicita fecha del evento en la postulación');
+    upsert('informacion_proyecto_activa', v.reglaProyectoInfoActivo ? 'true' : 'false', 'Solicita título y descripción del proyecto');
     upsert('plazo_correccion_horas_default', v.reglaPlazoCorreccionHorasDefault, 'Horas por defecto para corregir observaciones');
     upsert('plazo_correccion_horas_min', v.reglaPlazoCorreccionHorasMin, 'Horas mínimas permitidas para corrección');
     upsert('plazo_correccion_horas_max', v.reglaPlazoCorreccionHorasMax, 'Horas máximas permitidas para corrección');
-    upsert('postulacion_fecha_inicio', v.reglaPostulacionFechaInicio, 'Fecha de inicio para recepción de solicitudes (yyyy-MM-dd)');
-    upsert('postulacion_fecha_fin', v.reglaPostulacionFechaFin, 'Fecha de cierre para recepción de solicitudes (yyyy-MM-dd)');
+    upsert('postulacion_fecha_inicio', this.toDatetimeLocalValue(v.reglaPostulacionFechaInicio), 'Fecha y hora de inicio para recepción de solicitudes (yyyy-MM-ddTHH:mm)');
+    upsert('postulacion_fecha_fin', this.toDatetimeLocalValue(v.reglaPostulacionFechaFin), 'Fecha y hora de cierre para recepción de solicitudes (yyyy-MM-ddTHH:mm)');
+    upsert('fecha_evento_min_dias', v.diasMinAnticipacionHabilitado ? v.diasMinAnticipacion : null, 'Anticipación mínima para fecha de evento (días)');
+    upsert('fecha_evento_max_dias', v.diasMaxAnticipacionHabilitado ? v.diasMaxAnticipacion : null, 'Anticipación máxima para fecha de evento (días)');
     const moduloEvaluadores = !!v.reglaModuloEvaluadores;
     const moduloComite = !!v.reglaModuloComite;
     const moduloCotejo = !!v.reglaModuloCotejo;
     const moduloInformes = !!v.reglaModuloInformes;
     const moduloBancaria = !!v.reglaModuloBancaria;
     const moduloRenuncia = !!v.reglaModuloRenuncia;
+    const moduloSeguroMedico = !!v.reglaModuloSeguroMedico;
+    const moduloAceptacion = !!v.reglaModuloAceptacion;
+    const moduloConstancias = !!v.reglaModuloConstancias;
+    const moduloStatusAcademico = !!v.reglaModuloStatusAcademico;
 
     upsert('modulo_evaluadores_activo', moduloEvaluadores ? 'true' : 'false', 'Activa módulo de evaluadores');
     upsert('modulo_comite_activo', moduloComite ? 'true' : 'false', 'Activa módulo de comité');
@@ -473,6 +565,10 @@ export class AdminConvocatoriasComponent implements OnInit {
     upsert('modulo_informes_activo', moduloInformes ? 'true' : 'false', 'Activa módulo de informes');
     upsert('modulo_bancaria_activo', moduloBancaria ? 'true' : 'false', 'Activa módulo bancario');
     upsert('modulo_renuncia_activo', moduloRenuncia ? 'true' : 'false', 'Activa módulo de renuncia');
+    upsert('modulo_seguro_medico_activo', moduloSeguroMedico ? 'true' : 'false', 'Activa módulo de seguro médico');
+    upsert('modulo_aceptacion_activo', moduloAceptacion ? 'true' : 'false', 'Activa módulo de aceptación');
+    upsert('modulo_constancias_activo', moduloConstancias ? 'true' : 'false', 'Activa módulo de constancias y cierre final');
+    upsert('modulo_status_academico_activo', moduloStatusAcademico ? 'true' : 'false', 'Activa módulo de actualización de estatus académico');
     upsert('informes_requeridos', moduloInformes ? v.reglaInformesRequeridos : 'NINGUNO', 'Tipo de informes: NINGUNO, PARCIAL, FINAL o AMBOS');
 
     const vistos = new Set<string>();
@@ -491,10 +587,10 @@ export class AdminConvocatoriasComponent implements OnInit {
     if (!clave) return false;
     switch (clave) {
       case 'postulacion_fecha_inicio':
-        this.formModal.patchValue({ reglaPostulacionFechaInicio: valor || '' }, { emitEvent: false });
+        this.formModal.patchValue({ reglaPostulacionFechaInicio: this.toDatetimeLocalValue(valor) }, { emitEvent: false });
         return true;
       case 'postulacion_fecha_fin':
-        this.formModal.patchValue({ reglaPostulacionFechaFin: valor || '' }, { emitEvent: false });
+        this.formModal.patchValue({ reglaPostulacionFechaFin: this.toDatetimeLocalValue(valor, true) }, { emitEvent: false });
         return true;
       case 'informes_requeridos': {
         const tipo = ['NINGUNO', 'PARCIAL', 'FINAL', 'AMBOS'].includes(valor.toUpperCase()) ? valor.toUpperCase() : 'AMBOS';
@@ -518,6 +614,21 @@ export class AdminConvocatoriasComponent implements OnInit {
         this.formModal.patchValue({ reglaEstadosEditables: arr.length ? arr : ['PENDIENTE', 'CON_OBSERVACIONES'] }, { emitEvent: false });
         return true;
       }
+      case 'tipo_solicitud_activo':
+      case 'tipo_solicitud_habilitado':
+      case 'solicitar_tipo_solicitud':
+        this.formModal.patchValue({ reglaTipoSolicitudActivo: this.resolverBooleanoRegla(valor, true) }, { emitEvent: false });
+        return true;
+      case 'fecha_evento_activa':
+      case 'fecha_evento_habilitada':
+      case 'solicitar_fecha_evento':
+        this.formModal.patchValue({ reglaFechaEventoActiva: this.resolverBooleanoRegla(valor, true) }, { emitEvent: false });
+        return true;
+      case 'informacion_proyecto_activa':
+      case 'proyecto_info_activo':
+      case 'solicitar_informacion_proyecto':
+        this.formModal.patchValue({ reglaProyectoInfoActivo: this.resolverBooleanoRegla(valor, true) }, { emitEvent: false });
+        return true;
       case 'modulo_evaluadores_activo':
       case 'modulo_evaluadores':
       case 'requiere_evaluadores':
@@ -546,13 +657,39 @@ export class AdminConvocatoriasComponent implements OnInit {
       case 'modulo_renuncia_activo':
       case 'modulo_renuncia':
       case 'permite_renuncia':
+      case 'requiere_renuncia':
         this.formModal.patchValue({ reglaModuloRenuncia: this.resolverBooleanoRegla(valor, true) }, { emitEvent: false });
+        return true;
+      case 'modulo_seguro_medico_activo':
+      case 'modulo_seguro_medico':
+      case 'requiere_seguro_medico':
+        this.formModal.patchValue({ reglaModuloSeguroMedico: this.resolverBooleanoRegla(valor, true) }, { emitEvent: false });
+        return true;
+      case 'modulo_aceptacion_activo':
+      case 'modulo_aceptacion':
+      case 'requiere_aceptacion':
+        this.formModal.patchValue({ reglaModuloAceptacion: this.resolverBooleanoRegla(valor, true) }, { emitEvent: false });
+        return true;
+      case 'modulo_constancias_activo':
+      case 'modulo_constancias':
+      case 'requiere_constancias':
+      case 'modulo_carta_cierre_activo':
+      case 'modulo_carta_cierre':
+      case 'requiere_carta_cierre':
+        this.formModal.patchValue({ reglaModuloConstancias: this.resolverBooleanoRegla(valor, true) }, { emitEvent: false });
+        return true;
+      case 'modulo_status_academico_activo':
+      case 'modulo_status_academico':
+      case 'requiere_status_academico':
+      case 'modulo_estatus_academico_activo':
+      case 'modulo_estatus_academico':
+      case 'requiere_estatus_academico':
+        this.formModal.patchValue({ reglaModuloStatusAcademico: this.resolverBooleanoRegla(valor, true) }, { emitEvent: false });
         return true;
       default:
         return false;
     }
   }
-
   private esReglaGuiada(clave: string): boolean {
     const k = this.normalizarClaveRegla(clave);
     return [
@@ -563,21 +700,51 @@ export class AdminConvocatoriasComponent implements OnInit {
       'plazo_correccion_horas_min',
       'plazo_correccion_horas_max',
       'postulacion_estados_editables',
+      'tipo_solicitud_activo',
+      'tipo_solicitud_habilitado',
+      'solicitar_tipo_solicitud',
+      'fecha_evento_activa',
+      'fecha_evento_habilitada',
+      'solicitar_fecha_evento',
+      'informacion_proyecto_activa',
+      'proyecto_info_activo',
+      'solicitar_informacion_proyecto',
+      'fecha_evento_min_dias',
+      'fecha_evento_max_dias',
       'modulo_evaluadores_activo',
       'modulo_comite_activo',
       'modulo_cotejo_activo',
       'modulo_informes_activo',
       'modulo_bancaria_activo',
       'modulo_renuncia_activo',
+      'modulo_seguro_medico_activo',
+      'modulo_aceptacion_activo',
+      'modulo_constancias_activo',
+      'modulo_status_academico_activo',
+      'modulo_estatus_academico_activo',
+      'modulo_carta_cierre_activo',
       'modulo_evaluadores',
       'modulo_comite',
       'modulo_cotejo',
       'modulo_informes',
       'modulo_bancaria',
       'modulo_renuncia',
+      'modulo_seguro_medico',
+      'modulo_aceptacion',
+      'modulo_constancias',
+      'modulo_status_academico',
+      'modulo_estatus_academico',
+      'modulo_carta_cierre',
       'requiere_evaluadores',
       'requiere_comite',
       'requiere_cotejo',
+      'requiere_renuncia',
+      'requiere_seguro_medico',
+      'requiere_aceptacion',
+      'requiere_constancias',
+      'requiere_status_academico',
+      'requiere_estatus_academico',
+      'requiere_carta_cierre',
       'requiere_informes',
       'requiere_bancaria',
       'permite_renuncia'
@@ -593,6 +760,24 @@ export class AdminConvocatoriasComponent implements OnInit {
     return Number.isFinite(n) ? n : fallback;
   }
 
+  estadoEditableSeleccionado(value: string): boolean {
+    const estados = this.formModal.get('reglaEstadosEditables')?.value;
+    return Array.isArray(estados) && estados.includes(value);
+  }
+
+  toggleEstadoEditable(value: string): void {
+    const control = this.formModal.get('reglaEstadosEditables');
+    if (!control) return;
+
+    const actuales = Array.isArray(control.value) ? [...control.value] : [];
+    const next = actuales.includes(value)
+      ? actuales.filter((estado) => estado !== value)
+      : [...actuales, value];
+
+    control.setValue(next);
+    control.markAsDirty();
+    control.markAsTouched();
+  }
   private resolverBooleanoRegla(value: unknown, fallback: boolean): boolean {
     if (value == null) return fallback;
     const v = String(value).trim().toLowerCase();
@@ -604,13 +789,16 @@ export class AdminConvocatoriasComponent implements OnInit {
 
   get resumenReglasOperativas(): ResumenReglaOperativaItem[] {
     const v = this.formModal?.value || {};
-    const inicio = (v.reglaPostulacionFechaInicio || '').trim();
-    const fin = (v.reglaPostulacionFechaFin || '').trim();
+    const inicio = this.toDatetimeLocalValue(v.reglaPostulacionFechaInicio);
+    const fin = this.toDatetimeLocalValue(v.reglaPostulacionFechaFin, true);
     const informes = (v.reglaInformesRequeridos || 'AMBOS').toString().toUpperCase();
     const pDef = Number(v.reglaPlazoCorreccionHorasDefault);
     const pMin = Number(v.reglaPlazoCorreccionHorasMin);
     const pMax = Number(v.reglaPlazoCorreccionHorasMax);
     const estados = Array.isArray(v.reglaEstadosEditables) ? v.reglaEstadosEditables : [];
+    const tipoSolicitudActivo = v.reglaTipoSolicitudActivo !== false;
+    const fechaEventoActiva = v.reglaFechaEventoActiva !== false;
+    const proyectoInfoActivo = v.reglaProyectoInfoActivo !== false;
     const modulos = this.MODULOS_CONVOCATORIA_OPTIONS.map((m) => ({
       ...m,
       activo: !!v[m.control]
@@ -648,6 +836,21 @@ export class AdminConvocatoriasComponent implements OnInit {
         estado: estadosOk ? 'ok' : 'warn'
       },
       {
+        etiqueta: 'Tipo de solicitud',
+        valor: tipoSolicitudActivo ? 'Solicitado' : 'No solicitado',
+        estado: 'ok'
+      },
+      {
+        etiqueta: 'Fecha del evento',
+        valor: fechaEventoActiva ? 'Solicitada' : 'No solicitada',
+        estado: 'ok'
+      },
+      {
+        etiqueta: 'Información del proyecto',
+        valor: proyectoInfoActivo ? 'Solicitada' : 'No solicitada',
+        estado: 'ok'
+      },
+      {
         etiqueta: 'Módulos activos',
         valor: modulosActivos.length ? modulosActivos.map((m) => m.etiqueta).join(', ') : 'Ninguno seleccionado',
         estado: modulosActivos.length ? 'ok' : 'warn'
@@ -672,8 +875,8 @@ export class AdminConvocatoriasComponent implements OnInit {
 
     let inicio = inicioOriginal;
     let fin = finOriginal;
-    if (!inicio && v.fechaApertura) inicio = String(v.fechaApertura).slice(0, 10);
-    if (!fin && v.fechaCierre) fin = String(v.fechaCierre).slice(0, 10);
+    if (!inicio && v.fechaApertura) inicio = this.toDatetimeLocalValue(v.fechaApertura);
+    if (!fin && v.fechaCierre) fin = this.toDatetimeLocalValue(v.fechaCierre, true);
     if (inicio && fin && inicio > fin) {
       const tmp = inicio;
       inicio = fin;
@@ -831,14 +1034,53 @@ export class AdminConvocatoriasComponent implements OnInit {
   }
 
   agregarCriterio(): void {
-    this.criterios.push(this.fb.group({
-      clave: ['', [Validators.required, Validators.maxLength(60)]],
-      etiqueta: ['', [Validators.required, Validators.maxLength(120)]],
-      tipo: ['texto', Validators.required],
-      opciones: [''],
-      peso: [10, [Validators.required, Validators.min(1), Validators.max(100)]],
-      requerido: [false]
-    }));
+    this.criterios.push(this.crearGrupoCriterio());
+  }
+
+  agregarCriterioSugerido(criterio: CriterioSugerido): void {
+    if (this.criterioYaAgregado(criterio.clave)) {
+      Swal.fire({ icon: 'info', title: 'Indicador ya agregado', text: 'Este indicador ya está en la convocatoria.', confirmButtonColor: '#800020' });
+      return;
+    }
+    this.criterios.push(this.crearGrupoCriterio(criterio));
+  }
+
+  cargarPlantillaCriteriosSiimex(): void {
+    let agregados = 0;
+    const recomendados = this.CRITERIOS_SIIMEX_PRESET.filter((criterio) => this.CRITERIOS_SIIMEX_RECOMENDADOS.includes(criterio.clave));
+    recomendados.forEach((criterio) => {
+      if (!this.criterioYaAgregado(criterio.clave)) {
+        this.criterios.push(this.crearGrupoCriterio(criterio));
+        agregados++;
+      }
+    });
+    Swal.fire({
+      icon: agregados ? 'success' : 'info',
+      title: agregados ? 'Plantilla cargada' : 'Plantilla ya cargada',
+      text: agregados ? `Se agregaron ${agregados} indicadores SIIMEX.` : 'Todos los indicadores sugeridos ya estaban agregados.',
+      confirmButtonColor: '#800020'
+    });
+  }
+
+  criterioYaAgregado(clave: string): boolean {
+    const key = this.normalizarClaveRegla(clave);
+    return (this.criterios?.value || []).some((c: any) => this.normalizarClaveRegla(c?.clave || '') === key);
+  }
+
+  get pesoTotalCriterios(): number {
+    return (this.criterios?.value || []).reduce((total: number, c: any) => total + this.clamp(Number(c?.peso) || 0, 1, 100), 0);
+  }
+
+  private crearGrupoCriterio(criterio?: Partial<CriterioFormulario>): FormGroup {
+    return this.fb.group({
+      clave: [criterio?.clave || '', [Validators.required, Validators.maxLength(60)]],
+      etiqueta: [criterio?.etiqueta || '', [Validators.required, Validators.maxLength(120)]],
+      tipo: [criterio?.tipo || 'texto', Validators.required],
+      opciones: [Array.isArray(criterio?.opciones) ? criterio.opciones.join(', ') : ''],
+      minimo: [criterio?.minimo ?? ''],
+      peso: [criterio?.peso ?? 10, [Validators.required, Validators.min(1), Validators.max(100)]],
+      requerido: [!!criterio?.requerido]
+    });
   }
 
   quitarCriterio(i: number): void {
@@ -846,20 +1088,28 @@ export class AdminConvocatoriasComponent implements OnInit {
   }
 
   necesitaOpciones(tipo: string): boolean {
-    return tipo === 'select' || tipo === 'checkbox';
+    return tipo === 'select' || tipo === 'checkbox' || tipo === 'texto';
   }
 
   private criteriosToJson(): string {
-    const arr = (this.criterios?.value || []).map((c: any) => ({
-      clave: (c.clave || '').trim().replace(/\s+/g, '_') || `criterio_${Date.now()}`,
-      etiqueta: (c.etiqueta || '').trim() || 'Sin etiqueta',
-      tipo: c.tipo || 'texto',
-      opciones: (c.tipo === 'select' || c.tipo === 'checkbox')
-        ? (c.opciones || '').split(',').map((o: string) => o.trim()).filter(Boolean)
-        : undefined,
-      peso: Math.min(100, Math.max(1, +(c.peso) || 10)),
-      requerido: !!c.requerido
-    })).filter((c: any) => c.etiqueta !== 'Sin etiqueta');
+    const arr = (this.criterios?.value || []).map((c: any) => {
+      const tipo = c.tipo || 'texto';
+      const minimo = tipo === 'numero' && c.minimo !== '' && c.minimo != null
+        ? Math.max(0, +(c.minimo) || 0)
+        : undefined;
+      return {
+        clave: (c.clave || '').trim().replace(/\s+/g, '_') || `criterio_${Date.now()}`,
+        etiqueta: (c.etiqueta || '').trim() || 'Sin etiqueta',
+        tipo,
+        opciones: (() => {
+          const valores = (c.opciones || '').split(',').map((o: string) => o.trim()).filter(Boolean);
+          return valores.length ? valores : undefined;
+        })(),
+        minimo,
+        peso: Math.min(100, Math.max(1, +(c.peso) || 10)),
+        requerido: !!c.requerido
+      };
+    }).filter((c: any) => c.etiqueta !== 'Sin etiqueta');
     return arr.length ? JSON.stringify(arr) : '';
   }
 
@@ -868,16 +1118,7 @@ export class AdminConvocatoriasComponent implements OnInit {
     if (!json?.trim()) return;
     try {
       const arr: CriterioFormulario[] = JSON.parse(json);
-      arr.forEach(c => {
-        this.criterios.push(this.fb.group({
-          clave: [c.clave || '', [Validators.required, Validators.maxLength(60)]],
-          etiqueta: [c.etiqueta || '', [Validators.required, Validators.maxLength(120)]],
-          tipo: [c.tipo || 'texto', Validators.required],
-          opciones: [Array.isArray(c.opciones) ? c.opciones.join(', ') : (c.opciones || '')],
-          peso: [c.peso ?? 10, [Validators.required, Validators.min(1), Validators.max(100)]],
-          requerido: [!!c.requerido]
-        }));
-      });
+      arr.forEach(c => this.criterios.push(this.crearGrupoCriterio(c)));
     } catch {
       // JSON inválido, dejar vacío
     }
@@ -928,16 +1169,25 @@ export class AdminConvocatoriasComponent implements OnInit {
     this.formatosExistentes = [];
     this.formatosPendientes = [];
     this.formModal.reset({
-      titulo: '', descripcion: '', resumen: '', requisitos: '', fechaApertura: '', fechaCierre: '', area: '',
-      folioConvocatoria: '', folioPrefijo: '', keywords: '', limiteAceptados: '',
-      puntajeMaximoEvaluacion: 100, diasMinAnticipacion: 20, diasMaxAnticipacion: 60,
+      titulo: '', descripcion: '', resumen: '', requisitos: '', fechaApertura: '', fechaCierre: '', area: '', areaOtro: '',
+      folioConvocatoria: '', folioPrefijo: '', keywords: '', limiteAceptadosHabilitado: false, limiteAceptados: '',
+      puntajeMaximoEvaluacionHabilitado: true, puntajeMaximoEvaluacion: 100,
+      diasMinAnticipacionHabilitado: true, diasMinAnticipacion: 20,
+      diasMaxAnticipacionHabilitado: true, diasMaxAnticipacion: 60,
       avisoPrivacidadObligatorio: false, avisoPrivacidadTexto: '', avisoPrivacidadUrl: '',
       imagenUrl: '', iconoUrl: '', vigente: true, visibilidadPublica: true,
       reglaPostulacionFechaInicio: '', reglaPostulacionFechaFin: '', reglaInformesRequeridos: 'AMBOS',
       reglaPlazoCorreccionHorasDefault: 120, reglaPlazoCorreccionHorasMin: 24, reglaPlazoCorreccionHorasMax: 720,
       reglaEstadosEditables: ['PENDIENTE', 'CON_OBSERVACIONES'],
+      reglaTipoSolicitudActivo: true,
+      reglaFechaEventoActiva: true,
+      reglaProyectoInfoActivo: true,
       reglaModuloEvaluadores: true, reglaModuloComite: true, reglaModuloCotejo: true,
-      reglaModuloInformes: true, reglaModuloBancaria: true, reglaModuloRenuncia: true
+      reglaModuloInformes: true, reglaModuloBancaria: true, reglaModuloRenuncia: true,
+      reglaModuloSeguroMedico: true,
+      reglaModuloAceptacion: true,
+      reglaModuloConstancias: true,
+      reglaModuloStatusAcademico: true
     });
     this.criterios.clear();
     this.requisitosDocs.clear();
@@ -947,6 +1197,7 @@ export class AdminConvocatoriasComponent implements OnInit {
     this.agregarTipoApoyo('Profesor participante');
     this.agregarTipoApoyo('Profesor asesor');
     this.agregarTipoApoyo('Estudiante en concurso');
+    this.actualizarEstadosParametros();
     this.modalVisible = true;
   }
 
@@ -957,20 +1208,26 @@ export class AdminConvocatoriasComponent implements OnInit {
     this.formatosPendientes = [];
     this.formatosExistentes = c.formatos ? [...c.formatos] : [];
     this.cargarFormatos(c.id);
+    const areaEdicion = this.resolverAreaEdicion(c.area);
     this.formModal.patchValue({
       titulo: c.titulo || '',
       descripcion: c.descripcion || '',
       resumen: c.resumen || '',
       requisitos: c.requisitos || '',
-      fechaApertura: c.fechaApertura ? c.fechaApertura.toString().slice(0, 10) : '',
-      fechaCierre: c.fechaCierre ? c.fechaCierre.toString().slice(0, 10) : '',
-      area: c.area || '',
+      fechaApertura: this.toDatetimeLocalValue(c.fechaApertura),
+      fechaCierre: this.toDatetimeLocalValue(c.fechaCierre),
+      area: areaEdicion.area,
+      areaOtro: areaEdicion.areaOtro,
       folioConvocatoria: c.folioConvocatoria || '',
       folioPrefijo: c.folioPrefijo || '',
       keywords: c.keywords || '',
+      limiteAceptadosHabilitado: c.limiteAceptadosHabilitado ?? ((c.limiteAceptados ?? 0) > 0),
       limiteAceptados: c.limiteAceptados ?? '',
+      puntajeMaximoEvaluacionHabilitado: c.puntajeMaximoEvaluacionHabilitado ?? true,
       puntajeMaximoEvaluacion: c.puntajeMaximoEvaluacion ?? 100,
+      diasMinAnticipacionHabilitado: c.diasMinAnticipacionHabilitado ?? true,
       diasMinAnticipacion: c.diasMinAnticipacion ?? 20,
+      diasMaxAnticipacionHabilitado: c.diasMaxAnticipacionHabilitado ?? true,
       diasMaxAnticipacion: c.diasMaxAnticipacion ?? 60,
       avisoPrivacidadObligatorio: c.avisoPrivacidadObligatorio ?? false,
       avisoPrivacidadTexto: c.avisoPrivacidadTexto || '',
@@ -986,12 +1243,19 @@ export class AdminConvocatoriasComponent implements OnInit {
       reglaPlazoCorreccionHorasMin: 24,
       reglaPlazoCorreccionHorasMax: 720,
       reglaEstadosEditables: ['PENDIENTE', 'CON_OBSERVACIONES'],
+      reglaTipoSolicitudActivo: true,
+      reglaFechaEventoActiva: true,
+      reglaProyectoInfoActivo: true,
       reglaModuloEvaluadores: true,
       reglaModuloComite: true,
       reglaModuloCotejo: true,
       reglaModuloInformes: true,
       reglaModuloBancaria: true,
-      reglaModuloRenuncia: true
+      reglaModuloRenuncia: true,
+      reglaModuloSeguroMedico: true,
+      reglaModuloAceptacion: true,
+      reglaModuloConstancias: true,
+      reglaModuloStatusAcademico: true
     });
     this.jsonToCriterios(c.criteriosFormulario);
     this.jsonToRequisitosDocs(c.requisitosDocumentos);
@@ -1002,9 +1266,80 @@ export class AdminConvocatoriasComponent implements OnInit {
       this.agregarTipoApoyo('Profesor asesor');
       this.agregarTipoApoyo('Estudiante en concurso');
     }
+    this.actualizarEstadosParametros();
     this.modalVisible = true;
   }
 
+  inicializarChecksParametros(): void {
+    [
+      ['limiteAceptadosHabilitado', 'limiteAceptados'],
+      ['puntajeMaximoEvaluacionHabilitado', 'puntajeMaximoEvaluacion'],
+      ['diasMinAnticipacionHabilitado', 'diasMinAnticipacion'],
+      ['diasMaxAnticipacionHabilitado', 'diasMaxAnticipacion']
+    ].forEach(([check, campo]) => {
+      this.formModal.get(check)?.valueChanges.subscribe(() => this.actualizarEstadoParametro(check, campo));
+    });
+    this.actualizarEstadosParametros();
+  }
+
+  actualizarEstadosParametros(): void {
+    this.actualizarEstadoParametro('limiteAceptadosHabilitado', 'limiteAceptados');
+    this.actualizarEstadoParametro('puntajeMaximoEvaluacionHabilitado', 'puntajeMaximoEvaluacion');
+    this.actualizarEstadoParametro('diasMinAnticipacionHabilitado', 'diasMinAnticipacion');
+    this.actualizarEstadoParametro('diasMaxAnticipacionHabilitado', 'diasMaxAnticipacion');
+  }
+
+  parametroHabilitado(controlName: string): boolean {
+    return !!this.formModal?.get(controlName)?.value;
+  }
+
+  private actualizarEstadoParametro(checkControl: string, valorControl: string): void {
+    const control = this.formModal.get(valorControl);
+    if (!control) return;
+    if (this.parametroHabilitado(checkControl)) {
+      control.enable({ emitEvent: false });
+    } else {
+      control.disable({ emitEvent: false });
+    }
+  }
+  onAreaChange(): void {
+    if (!this.esAreaOtroSeleccionada()) {
+      this.formModal.get('areaOtro')?.setValue('', { emitEvent: false });
+    }
+  }
+
+  esAreaOtroSeleccionada(): boolean {
+    return this.formModal?.get('area')?.value === 'otro';
+  }
+
+  normalizarAreaOtro(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const normalizado = (input.value || '').toLocaleUpperCase('es-MX');
+    if (input.value !== normalizado) {
+      input.value = normalizado;
+      this.formModal.get('areaOtro')?.setValue(normalizado, { emitEvent: false });
+    }
+  }
+
+  private resolverAreaEdicion(area?: string | null): { area: string; areaOtro: string } {
+    const valor = (area || '').trim();
+    if (!valor) return { area: '', areaOtro: '' };
+
+    const fija = this.AREAS.find(item => item.value !== 'otro' && (item.value === valor || this.norm(item.label) === this.norm(valor)));
+    if (fija) return { area: fija.value, areaOtro: '' };
+    if (this.norm(valor) === 'otro') return { area: 'otro', areaOtro: '' };
+
+    return { area: 'otro', areaOtro: valor.toLocaleUpperCase('es-MX') };
+  }
+
+  private obtenerAreaFormulario(area?: string | null, areaOtro?: string | null): string | null {
+    const seleccion = (area || '').trim();
+    if (seleccion === 'otro') {
+      const personalizada = (areaOtro || '').trim().toLocaleUpperCase('es-MX');
+      return personalizada || null;
+    }
+    return seleccion || null;
+  }
   cerrarModal(): void {
     this.modalVisible = false;
     this.editando = null;
@@ -1019,9 +1354,9 @@ export class AdminConvocatoriasComponent implements OnInit {
       Swal.fire({ icon: 'warning', title: 'Formulario incompleto', text: 'Completa los campos obligatorios.', confirmButtonColor: '#800020' });
       return;
     }
-    const fg = this.formModal.value || {};
-    const fechaInicio = (fg.reglaPostulacionFechaInicio || '').trim();
-    const fechaFin = (fg.reglaPostulacionFechaFin || '').trim();
+    const fg = this.formModal.getRawValue() || {};
+    const fechaInicio = this.toDatetimeLocalValue(fg.reglaPostulacionFechaInicio);
+    const fechaFin = this.toDatetimeLocalValue(fg.reglaPostulacionFechaFin, true);
     if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
       Swal.fire({ icon: 'warning', title: 'Rango de fechas inválido', text: 'La fecha de inicio de postulación no puede ser mayor a la fecha de cierre.', confirmButtonColor: '#800020' });
       return;
@@ -1052,20 +1387,43 @@ export class AdminConvocatoriasComponent implements OnInit {
       Swal.fire({ icon: 'warning', title: 'Reglas requeridas', text: 'Cada convocatoria debe tener al menos una regla configurada.', confirmButtonColor: '#800020' });
       return;
     }
-    const v = this.formModal.value;
-    const lim = v.limiteAceptados !== '' && v.limiteAceptados != null ? parseInt(v.limiteAceptados, 10) : null;
-    const puntajeMax = v.puntajeMaximoEvaluacion !== '' && v.puntajeMaximoEvaluacion != null
+    const v = this.formModal.getRawValue();
+    const areaFinal = this.obtenerAreaFormulario(v.area, v.areaOtro);
+    if (v.area === 'otro' && !areaFinal) {
+      Swal.fire({ icon: 'warning', title: 'Área requerida', text: 'Escribe el nombre del área personalizada.', confirmButtonColor: '#800020' });
+      return;
+    }
+    const limiteHabilitado = !!v.limiteAceptadosHabilitado;
+    const puntajeHabilitado = !!v.puntajeMaximoEvaluacionHabilitado;
+    const diasMinHabilitado = !!v.diasMinAnticipacionHabilitado;
+    const diasMaxHabilitado = !!v.diasMaxAnticipacionHabilitado;
+    const lim = limiteHabilitado && v.limiteAceptados !== '' && v.limiteAceptados != null ? parseInt(v.limiteAceptados, 10) : null;
+    const puntajeMax = puntajeHabilitado && v.puntajeMaximoEvaluacion !== '' && v.puntajeMaximoEvaluacion != null
       ? parseInt(v.puntajeMaximoEvaluacion, 10)
-      : 100;
-    const diasMinAnticipacion = v.diasMinAnticipacion !== '' && v.diasMinAnticipacion != null
+      : null;
+    const diasMin = diasMinHabilitado && v.diasMinAnticipacion !== '' && v.diasMinAnticipacion != null
       ? parseInt(v.diasMinAnticipacion, 10)
-      : 20;
-    const diasMaxAnticipacion = v.diasMaxAnticipacion !== '' && v.diasMaxAnticipacion != null
+      : null;
+    const diasMax = diasMaxHabilitado && v.diasMaxAnticipacion !== '' && v.diasMaxAnticipacion != null
       ? parseInt(v.diasMaxAnticipacion, 10)
-      : 60;
-    const diasMin = (!isNaN(diasMinAnticipacion) && diasMinAnticipacion >= 0) ? diasMinAnticipacion : 20;
-    const diasMax = (!isNaN(diasMaxAnticipacion) && diasMaxAnticipacion >= 0) ? diasMaxAnticipacion : 60;
-    if (diasMin > diasMax) {
+      : null;
+    if (limiteHabilitado && (lim == null || isNaN(lim) || lim <= 0)) {
+      Swal.fire({ icon: 'warning', title: 'Límite inválido', text: 'Define un límite de aceptados mayor a 0 o deshabilita el parámetro.', confirmButtonColor: '#800020' });
+      return;
+    }
+    if (puntajeHabilitado && (puntajeMax == null || isNaN(puntajeMax) || puntajeMax <= 0)) {
+      Swal.fire({ icon: 'warning', title: 'Puntaje inválido', text: 'Define un puntaje máximo mayor a 0 o deshabilita el parámetro.', confirmButtonColor: '#800020' });
+      return;
+    }
+    if (diasMinHabilitado && (diasMin == null || isNaN(diasMin) || diasMin < 0)) {
+      Swal.fire({ icon: 'warning', title: 'Días mínimos inválidos', text: 'Define días mínimos en 0 o mayor, o deshabilita el parámetro.', confirmButtonColor: '#800020' });
+      return;
+    }
+    if (diasMaxHabilitado && (diasMax == null || isNaN(diasMax) || diasMax < 0)) {
+      Swal.fire({ icon: 'warning', title: 'Días máximos inválidos', text: 'Define días máximos en 0 o mayor, o deshabilita el parámetro.', confirmButtonColor: '#800020' });
+      return;
+    }
+    if (diasMinHabilitado && diasMaxHabilitado && diasMin != null && diasMax != null && diasMin > diasMax) {
       Swal.fire({ icon: 'warning', title: 'Rango inválido', text: 'Los días mínimos de anticipación no pueden ser mayores al máximo.', confirmButtonColor: '#800020' });
       return;
     }
@@ -1076,14 +1434,18 @@ export class AdminConvocatoriasComponent implements OnInit {
       requisitos: v.requisitos?.trim() || null,
       fechaApertura: v.fechaApertura || null,
       fechaCierre: v.fechaCierre || null,
-      area: v.area?.trim() || null,
+      area: areaFinal,
       folioConvocatoria: v.folioConvocatoria?.trim() || null,
       folioPrefijo: v.folioPrefijo?.trim() || null,
       keywords: v.keywords?.trim() || null,
-      limiteAceptados: (lim != null && !isNaN(lim) && lim > 0) ? lim : null,
-      puntajeMaximoEvaluacion: (!isNaN(puntajeMax) && puntajeMax > 0) ? puntajeMax : 100,
-      diasMinAnticipacion: diasMin,
-      diasMaxAnticipacion: diasMax,
+      limiteAceptadosHabilitado: limiteHabilitado,
+      limiteAceptados: limiteHabilitado ? lim : null,
+      puntajeMaximoEvaluacionHabilitado: puntajeHabilitado,
+      puntajeMaximoEvaluacion: puntajeHabilitado ? puntajeMax : null,
+      diasMinAnticipacionHabilitado: diasMinHabilitado,
+      diasMinAnticipacion: diasMinHabilitado ? diasMin : null,
+      diasMaxAnticipacionHabilitado: diasMaxHabilitado,
+      diasMaxAnticipacion: diasMaxHabilitado ? diasMax : null,
       avisoPrivacidadObligatorio: !!v.avisoPrivacidadObligatorio,
       avisoPrivacidadTexto: v.avisoPrivacidadTexto?.trim() || null,
       avisoPrivacidadUrl: v.avisoPrivacidadUrl?.trim() || null,
@@ -1270,14 +1632,51 @@ export class AdminConvocatoriasComponent implements OnInit {
 
   onFormatosSeleccionados(event: Event): void {
     const input = event.target as HTMLInputElement;
+    this.agregarFormatosPendientes(Array.from(input.files || []), 'SOLICITUD');
+    input.value = '';
+  }
+
+  onDocumentoAceptacionSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
     const files = Array.from(input.files || []);
+    this.agregarFormatosPendientes(files.slice(0, 1), 'ACEPTACION');
+    input.value = '';
+  }
+
+  onFormatoConstanciaSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    this.agregarFormatosPendientes(files.slice(0, 1), 'CONSTANCIA');
+    input.value = '';
+  }
+
+  onFormatoCartaCierreSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    this.agregarFormatosPendientes(files.slice(0, 1), 'CARTA_CIERRE');
+    input.value = '';
+  }
+
+  private agregarFormatosPendientes(files: File[], uso: 'SOLICITUD' | 'ACEPTACION' | 'CONSTANCIA' | 'CARTA_CIERRE'): void {
     this.errorFormato = '';
-    const permitidas = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+    const permitidas = ['.pdf', '.docx', '.xlsx'];
+    const nombreUso: Record<string, string> = {
+      SOLICITUD: '',
+      ACEPTACION: 'Documento de aceptación',
+      CONSTANCIA: 'Formato de constancia final',
+      CARTA_CIERRE: 'Formato de carta de cierre'
+    };
+    const descripcionUso: Record<string, string> = {
+      SOLICITUD: '',
+      ACEPTACION: 'Documento adjunto para el correo de aceptación',
+      CONSTANCIA: 'Formato oficial para emitir constancias finales',
+      CARTA_CIERRE: 'Formato oficial para emitir cartas de cierre'
+    };
     for (const file of files) {
       const lower = file.name.toLowerCase();
       const extensionOk = permitidas.some((ext) => lower.endsWith(ext));
       if (!extensionOk) {
-        this.errorFormato = 'Solo se permiten formatos PDF, Word o Excel.';
+        this.errorFormato = 'Solo se permiten formatos PDF, DOCX o XLSX.';
         continue;
       }
       if (file.size > 10 * 1024 * 1024) {
@@ -1286,11 +1685,11 @@ export class AdminConvocatoriasComponent implements OnInit {
       }
       this.formatosPendientes.push({
         file,
-        nombre: this.nombreSinExtension(file.name),
-        descripcion: ''
+        nombre: nombreUso[uso] || this.nombreSinExtension(file.name),
+        descripcion: descripcionUso[uso] || '',
+        uso
       });
     }
-    input.value = '';
   }
 
   quitarFormatoPendiente(index: number): void {
@@ -1324,7 +1723,27 @@ export class AdminConvocatoriasComponent implements OnInit {
   descargarFormato(formato: FormatoConvocatoria): void {
     const convocatoriaId = this.editando?.id || formato.convocatoriaId;
     if (!convocatoriaId || !formato?.id) return;
-    window.open(`${environment.apiBaseUrl}/convocatorias/${convocatoriaId}/formatos/${formato.id}`, '_blank');
+    window.open(`${environment.apiBaseUrl}/admin/convocatorias/${convocatoriaId}/formatos/${formato.id}`, '_blank');
+  }
+
+  esFormatoAceptacion(formato: { uso?: string | null } | null | undefined): boolean {
+    return (formato?.uso || '').toString().trim().toUpperCase() === 'ACEPTACION';
+  }
+
+  etiquetaUsoFormato(formato: { uso?: string | null } | null | undefined): string {
+    const uso = (formato?.uso || 'SOLICITUD').toString().trim().toUpperCase();
+    if (uso === 'ACEPTACION') return 'Aceptación';
+    if (uso === 'CONSTANCIA' || uso === 'CONSTANCIA_FINAL') return 'Constancia';
+    if (uso === 'CARTA_CIERRE') return 'Carta cierre';
+    return 'Solicitud';
+  }
+
+  claseUsoFormato(formato: { uso?: string | null } | null | undefined): string {
+    const uso = (formato?.uso || 'SOLICITUD').toString().trim().toUpperCase();
+    if (uso === 'ACEPTACION') return 'text-bg-success';
+    if (uso === 'CONSTANCIA' || uso === 'CONSTANCIA_FINAL') return 'text-bg-primary';
+    if (uso === 'CARTA_CIERRE') return 'text-bg-dark';
+    return 'text-bg-secondary';
   }
 
   formatearPeso(bytes: number | null | undefined): string {
@@ -1348,6 +1767,7 @@ export class AdminConvocatoriasComponent implements OnInit {
       fd.append('file', item.file);
       fd.append('nombre', item.nombre?.trim() || this.nombreSinExtension(item.file.name));
       fd.append('descripcion', item.descripcion?.trim() || '');
+      fd.append('uso', item.uso || 'SOLICITUD');
       return this.http.post<FormatoConvocatoria>(`${environment.apiBaseUrl}/admin/convocatorias/${convocatoriaId}/formatos`, fd);
     });
     return forkJoin(requests);
@@ -1382,11 +1802,34 @@ export class AdminConvocatoriasComponent implements OnInit {
     return url.startsWith('assets/') ? url : '/' + url;
   }
 
+  private toDatetimeLocalValue(s: string | null | undefined, endOfDay = false): string {
+    if (!s) return '';
+    const value = String(s).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T${endOfDay ? '23:59' : '00:00'}`;
+    const isoMatch = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+    if (isoMatch) return `${isoMatch[1]}T${isoMatch[2]}`;
+    const mxMatch = value.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}):(\d{2}))?/);
+    if (mxMatch) {
+      const [, d, m, y, hh, mm] = mxMatch;
+      return `${y}-${m}-${d}T${hh || (endOfDay ? '23' : '00')}:${mm || (endOfDay ? '59' : '00')}`;
+    }
+    return '';
+  }
+
+  private parseFechaLocal(s: string): Date | null {
+    const value = String(s).trim();
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+    if (!match) return null;
+    const [, y, m, d, hh = '00', mm = '00'] = match;
+    const fecha = new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm));
+    return isNaN(fecha.getTime()) ? null : fecha;
+  }
+
   formatearFecha(s: string | null | undefined): string {
     if (!s) return '—';
     try {
-      const d = new Date(s);
-      return isNaN(d.getTime()) ? s : d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+      const d = this.parseFechaLocal(s);
+      return d ? d.toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : s;
     } catch {
       return s;
     }
@@ -1450,4 +1893,22 @@ export class AdminConvocatoriasComponent implements OnInit {
     });
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -3,6 +3,7 @@ package com.example.proyecto.demo.controller;
 import com.example.proyecto.demo.Entity.*;
 import com.example.proyecto.demo.Repository.*;
 import com.example.proyecto.demo.Service.DocumentoService;
+import com.example.proyecto.demo.Service.ConfiguracionSistemaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,7 @@ public class TrayectoriaController {
     private final LogroRepository logroRepository;
     private final ArticuloRepository articuloRepository;
     private final DocumentoService documentoService;
+    private final ConfiguracionSistemaService configuracionSistemaService;
     private final InteresHabilidadRepository interesHabilidadRepository;
     private final AreaConocimientoRepository areaConocimientoRepository;
     private final InstitucionRepository institucionRepository;
@@ -207,6 +209,7 @@ public class TrayectoriaController {
         if (!esArchivoPdf(file)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se permiten archivos PDF para evidencias por rubro");
         }
+        validarLimitePdf(file, "perfil.rubros", "Evidencia del rubro");
 
         String nombreBase = (nombre != null && !nombre.isBlank())
                 ? nombre.trim()
@@ -691,6 +694,7 @@ public class TrayectoriaController {
         if (!esArchivoPdf(file)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se permiten archivos PDF");
         }
+        validarLimitePdf(file, "perfil.certificaciones", "Certificación");
 
         try {
             String nombreOriginal = file.getOriginalFilename();
@@ -1112,6 +1116,7 @@ public class TrayectoriaController {
         if (!esArchivoPdf(file)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se permiten archivos PDF");
         }
+        validarLimitePdf(file, "perfil.propiedadIntelectual", "Documento de propiedad intelectual");
 
         try {
             List<Documento> docsPI = documentoService.obtenerDocumentosPorUsuario(usuario.getId()).stream()
@@ -1710,6 +1715,12 @@ public class TrayectoriaController {
                 .replace("|", "_");
     }
 
+
+    private void validarLimitePdf(MultipartFile file, String limiteKey, String etiqueta) {
+        if (file != null && !file.isEmpty() && file.getSize() > configuracionSistemaService.obtenerLimitePdfBytes(limiteKey)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, configuracionSistemaService.mensajeLimitePdf(etiqueta, limiteKey));
+        }
+    }
     private boolean esArchivoPdf(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             return false;

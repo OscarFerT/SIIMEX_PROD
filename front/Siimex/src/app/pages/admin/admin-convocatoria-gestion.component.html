@@ -31,8 +31,8 @@
         <h2 class="h5 mb-1">{{ convocatoria.titulo }}</h2>
         <div class="small text-muted">
           Área: {{ convocatoria.area || '—' }} |
-          Apertura: {{ convocatoria.fechaApertura || '—' }} |
-          Cierre: {{ convocatoria.fechaCierre || '—' }}
+          Apertura: {{ formatearFecha(convocatoria.fechaApertura) }} |
+          Cierre: {{ formatearFecha(convocatoria.fechaCierre) }}
         </div>
       </div>
       <span class="badge" [class.bg-success]="convocatoria.vigente" [class.bg-secondary]="!convocatoria.vigente">
@@ -103,14 +103,17 @@
           </div>
         </div>
 
-        <div class="operacion-pasos">
-          <article *ngFor="let paso of operacionSiimex.pasos" class="operacion-paso" [class.completo]="paso.estado === 'COMPLETO'" [class.en-proceso]="paso.estado === 'EN_PROCESO'">
-            <div class="paso-icon">
-              <i class="fas" [ngClass]="getIconoPaso(paso.estado)"></i>
+        <div class="operacion-timeline" role="list" aria-label="Línea del tiempo de la mecánica operativa SIIMEX">
+          <article *ngFor="let paso of operacionSiimex.pasos" class="timeline-item" role="listitem" [class.completo]="paso.estado === 'COMPLETO'" [class.en-proceso]="paso.estado === 'EN_PROCESO'">
+            <div class="timeline-marker">
+              <span class="timeline-number">{{ paso.numero }}</span>
+              <span class="timeline-node">
+                <i class="fas" [ngClass]="getIconoPaso(paso.estado)"></i>
+              </span>
             </div>
-            <div class="paso-content">
-              <div class="d-flex justify-content-between align-items-start gap-2">
-                <h4>{{ paso.numero }}. {{ paso.titulo }}</h4>
+            <div class="timeline-card">
+              <div class="timeline-card-head">
+                <h4>{{ paso.titulo }}</h4>
                 <span class="badge" [ngClass]="getEstadoPasoClass(paso.estado)">
                   {{ getEstadoPasoLabel(paso.estado) }}
                 </span>
@@ -153,7 +156,7 @@
               Abrir
             </a>
             <button *ngIf="m.estado !== 'activo' || !m.ruta" type="button" class="btn btn-outline-secondary btn-sm" disabled>
-              Desactivado
+              {{ m.estado === 'activo' && !m.ruta ? 'En configuración' : 'Desactivado' }}
             </button>
           </div>
         </div>
@@ -191,7 +194,7 @@
 
           <p class="modulo-desc">
             Área: {{ c.area || '—' }}<br />
-            Cierre: {{ c.fechaCierre || '—' }}
+            Cierre: {{ formatearFecha(c.fechaCierre) }}
           </p>
 
           <div class="d-flex align-items-center justify-content-end gap-2 mt-auto">
@@ -212,3 +215,4 @@
     </div>
   </div>
 </div>
+

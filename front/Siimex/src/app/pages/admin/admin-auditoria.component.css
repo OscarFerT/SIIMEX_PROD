@@ -246,8 +246,7 @@
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 600;
-  font-family: 'SFMono-Regular', Menlo, monospace;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .audit-accion-sm {

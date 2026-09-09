@@ -23,6 +23,26 @@ public class ConfiguracionSistemaService {
     private static final String CLAVE_PREFIX_IND = "REGISTRO_FOLIO_PREFIX_IND";
     private static final String CLAVE_PREFIX_HIB = "REGISTRO_FOLIO_PREFIX_HIB";
 
+    public static final int PDF_LIMIT_DEFAULT_MB = 2;
+    public static final int PDF_LIMIT_MIN_MB = 1;
+    public static final int PDF_LIMIT_MAX_MB = 25;
+
+    private static final List<Map<String, String>> PDF_LIMIT_DEFINITIONS = List.of(
+            pdfLimit("registro.documentos", "Registro inicial", "Documentos oficiales", "INE, cedula profesional, domicilio y constancia SNII."),
+            pdfLimit("registro.perfilAcademico", "Completar registro", "Perfil academico", "Titulo, cedula, constancias SNII y documentos probatorios academicos."),
+            pdfLimit("registro.idiomas", "Completar registro", "Dominio de idiomas", "Certificados o comprobantes de idioma."),
+            pdfLimit("registro.estancias", "Completar registro", "Estancias de investigacion", "Constancias de estancia o cartas institucionales."),
+            pdfLimit("registro.divulgacion", "Completar registro", "Divulgacion", "Evidencias PDF de productos de divulgacion."),
+            pdfLimit("perfil.documentos", "Perfil", "Documentos del perfil", "INE, cedula, CV/curriculum y constancias visibles desde perfil."),
+            pdfLimit("perfil.certificaciones", "Perfil", "Certificaciones", "Certificaciones agregadas en trayectoria/perfil."),
+            pdfLimit("perfil.propiedadIntelectual", "Perfil", "Propiedad intelectual", "Documentos adjuntos para propiedad intelectual."),
+            pdfLimit("perfil.rubros", "Perfil", "Evidencias por rubro", "Evidencias generales agregadas desde los modales de trayectoria."),
+            pdfLimit("postulacion.curriculum", "Postulaciones", "Curriculum de postulacion", "Curriculum adjunto al enviar una postulacion."),
+            pdfLimit("postulacion.documentos", "Postulaciones", "Documentos requeridos", "Documentos configurables solicitados por convocatoria."),
+            pdfLimit("postulacion.informes", "Postulaciones", "Informes", "Informes parcial y final."),
+            pdfLimit("postulacion.reciboPago", "Postulaciones", "Recibo de pago", "Comprobante de recepcion del apoyo."),
+            pdfLimit("evaluacion.documentos", "Evaluacion", "Documentos de evaluacion", "Cartas, dictamenes o constancias firmadas por evaluadores.")
+    );
     private final ConfiguracionSistemaRepository configuracionSistemaRepository;
 
     @Value("${app.registro.folio.prefix.investigador}")
@@ -94,6 +114,128 @@ public class ConfiguracionSistemaService {
         };
     }
 
+    public Map<String, Object> obtenerLimitesPdf() {
+        List<Map<String, Object>> items = PDF_LIMIT_DEFINITIONS.stream().map(def -> {
+            String key = def.get("key");
+            int maxMb = obtenerLimitePdfMb(key);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("key", key);
+            item.put("modulo", def.get("modulo"));
+            item.put("seccion", def.get("seccion"));
+            item.put("descripcion", def.get("descripcion"));
+            item.put("maxMb", maxMb);
+            item.put("defaultMb", PDF_LIMIT_DEFAULT_MB);
+            item.put("maxBytes", mbToBytes(maxMb));
+            return item;
+        }).toList();
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("items", items);
+        out.put("defaultMb", PDF_LIMIT_DEFAULT_MB);
+        out.put("minMb", PDF_LIMIT_MIN_MB);
+        out.put("maxMb", PDF_LIMIT_MAX_MB);
+        return out;
+    }
+
+    @Transactional
+    public Map<String, Object> actualizarLimitesPdf(Map<String, Object> body) {
+        Map<String, Object> valores = extraerMapaLimites(body);
+        if (valores.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Debes enviar al menos un limite PDF");
+        }
+
+        for (Map<String, String> def : PDF_LIMIT_DEFINITIONS) {
+            String key = def.get("key");
+            if (!valores.containsKey(key)) continue;
+            int maxMb = normalizarLimitePdfMb(valores.get(key), def.get("seccion"));
+            upsert(claveConfiguracionPdf(key), String.valueOf(maxMb),
+                    "Limite maximo PDF en MB para " + def.get("modulo") + " - " + def.get("seccion"));
+        }
+        return obtenerLimitesPdf();
+    }
+
+    public int obtenerLimitePdfMb(String key) {
+        String keyNormalizada = normalizarClaveLimitePdf(key);
+        String configKey = claveConfiguracionPdf(keyNormalizada);
+        return configuracionSistemaRepository.findByClave(configKey)
+                .map(row -> parseLimitePdfMb(row.getValor(), PDF_LIMIT_DEFAULT_MB))
+                .orElse(PDF_LIMIT_DEFAULT_MB);
+    }
+
+    public long obtenerLimitePdfBytes(String key) {
+        return mbToBytes(obtenerLimitePdfMb(key));
+    }
+
+    public String mensajeLimitePdf(String etiqueta, String key) {
+        int maxMb = obtenerLimitePdfMb(key);
+        return etiqueta + ": el archivo no puede superar " + maxMb + " MB";
+    }
+
+    private static Map<String, String> pdfLimit(String key, String modulo, String seccion, String descripcion) {
+        Map<String, String> item = new LinkedHashMap<>();
+        item.put("key", key);
+        item.put("modulo", modulo);
+        item.put("seccion", seccion);
+        item.put("descripcion", descripcion);
+        return item;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> extraerMapaLimites(Map<String, Object> body) {
+        if (body == null) return Map.of();
+        Object limites = body.get("limites");
+        if (limites instanceof Map<?, ?> raw) {
+            Map<String, Object> out = new LinkedHashMap<>();
+            raw.forEach((k, v) -> {
+                if (k != null) out.put(String.valueOf(k), v);
+            });
+            return out;
+        }
+        return body;
+    }
+
+    private int normalizarLimitePdfMb(Object value, String seccion) {
+        int parsed = parseLimitePdfMb(value, -1);
+        if (parsed < PDF_LIMIT_MIN_MB || parsed > PDF_LIMIT_MAX_MB) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "El limite PDF de " + seccion + " debe estar entre " + PDF_LIMIT_MIN_MB + " y " + PDF_LIMIT_MAX_MB + " MB");
+        }
+        return parsed;
+    }
+
+    private int parseLimitePdfMb(Object value, int fallback) {
+        if (value == null) return fallback;
+        try {
+            if (value instanceof Number n) return n.intValue();
+            String raw = String.valueOf(value).trim().replace("MB", "").replace("mb", "").trim();
+            if (raw.isBlank()) return fallback;
+            return Integer.parseInt(raw);
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private String normalizarClaveLimitePdf(String key) {
+        String clean = key != null ? key.trim() : "";
+        return PDF_LIMIT_DEFINITIONS.stream()
+                .map(def -> def.get("key"))
+                .filter(k -> k.equalsIgnoreCase(clean))
+                .findFirst()
+                .orElse("perfil.rubros");
+    }
+
+    private String claveConfiguracionPdf(String key) {
+        String safe = normalizarClaveLimitePdf(key)
+                .toUpperCase(Locale.ROOT)
+                .replaceAll("[^A-Z0-9]+", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^_|_$", "");
+        return "PDF_MAX_MB_" + safe;
+    }
+
+    private long mbToBytes(int mb) {
+        return mb * 1024L * 1024L;
+    }
     private Map<String, String> defaultsNormalizados() {
         Map<String, String> defaults = new LinkedHashMap<>();
         defaults.put("investigador", normalizarPrefijoConFallback(defaultPrefixInvestigador, "SIIMEX-INV"));

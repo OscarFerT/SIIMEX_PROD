@@ -139,6 +139,10 @@ public class Postulacion {
     @Column(name = "clabe_interbancaria", length = 18)
     private String clabeInterbancaria;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "estado_cuenta_documento_id")
+    private Documento estadoCuentaDocumento;
+
     @Column(name = "medio_notificacion", length = 50)
     private String medioNotificacion;
 
@@ -223,6 +227,69 @@ public class Postulacion {
     @Column(name = "observaciones_renuncia", columnDefinition = "TEXT")
     private String observacionesRenuncia;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "renuncia_documento_id")
+    private Documento renunciaDocumento;
+
+    @Column(name = "estado_seguro_medico", length = 30)
+    private String estadoSeguroMedico;
+
+    @Column(name = "fecha_seguro_medico")
+    private LocalDateTime fechaSeguroMedico;
+
+    @Column(name = "numero_seguro_medico", length = 100)
+    private String numeroSeguroMedico;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seguro_medico_documento_id")
+    private Documento seguroMedicoDocumento;
+
+    @Column(name = "observaciones_seguro_medico", columnDefinition = "TEXT")
+    private String observacionesSeguroMedico;
+
+    @Column(name = "fecha_aceptacion_postulacion")
+    private LocalDateTime fechaAceptacionPostulacion;
+
+    @Column(name = "observaciones_aceptacion", columnDefinition = "TEXT")
+    private String observacionesAceptacion;
+
+    @Column(name = "estado_constancia_final", length = 30)
+    private String estadoConstanciaFinal;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "constancia_final_documento_id")
+    private Documento constanciaFinalDocumento;
+
+    @Column(name = "fecha_constancia_final")
+    private LocalDateTime fechaConstanciaFinal;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "carta_cierre_documento_id")
+    private Documento cartaCierreDocumento;
+
+    @Column(name = "fecha_carta_cierre")
+    private LocalDateTime fechaCartaCierre;
+
+    @Column(name = "observaciones_constancia_final", columnDefinition = "TEXT")
+    private String observacionesConstanciaFinal;
+
+    @Column(name = "estado_status_academico", length = 30)
+    private String estadoStatusAcademico;
+
+    @Column(name = "fecha_status_academico")
+    private LocalDateTime fechaStatusAcademico;
+
+    @Column(name = "observaciones_status_academico", columnDefinition = "TEXT")
+    private String observacionesStatusAcademico;
+
+    @Column(name = "informacion_status_academico", columnDefinition = "TEXT")
+    private String informacionStatusAcademico;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_academico_documento_id")
+    private Documento statusAcademicoDocumento;
+
+
     @Column(name = "aviso_privacidad_aceptado", nullable = false)
     @Builder.Default
     private boolean avisoPrivacidadAceptado = false;
@@ -255,3 +322,6 @@ public class Postulacion {
         }
     }
 }
+
+
+

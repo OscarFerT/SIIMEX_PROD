@@ -465,3 +465,230 @@
   height: 22px;
   object-fit: contain;
 }
+
+.modulos-checklist-panel {
+  overflow: hidden;
+}
+
+.modulos-checklist-grid {
+  --bs-gutter-x: 0.75rem;
+  --bs-gutter-y: 0.75rem;
+}
+
+.modulo-check-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  min-height: 90px;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.modulo-check-switch {
+  flex: 0 0 auto;
+  min-height: 0;
+  margin: 0.12rem 0 0;
+  padding-left: 2.35rem;
+}
+
+.modulo-check-switch .form-check-input {
+  float: none;
+  margin-left: -2.35rem;
+  margin-top: 0;
+  cursor: pointer;
+}
+
+.modulo-check-content {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.modulo-check-content .form-check-label {
+  display: block;
+  margin: 0;
+  color: #172033;
+  cursor: pointer;
+}
+
+.modulo-check-content .small {
+  line-height: 1.45;
+}
+
+.estados-editables-panel {
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  padding: 1rem;
+}
+
+.estados-editables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.estado-editable-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  border: 1px solid #d8e0ec;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #243044;
+  padding: 0.75rem 0.85rem;
+  text-align: left;
+  font-weight: 600;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.estado-editable-chip:hover {
+  border-color: #9b2450;
+  box-shadow: 0 8px 18px rgba(122, 30, 72, 0.1);
+}
+
+.estado-editable-chip.activo {
+  border-color: #7a1e48;
+  background: linear-gradient(135deg, rgba(122, 30, 72, 0.12), rgba(122, 30, 72, 0.04));
+  color: #5d1435;
+}
+
+.estado-check {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cfd8e6;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: transparent;
+  font-size: 0.72rem;
+  flex: 0 0 auto;
+}
+
+.estado-editable-chip.activo .estado-check {
+  border-color: #7a1e48;
+  background: #7a1e48;
+  color: #ffffff;
+}
+
+.parametro-switch-card {
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 0.85rem 0.95rem;
+}
+
+.parametro-switch-card .form-check-input {
+  cursor: pointer;
+}
+.criterios-sugeridos-panel {
+  border: 1px solid #ead6df;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff 0%, #fff7fa 100%);
+  padding: 1rem;
+}
+
+.text-borgona {
+  color: #800020;
+}
+
+.criterios-peso-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: #e9f8ef;
+  color: #166534;
+  border: 1px solid #bfe8cf;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.criterios-peso-pill.warn {
+  background: #fff8e6;
+  color: #92400e;
+  border-color: #f6d58b;
+}
+
+.criterio-preset-card {
+  width: 100%;
+  min-height: 122px;
+  text-align: left;
+  border: 1px solid #e4cfda;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 0.85rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.criterio-preset-card:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #800020;
+  box-shadow: 0 12px 24px rgba(128, 0, 32, 0.12);
+}
+
+.criterio-preset-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.criterio-preset-card.activo {
+  border-color: #198754;
+  background: #f3fbf6;
+}
+
+.criterio-preset-card.activo::after {
+  content: 'Agregado';
+  display: inline-flex;
+  margin-top: 0.45rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #198754;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.preset-title,
+.preset-desc,
+.preset-meta {
+  display: block;
+}
+
+.preset-title {
+  color: #800020;
+  font-weight: 800;
+  margin-bottom: 0.25rem;
+}
+
+.preset-desc {
+  color: #475569;
+  font-size: 0.82rem;
+  line-height: 1.28;
+}
+
+.preset-meta {
+  margin-top: 0.55rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  justify-content: space-between;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.preset-meta code {
+  color: #800020;
+  background: #f6e7ee;
+  border-radius: 8px;
+  padding: 0.1rem 0.35rem;
+}

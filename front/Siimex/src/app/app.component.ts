@@ -3,12 +3,13 @@ import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HeaderComponent } from './shared/header/header.component';
 import { FooterComponent } from './shared/footer/footer.component';
+import { ScrollIndicatorComponent } from './shared/scroll-indicator/scroll-indicator.component';
 import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, FooterComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, FooterComponent, ScrollIndicatorComponent],
   template: `
     <ng-container *ngIf="!isAdminRoute">
       <app-header></app-header>
@@ -16,6 +17,7 @@ import { filter } from 'rxjs/operators';
     <main [class]="isAdminRoute ? '' : 'container my-4'">
       <router-outlet></router-outlet>
     </main>
+    <app-scroll-indicator></app-scroll-indicator>
     <ng-container *ngIf="!isAdminRoute">
       <app-footer></app-footer>
     </ng-container>

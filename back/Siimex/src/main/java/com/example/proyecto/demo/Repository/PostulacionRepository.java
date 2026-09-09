@@ -48,7 +48,7 @@ public interface PostulacionRepository extends JpaRepository<Postulacion, Long> 
     @Query("SELECT p FROM Postulacion p JOIN FETCH p.usuario u LEFT JOIN FETCH u.registro1 JOIN FETCH p.convocatoria WHERE p.convocatoria.id = :convocatoriaId AND UPPER(p.estado) = 'ACEPTADA' ORDER BY p.fechaCreacion ASC")
     List<Postulacion> findAceptadasByConvocatoriaIdWithUsuario(@Param("convocatoriaId") Long convocatoriaId);
 
-    @Query("SELECT DISTINCT p FROM Postulacion p JOIN FETCH p.usuario u LEFT JOIN FETCH u.authUser LEFT JOIN FETCH u.registro1 JOIN FETCH p.convocatoria c WHERE (UPPER(p.estado) = 'ACEPTADA' OR UPPER(p.estadoComite) = 'APROBADA') AND UPPER(p.estado) <> 'CANCELADA' ORDER BY c.fechaCierre DESC, p.fechaCreacion DESC")
+    @Query("SELECT DISTINCT p FROM Postulacion p JOIN FETCH p.usuario u LEFT JOIN FETCH u.authUser LEFT JOIN FETCH u.registro1 JOIN FETCH p.convocatoria c WHERE (UPPER(COALESCE(p.estado, '')) = 'ACEPTADA' OR UPPER(COALESCE(p.estadoComite, '')) = 'APROBADA') AND UPPER(COALESCE(p.estado, '')) <> 'CANCELADA' AND UPPER(COALESCE(p.estado, '')) <> 'RECHAZADA' AND UPPER(COALESCE(p.estadoComite, '')) <> 'RECHAZADA' ORDER BY c.fechaCierre DESC, p.fechaCreacion DESC")
     List<Postulacion> findBeneficiariasAprobadas();
 
     @Query("SELECT p FROM Postulacion p JOIN FETCH p.usuario u LEFT JOIN FETCH u.authUser LEFT JOIN FETCH u.registro1 JOIN FETCH p.convocatoria LEFT JOIN FETCH p.curriculumDocumento LEFT JOIN FETCH p.informeParcialDocumento LEFT JOIN FETCH p.informeFinalDocumento LEFT JOIN FETCH p.cartaEvaluadorDocumento LEFT JOIN FETCH p.dictamenEvaluacionDocumento LEFT JOIN FETCH p.constanciaEvaluadorDocumento WHERE LOWER(p.evaluadorEmail) = LOWER(:email) ORDER BY p.fechaCreacion DESC")
@@ -57,3 +57,4 @@ public interface PostulacionRepository extends JpaRepository<Postulacion, Long> 
     @Query("SELECT p FROM Postulacion p JOIN FETCH p.usuario u LEFT JOIN FETCH u.authUser JOIN FETCH p.convocatoria WHERE (p.estadoComite = 'APROBADA' OR p.estado = 'ACEPTADA') AND p.estado <> 'CANCELADA'")
     List<Postulacion> findAprobadasConInformesActivos();
 }
+

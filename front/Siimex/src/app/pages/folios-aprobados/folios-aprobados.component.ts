@@ -61,10 +61,10 @@ export class FoliosAprobadosComponent implements OnInit {
 
     this.http.get<FoliosResponse>(`${environment.apiBaseUrl}/folios-aprobados`, { params }).subscribe({
       next: (res) => {
-        this.total = Number(res?.total || 0);
         this.fechaCorte = res?.fechaCorte || null;
         this.convocatorias = res?.convocatorias || [];
-        this.items = res?.items || [];
+        this.items = (res?.items || []).filter((item) => this.esFolioAprobado(item));
+        this.total = this.items.length;
         this.loading = false;
       },
       error: (err) => {
@@ -81,6 +81,10 @@ export class FoliosAprobadosComponent implements OnInit {
     this.buscar();
   }
 
+  private esFolioAprobado(item: FolioAprobado): boolean {
+    return (item.estatus || '').trim().toUpperCase() === 'APROBADA';
+  }
+
   formatearFecha(value?: string | null): string {
     if (!value) return '-';
     const d = new Date(value);
@@ -91,3 +95,5 @@ export class FoliosAprobadosComponent implements OnInit {
     window.print();
   }
 }
+
+

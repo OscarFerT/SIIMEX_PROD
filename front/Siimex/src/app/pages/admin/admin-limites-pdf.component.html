@@ -1,0 +1,54 @@
+<div class="admin-pdf-limits">
+  <div class="pdf-hero mb-4">
+    <div>
+      <span class="pdf-kicker"><i class="fas fa-file-pdf me-2"></i>Configuración documental</span>
+      <h1>Límites PDF</h1>
+      <p>Controla el tamaño máximo permitido para documentos PDF por módulo y sección. El valor aplica en pantalla y también en el servidor.</p>
+    </div>
+    <div class="pdf-actions">
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="restaurarSugeridos()" [disabled]="loading || saving">
+        <i class="fas fa-rotate-left me-1"></i>Restaurar 2 MB
+      </button>
+      <button type="button" class="btn btn-borgona btn-sm" (click)="guardar()" [disabled]="loading || saving">
+        <i class="fas fa-save me-1"></i>{{ saving ? 'Guardando...' : 'Guardar límites' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="alert alert-info pdf-note" *ngIf="!loading">
+    <i class="fas fa-circle-info me-2"></i>
+    Puedes configurar de {{ minMb }} a {{ maxMb }} MB. Si una sección no tiene valor guardado, SIIMEX usa {{ defaultMb }} MB.
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-borgona" role="status"></div>
+    <p class="text-muted mt-2 mb-0">Cargando límites PDF...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+  </div>
+
+  <ng-container *ngIf="!loading && !error">
+    <section class="pdf-group" *ngFor="let grupo of grupos()">
+      <div class="pdf-group-title">{{ grupo }}</div>
+      <div class="pdf-grid">
+        <article class="pdf-card" *ngFor="let item of itemsPorGrupo(grupo)">
+          <div class="pdf-card-body">
+            <div>
+              <h2>{{ item.seccion }}</h2>
+              <p>{{ item.descripcion }}</p>
+            </div>
+            <label class="pdf-input-label">
+              Máximo permitido
+              <div class="pdf-input-wrap">
+                <input type="number" class="form-control" [(ngModel)]="limites[item.key]" [min]="minMb" [max]="maxMb" step="1" />
+                <span>MB</span>
+              </div>
+            </label>
+          </div>
+        </article>
+      </div>
+    </section>
+  </ng-container>
+</div>

@@ -46,6 +46,10 @@ public class ConvocatoriaFormato {
     @Column(length = 500)
     private String descripcion;
 
+    @Column(length = 40)
+    @Builder.Default
+    private String uso = "SOLICITUD";
+
     @Column(name = "nombre_archivo", length = 255, nullable = false)
     private String nombreArchivo;
 
@@ -68,5 +72,9 @@ public class ConvocatoriaFormato {
         if (fechaSubida == null) {
             fechaSubida = LocalDateTime.now();
         }
+        if (uso == null || uso.isBlank()) {
+            uso = "SOLICITUD";
+        }
     }
 }
+

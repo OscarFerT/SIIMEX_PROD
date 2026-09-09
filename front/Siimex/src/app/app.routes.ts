@@ -109,6 +109,30 @@ export const routes: Routes = [
           import('./pages/admin/admin-renuncias.component').then(m => m.AdminRenunciasComponent),
       },
       {
+        path: 'convocatorias/:id/seguro-medico',
+        loadComponent: () =>
+          import('./pages/admin/admin-modulo-seguimiento.component').then(m => m.AdminModuloSeguimientoComponent),
+        data: { moduloOperativo: 'seguro-medico' }
+      },
+      {
+        path: 'convocatorias/:id/aceptacion',
+        loadComponent: () =>
+          import('./pages/admin/admin-modulo-seguimiento.component').then(m => m.AdminModuloSeguimientoComponent),
+        data: { moduloOperativo: 'aceptacion' }
+      },
+      {
+        path: 'convocatorias/:id/constancias',
+        loadComponent: () =>
+          import('./pages/admin/admin-modulo-seguimiento.component').then(m => m.AdminModuloSeguimientoComponent),
+        data: { moduloOperativo: 'constancias' }
+      },
+      {
+        path: 'convocatorias/:id/status-academico',
+        loadComponent: () =>
+          import('./pages/admin/admin-modulo-seguimiento.component').then(m => m.AdminModuloSeguimientoComponent),
+        data: { moduloOperativo: 'status-academico' }
+      },
+      {
         path: 'feriados',
         loadComponent: () =>
           import('./pages/admin/admin-feriados.component').then(m => m.AdminFeriadosComponent),
@@ -127,6 +151,11 @@ export const routes: Routes = [
         path: 'configuracion-folios',
         loadComponent: () =>
           import('./pages/admin/admin-configuracion-folios.component').then(m => m.AdminConfiguracionFoliosComponent),
+      },
+      {
+        path: 'limites-pdf',
+        loadComponent: () =>
+          import('./pages/admin/admin-limites-pdf.component').then(m => m.AdminLimitesPdfComponent),
       },
       {
         path: 'convocatorias/:id/gestion',
@@ -249,3 +278,4 @@ export const routes: Routes = [
   // Catch-all
   { path: '**', redirectTo: 'login' },
 ];
+

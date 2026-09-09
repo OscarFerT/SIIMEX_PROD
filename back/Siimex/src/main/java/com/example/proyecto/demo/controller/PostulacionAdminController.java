@@ -80,6 +80,8 @@ public class PostulacionAdminController {
             m.put("titularCuenta", p.getTitularCuenta());
             m.put("cuentaBancaria", p.getCuentaBancaria());
             m.put("clabeInterbancaria", p.getClabeInterbancaria());
+            m.put("estadoCuentaDocumentoId", p.getEstadoCuentaDocumento() != null ? p.getEstadoCuentaDocumento().getId() : null);
+            m.put("estadoCuentaNombreArchivo", p.getEstadoCuentaDocumento() != null ? p.getEstadoCuentaDocumento().getNombreArchivo() : null);
             m.put("medioNotificacion", p.getMedioNotificacion());
             m.put("fechaActualizacionBancaria", p.getFechaActualizacionBancaria() != null ? p.getFechaActualizacionBancaria().toString() : null);
             m.put("estadoEntregaApoyo", p.getEstadoEntregaApoyo());
@@ -100,6 +102,33 @@ public class PostulacionAdminController {
             m.put("fechaSolicitudRenuncia", p.getFechaSolicitudRenuncia() != null ? p.getFechaSolicitudRenuncia().toString() : null);
             m.put("fechaResolucionRenuncia", p.getFechaResolucionRenuncia() != null ? p.getFechaResolucionRenuncia().toString() : null);
             m.put("observacionesRenuncia", p.getObservacionesRenuncia());
+            m.put("renunciaDocumentoId", p.getRenunciaDocumento() != null ? p.getRenunciaDocumento().getId() : null);
+            m.put("renunciaNombreArchivo", p.getRenunciaDocumento() != null ? p.getRenunciaDocumento().getNombreArchivo() : null);
+            m.put("estadoSeguroMedico", p.getEstadoSeguroMedico());
+            m.put("fechaSeguroMedico", p.getFechaSeguroMedico() != null ? p.getFechaSeguroMedico().toString() : null);
+            m.put("numeroSeguroMedico", p.getNumeroSeguroMedico());
+            m.put("seguroMedicoDocumentoId", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getId() : null);
+            m.put("seguroMedicoNombreArchivo", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getNombreArchivo() : null);
+            m.put("observacionesSeguroMedico", p.getObservacionesSeguroMedico());
+            m.put("fechaAceptacionPostulacion", p.getFechaAceptacionPostulacion() != null ? p.getFechaAceptacionPostulacion().toString() : null);
+            m.put("observacionesAceptacion", p.getObservacionesAceptacion());
+            m.put("estadoConstanciaFinal", p.getEstadoConstanciaFinal());
+            m.put("constanciaFinalDocumentoId", p.getConstanciaFinalDocumento() != null ? p.getConstanciaFinalDocumento().getId() : null);
+            m.put("constanciaFinalNombreArchivo", p.getConstanciaFinalDocumento() != null ? p.getConstanciaFinalDocumento().getNombreArchivo() : null);
+            m.put("fechaConstanciaFinal", p.getFechaConstanciaFinal() != null ? p.getFechaConstanciaFinal().toString() : null);
+            m.put("cartaCierreDocumentoId", p.getCartaCierreDocumento() != null ? p.getCartaCierreDocumento().getId() : null);
+            m.put("cartaCierreNombreArchivo", p.getCartaCierreDocumento() != null ? p.getCartaCierreDocumento().getNombreArchivo() : null);
+            m.put("fechaCartaCierre", p.getFechaCartaCierre() != null ? p.getFechaCartaCierre().toString() : null);
+            m.put("observacionesConstanciaFinal", p.getObservacionesConstanciaFinal());
+            m.put("estadoStatusAcademico", p.getEstadoStatusAcademico());
+            m.put("fechaStatusAcademico", p.getFechaStatusAcademico() != null ? p.getFechaStatusAcademico().toString() : null);
+            m.put("observacionesStatusAcademico", p.getObservacionesStatusAcademico());
+        m.put("informacionStatusAcademico", p.getInformacionStatusAcademico());
+        m.put("statusAcademicoDocumentoId", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getId() : null);
+        m.put("statusAcademicoNombreArchivo", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getNombreArchivo() : null);
+            m.put("informacionStatusAcademico", p.getInformacionStatusAcademico());
+            m.put("statusAcademicoDocumentoId", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getId() : null);
+            m.put("statusAcademicoNombreArchivo", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getNombreArchivo() : null);
             m.put("avisoPrivacidadAceptado", p.isAvisoPrivacidadAceptado());
             m.put("fechaAceptacionAvisoPrivacidad", p.getFechaAceptacionAvisoPrivacidad() != null ? p.getFechaAceptacionAvisoPrivacidad().toString() : null);
             m.put("informeParcialDocumentoId", p.getInformeParcialDocumento() != null ? p.getInformeParcialDocumento().getId() : null);
@@ -134,7 +163,7 @@ public class PostulacionAdminController {
         return ResponseEntity.ok(postulacionService.listarEvaluadoresDisponibles(convocatoriaId));
     }
 
-    @PostMapping("/{postulacionId}/aceptar")
+    @PostMapping(value = "/{postulacionId}/aceptar", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> aceptar(
             @PathVariable Long convocatoriaId,
             @PathVariable Long postulacionId) {
@@ -146,6 +175,22 @@ public class PostulacionAdminController {
         ));
     }
 
+
+    @PostMapping(value = "/{postulacionId}/aceptar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> aceptarConDocumento(
+            @PathVariable Long convocatoriaId,
+            @PathVariable Long postulacionId,
+            @RequestParam(value = "mensajeCorreo", required = false) String mensajeCorreo,
+            @RequestPart(value = "documentoAceptacion", required = false) MultipartFile documentoAceptacion) {
+        Postulacion p = postulacionService.aceptar(postulacionId, mensajeCorreo, documentoAceptacion);
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", p.getId());
+        response.put("estado", p.getEstado());
+        response.put("fechaAceptacionPostulacion", p.getFechaAceptacionPostulacion() != null ? p.getFechaAceptacionPostulacion().toString() : null);
+        response.put("observacionesAceptacion", p.getObservacionesAceptacion());
+        response.put("message", "Postulacion aceptada y correo enviado");
+        return ResponseEntity.ok(response);
+    }
     @PostMapping("/{postulacionId}/rechazar")
     public ResponseEntity<Map<String, Object>> rechazar(
             @PathVariable Long convocatoriaId,
@@ -156,7 +201,7 @@ public class PostulacionAdminController {
         return ResponseEntity.ok(Map.of(
                 "id", p.getId(),
                 "estado", p.getEstado(),
-                "message", "Postulación rechazada y correo enviado"
+                "message", "Postulación rechazada"
         ));
     }
 
@@ -164,7 +209,7 @@ public class PostulacionAdminController {
     public ResponseEntity<Map<String, Object>> observaciones(
             @PathVariable Long convocatoriaId,
             @PathVariable Long postulacionId,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body) throws java.io.IOException {
         String observaciones = body != null && body.get("observaciones") != null
                 ? String.valueOf(body.get("observaciones"))
                 : null;
@@ -321,7 +366,7 @@ public class PostulacionAdminController {
     public ResponseEntity<Map<String, Object>> registrarComite(
             @PathVariable Long convocatoriaId,
             @PathVariable Long postulacionId,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body) throws java.io.IOException {
         String estadoComite = body != null && body.get("estadoComite") != null ? String.valueOf(body.get("estadoComite")) : null;
         String observacionesComite = body != null && body.get("observacionesComite") != null ? String.valueOf(body.get("observacionesComite")) : null;
         java.math.BigDecimal monto = null;
@@ -452,6 +497,8 @@ public class PostulacionAdminController {
                     m.put("fechaSolicitudRenuncia", p.getFechaSolicitudRenuncia() != null ? p.getFechaSolicitudRenuncia().toString() : null);
                     m.put("fechaResolucionRenuncia", p.getFechaResolucionRenuncia() != null ? p.getFechaResolucionRenuncia().toString() : null);
                     m.put("observacionesRenuncia", p.getObservacionesRenuncia());
+                    m.put("renunciaDocumentoId", p.getRenunciaDocumento() != null ? p.getRenunciaDocumento().getId() : null);
+                    m.put("renunciaNombreArchivo", p.getRenunciaDocumento() != null ? p.getRenunciaDocumento().getNombreArchivo() : null);
                     m.put("montoApoyoAsignado", p.getMontoApoyoAsignado());
                     m.put("estadoComite", p.getEstadoComite());
                     return m;
@@ -477,7 +524,7 @@ public class PostulacionAdminController {
     public ResponseEntity<Map<String, Object>> resolverRenuncia(
             @PathVariable Long convocatoriaId,
             @PathVariable Long postulacionId,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body) throws java.io.IOException {
         String estadoRenuncia = body != null && body.get("estadoRenuncia") != null ? String.valueOf(body.get("estadoRenuncia")) : null;
         String observacionesRenuncia = body != null && body.get("observacionesRenuncia") != null ? String.valueOf(body.get("observacionesRenuncia")) : null;
         Postulacion p = postulacionService.resolverRenuncia(postulacionId, estadoRenuncia, observacionesRenuncia);
@@ -491,22 +538,20 @@ public class PostulacionAdminController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/{postulacionId}/bancaria")
+    @PostMapping(value = "/{postulacionId}/bancaria", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> actualizarBancariaAdmin(
             @PathVariable Long convocatoriaId,
             @PathVariable Long postulacionId,
-            @RequestBody Map<String, Object> body,
-            org.springframework.security.core.Authentication auth) {
+            @RequestParam("banco") String banco,
+            @RequestParam("titularCuenta") String titularCuenta,
+            @RequestParam("cuentaBancaria") String cuentaBancaria,
+            @RequestParam("clabeInterbancaria") String clabeInterbancaria,
+            @RequestPart(value = "estadoCuenta", required = false) MultipartFile estadoCuenta,
+            org.springframework.security.core.Authentication auth) throws java.io.IOException {
         Long authUserId = auth != null && auth.getPrincipal() instanceof Long ? (Long) auth.getPrincipal() : null;
         if (authUserId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "No autenticado"));
         }
-        String banco = body != null && body.get("banco") != null ? String.valueOf(body.get("banco")) : null;
-        String titularCuenta = body != null && body.get("titularCuenta") != null ? String.valueOf(body.get("titularCuenta")) : null;
-        String cuentaBancaria = body != null && body.get("cuentaBancaria") != null ? String.valueOf(body.get("cuentaBancaria")) : null;
-        String clabeInterbancaria = body != null && body.get("clabeInterbancaria") != null ? String.valueOf(body.get("clabeInterbancaria")) : null;
-        String medioNotificacion = body != null && body.get("medioNotificacion") != null ? String.valueOf(body.get("medioNotificacion")) : null;
-
         Postulacion p = postulacionService.actualizarInformacionBancaria(
                 postulacionId,
                 authUserId,
@@ -515,7 +560,8 @@ public class PostulacionAdminController {
                 titularCuenta,
                 cuentaBancaria,
                 clabeInterbancaria,
-                medioNotificacion
+                estadoCuenta,
+                null
         );
         Map<String, Object> response = new HashMap<>();
         response.put("id", p.getId());
@@ -523,7 +569,8 @@ public class PostulacionAdminController {
         response.put("titularCuenta", p.getTitularCuenta());
         response.put("cuentaBancaria", p.getCuentaBancaria());
         response.put("clabeInterbancaria", p.getClabeInterbancaria());
-        response.put("medioNotificacion", p.getMedioNotificacion());
+        response.put("estadoCuentaDocumentoId", p.getEstadoCuentaDocumento() != null ? p.getEstadoCuentaDocumento().getId() : null);
+        response.put("estadoCuentaNombreArchivo", p.getEstadoCuentaDocumento() != null ? p.getEstadoCuentaDocumento().getNombreArchivo() : null);
         response.put("fechaActualizacionBancaria", p.getFechaActualizacionBancaria() != null ? p.getFechaActualizacionBancaria().toString() : null);
         response.put("message", "Informacion bancaria actualizada");
         return ResponseEntity.ok(response);
@@ -552,7 +599,7 @@ public class PostulacionAdminController {
     public ResponseEntity<Map<String, Object>> registrarCotejo(
             @PathVariable Long convocatoriaId,
             @PathVariable Long postulacionId,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body) throws java.io.IOException {
         String estadoCotejo = body != null && body.get("estadoCotejo") != null ? String.valueOf(body.get("estadoCotejo")) : null;
         String observacionesCotejo = body != null && body.get("observacionesCotejo") != null ? String.valueOf(body.get("observacionesCotejo")) : null;
         Postulacion p = postulacionService.registrarCotejo(postulacionId, estadoCotejo, observacionesCotejo);
@@ -569,7 +616,7 @@ public class PostulacionAdminController {
     public ResponseEntity<Map<String, Object>> configurarInformes(
             @PathVariable Long convocatoriaId,
             @PathVariable Long postulacionId,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body) throws java.io.IOException {
         java.time.LocalDate fechaParcial = null;
         java.time.LocalDate fechaFinal = null;
         if (body != null && body.get("fechaLimiteInformeParcial") != null && !String.valueOf(body.get("fechaLimiteInformeParcial")).isBlank()) {
@@ -618,7 +665,7 @@ public class PostulacionAdminController {
     public ResponseEntity<Map<String, Object>> validarReciboPago(
             @PathVariable Long convocatoriaId,
             @PathVariable Long postulacionId,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body) throws java.io.IOException {
         String estadoReciboPago = body != null && body.get("estadoReciboPago") != null ? String.valueOf(body.get("estadoReciboPago")) : null;
         String observacionesReciboPago = body != null && body.get("observacionesReciboPago") != null ? String.valueOf(body.get("observacionesReciboPago")) : null;
         Postulacion p = postulacionService.validarReciboPago(postulacionId, estadoReciboPago, observacionesReciboPago);
@@ -629,6 +676,216 @@ public class PostulacionAdminController {
         response.put("observacionesReciboPago", p.getObservacionesReciboPago());
         response.put("message", "Recibo de pago actualizado");
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/seguro-medico")
+    public ResponseEntity<Map<String, Object>> listarSeguroMedico(@PathVariable Long convocatoriaId) {
+        if (!postulacionService.moduloSeguroMedicoActivoPorConvocatoria(convocatoriaId)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Esta convocatoria no tiene activo el módulo de seguro médico", "convocatoriaId", convocatoriaId, "registros", List.of()));
+        }
+        return ResponseEntity.ok(respuestaModulo(convocatoriaId, "seguro-medico"));
+    }
+
+    @GetMapping("/aceptacion")
+    public ResponseEntity<Map<String, Object>> listarAceptacion(@PathVariable Long convocatoriaId) {
+        if (!postulacionService.moduloAceptacionActivoPorConvocatoria(convocatoriaId)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Esta convocatoria no tiene activo el módulo de aceptación", "convocatoriaId", convocatoriaId, "registros", List.of()));
+        }
+        return ResponseEntity.ok(respuestaModulo(convocatoriaId, "aceptacion"));
+    }
+
+    @GetMapping("/constancias")
+    public ResponseEntity<Map<String, Object>> listarConstancias(@PathVariable Long convocatoriaId) {
+        if (!postulacionService.moduloConstanciasActivoPorConvocatoria(convocatoriaId)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Esta convocatoria no tiene activo el módulo de constancias y cierre final", "convocatoriaId", convocatoriaId, "registros", List.of()));
+        }
+        return ResponseEntity.ok(respuestaModulo(convocatoriaId, "constancias"));
+    }
+
+    @GetMapping("/status-academico")
+    public ResponseEntity<Map<String, Object>> listarStatusAcademico(@PathVariable Long convocatoriaId) {
+        if (!postulacionService.moduloStatusAcademicoActivoPorConvocatoria(convocatoriaId)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Esta convocatoria no tiene activo el módulo de actualización de estatus académico", "convocatoriaId", convocatoriaId, "registros", List.of()));
+        }
+        return ResponseEntity.ok(respuestaModulo(convocatoriaId, "status-academico"));
+    }
+
+    @PostMapping(value = "/{postulacionId}/aceptacion/reenviar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> reenviarAceptacion(
+            @PathVariable Long convocatoriaId,
+            @PathVariable Long postulacionId) {
+        Postulacion p = postulacionService.reenviarCorreoAceptacion(convocatoriaId, postulacionId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", p.getId());
+        response.put("estado", p.getEstado());
+        response.put("fechaAceptacionPostulacion", p.getFechaAceptacionPostulacion() != null ? p.getFechaAceptacionPostulacion().toString() : null);
+        response.put("message", "Correo de aceptación enviado");
+        return ResponseEntity.ok(response);
+    }
+
+
+    @PostMapping(value = "/{postulacionId}/aceptacion/reenviar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> reenviarAceptacionConDocumento(
+            @PathVariable Long convocatoriaId,
+            @PathVariable Long postulacionId,
+            @RequestParam(value = "mensajeCorreo", required = false) String mensajeCorreo,
+            @RequestPart(value = "documentoAceptacion", required = false) MultipartFile documentoAceptacion) {
+        Postulacion p = postulacionService.reenviarCorreoAceptacion(convocatoriaId, postulacionId, mensajeCorreo, documentoAceptacion);
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", p.getId());
+        response.put("estado", p.getEstado());
+        response.put("fechaAceptacionPostulacion", p.getFechaAceptacionPostulacion() != null ? p.getFechaAceptacionPostulacion().toString() : null);
+        response.put("observacionesAceptacion", p.getObservacionesAceptacion());
+        response.put("message", "Correo de aceptacion enviado");
+        return ResponseEntity.ok(response);
+    }
+    @PostMapping(value = "/{postulacionId}/seguro-medico", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> actualizarSeguroMedico(
+            @PathVariable Long convocatoriaId,
+            @PathVariable Long postulacionId,
+            @RequestBody Map<String, Object> body) throws java.io.IOException {
+        String estado = body != null && body.get("estadoSeguroMedico") != null ? String.valueOf(body.get("estadoSeguroMedico")) : null;
+        String observaciones = body != null && body.get("observacionesSeguroMedico") != null ? String.valueOf(body.get("observacionesSeguroMedico")) : null;
+        String numeroSeguroMedico = body != null && body.get("numeroSeguroMedico") != null ? String.valueOf(body.get("numeroSeguroMedico")) : null;
+        Postulacion p = postulacionService.actualizarSeguroMedico(convocatoriaId, postulacionId, estado, observaciones, numeroSeguroMedico, null);
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", p.getId());
+        response.put("estadoSeguroMedico", p.getEstadoSeguroMedico());
+        response.put("fechaSeguroMedico", p.getFechaSeguroMedico() != null ? p.getFechaSeguroMedico().toString() : null);
+        response.put("numeroSeguroMedico", p.getNumeroSeguroMedico());
+        response.put("seguroMedicoDocumentoId", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getId() : null);
+        response.put("seguroMedicoNombreArchivo", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getNombreArchivo() : null);
+        response.put("observacionesSeguroMedico", p.getObservacionesSeguroMedico());
+        response.put("message", "Seguro médico actualizado");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping(value = "/{postulacionId}/seguro-medico", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> actualizarSeguroMedicoConEvidencia(
+            @PathVariable Long convocatoriaId,
+            @PathVariable Long postulacionId,
+            @RequestParam(value = "estadoSeguroMedico", required = false) String estado,
+            @RequestParam(value = "observacionesSeguroMedico", required = false) String observaciones,
+            @RequestParam(value = "numeroSeguroMedico", required = false) String numeroSeguroMedico,
+            @RequestPart(value = "evidenciaSeguroMedico", required = false) MultipartFile evidenciaSeguroMedico) throws java.io.IOException {
+        Postulacion p = postulacionService.actualizarSeguroMedico(convocatoriaId, postulacionId, estado, observaciones, numeroSeguroMedico, evidenciaSeguroMedico);
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", p.getId());
+        response.put("estadoSeguroMedico", p.getEstadoSeguroMedico());
+        response.put("fechaSeguroMedico", p.getFechaSeguroMedico() != null ? p.getFechaSeguroMedico().toString() : null);
+        response.put("numeroSeguroMedico", p.getNumeroSeguroMedico());
+        response.put("seguroMedicoDocumentoId", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getId() : null);
+        response.put("seguroMedicoNombreArchivo", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getNombreArchivo() : null);
+        response.put("observacionesSeguroMedico", p.getObservacionesSeguroMedico());
+        response.put("message", "Seguro médico actualizado");
+        return ResponseEntity.ok(response);
+    }
+    @PostMapping("/{postulacionId}/status-academico")
+    public ResponseEntity<Map<String, Object>> actualizarStatusAcademico(
+            @PathVariable Long convocatoriaId,
+            @PathVariable Long postulacionId,
+            @RequestBody Map<String, Object> body) throws java.io.IOException {
+        String estado = body != null && body.get("estadoStatusAcademico") != null ? String.valueOf(body.get("estadoStatusAcademico")) : null;
+        String observaciones = body != null && body.get("observacionesStatusAcademico") != null ? String.valueOf(body.get("observacionesStatusAcademico")) : null;
+        Postulacion p = postulacionService.actualizarStatusAcademico(convocatoriaId, postulacionId, estado, observaciones);
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", p.getId());
+        response.put("estadoStatusAcademico", p.getEstadoStatusAcademico());
+        response.put("fechaStatusAcademico", p.getFechaStatusAcademico() != null ? p.getFechaStatusAcademico().toString() : null);
+        response.put("observacionesStatusAcademico", p.getObservacionesStatusAcademico());
+        response.put("message", "Status académico actualizado");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{postulacionId}/constancias/seguimiento")
+    public ResponseEntity<Map<String, Object>> actualizarConstancias(
+            @PathVariable Long convocatoriaId,
+            @PathVariable Long postulacionId,
+            @RequestBody Map<String, Object> body) throws java.io.IOException {
+        String estado = body != null && body.get("estadoConstanciaFinal") != null ? String.valueOf(body.get("estadoConstanciaFinal")) : null;
+        String observaciones = body != null && body.get("observacionesConstanciaFinal") != null ? String.valueOf(body.get("observacionesConstanciaFinal")) : null;
+        Postulacion p = postulacionService.actualizarConstanciaFinal(convocatoriaId, postulacionId, estado, observaciones);
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", p.getId());
+        response.put("estadoConstanciaFinal", p.getEstadoConstanciaFinal());
+        response.put("observacionesConstanciaFinal", p.getObservacionesConstanciaFinal());
+        response.put("message", "Seguimiento de constancias actualizado");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{postulacionId}/constancias/generar")
+    public ResponseEntity<Map<String, Object>> generarDocumentoFinal(
+            @PathVariable Long convocatoriaId,
+            @PathVariable Long postulacionId,
+            @RequestBody(required = false) Map<String, Object> body) {
+        String tipo = body != null && body.get("tipo") != null ? String.valueOf(body.get("tipo")) : "CONSTANCIA";
+        String observaciones = body != null && body.get("observacionesConstanciaFinal") != null ? String.valueOf(body.get("observacionesConstanciaFinal")) : null;
+        Postulacion p = postulacionService.generarDocumentoFinal(convocatoriaId, postulacionId, tipo, observaciones);
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", p.getId());
+        response.put("estadoConstanciaFinal", p.getEstadoConstanciaFinal());
+        response.put("constanciaFinalDocumentoId", p.getConstanciaFinalDocumento() != null ? p.getConstanciaFinalDocumento().getId() : null);
+        response.put("cartaCierreDocumentoId", p.getCartaCierreDocumento() != null ? p.getCartaCierreDocumento().getId() : null);
+        response.put("fechaConstanciaFinal", p.getFechaConstanciaFinal() != null ? p.getFechaConstanciaFinal().toString() : null);
+        response.put("fechaCartaCierre", p.getFechaCartaCierre() != null ? p.getFechaCartaCierre().toString() : null);
+        response.put("message", "Documento final generado");
+        return ResponseEntity.ok(response);
+    }
+
+    private Map<String, Object> respuestaModulo(Long convocatoriaId, String modulo) {
+        List<Postulacion> lista = postulacionService.listarPorConvocatoria(convocatoriaId);
+        List<Map<String, Object>> registros = lista.stream().map(this::mapSeguimientoModulo).toList();
+        long total = registros.size();
+        long aceptadas = registros.stream().filter(r -> "ACEPTADA".equalsIgnoreCase(String.valueOf(r.get("estado")))).count();
+        long pendientes = registros.stream().filter(r -> "PENDIENTE".equalsIgnoreCase(String.valueOf(r.get("estado")))).count();
+        long rechazadas = registros.stream().filter(r -> "RECHAZADA".equalsIgnoreCase(String.valueOf(r.get("estado")))).count();
+        Map<String, Object> response = new HashMap<>();
+        response.put("convocatoriaId", convocatoriaId);
+        response.put("modulo", modulo);
+        response.put("total", total);
+        response.put("aceptadas", aceptadas);
+        response.put("pendientes", pendientes);
+        response.put("rechazadas", rechazadas);
+        response.put("registros", registros);
+        return response;
+    }
+
+    private Map<String, Object> mapSeguimientoModulo(Postulacion p) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("id", p.getId());
+        m.put("folio", p.getFolio());
+        m.put("nombre", p.getUsuario() != null
+                ? ((p.getUsuario().getNombre() != null ? p.getUsuario().getNombre() : "") + " " +
+                (p.getUsuario().getApellidoPaterno() != null ? p.getUsuario().getApellidoPaterno() : "")).trim()
+                : "");
+        m.put("correo", p.getCorreo());
+        m.put("estado", p.getEstado());
+        m.put("estadoComite", p.getEstadoComite());
+        m.put("tipoApoyo", p.getTipoApoyo());
+        m.put("fechaCreacion", p.getFechaCreacion() != null ? p.getFechaCreacion().toString() : null);
+        m.put("estadoSeguroMedico", p.getEstadoSeguroMedico());
+        m.put("fechaSeguroMedico", p.getFechaSeguroMedico() != null ? p.getFechaSeguroMedico().toString() : null);
+            m.put("numeroSeguroMedico", p.getNumeroSeguroMedico());
+            m.put("seguroMedicoDocumentoId", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getId() : null);
+            m.put("seguroMedicoNombreArchivo", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getNombreArchivo() : null);
+        m.put("observacionesSeguroMedico", p.getObservacionesSeguroMedico());
+        m.put("fechaAceptacionPostulacion", p.getFechaAceptacionPostulacion() != null ? p.getFechaAceptacionPostulacion().toString() : null);
+        m.put("observacionesAceptacion", p.getObservacionesAceptacion());
+        m.put("estadoConstanciaFinal", p.getEstadoConstanciaFinal());
+        m.put("constanciaFinalDocumentoId", p.getConstanciaFinalDocumento() != null ? p.getConstanciaFinalDocumento().getId() : null);
+        m.put("constanciaFinalNombreArchivo", p.getConstanciaFinalDocumento() != null ? p.getConstanciaFinalDocumento().getNombreArchivo() : null);
+        m.put("fechaConstanciaFinal", p.getFechaConstanciaFinal() != null ? p.getFechaConstanciaFinal().toString() : null);
+        m.put("cartaCierreDocumentoId", p.getCartaCierreDocumento() != null ? p.getCartaCierreDocumento().getId() : null);
+        m.put("cartaCierreNombreArchivo", p.getCartaCierreDocumento() != null ? p.getCartaCierreDocumento().getNombreArchivo() : null);
+        m.put("fechaCartaCierre", p.getFechaCartaCierre() != null ? p.getFechaCartaCierre().toString() : null);
+        m.put("observacionesConstanciaFinal", p.getObservacionesConstanciaFinal());
+        m.put("estadoStatusAcademico", p.getEstadoStatusAcademico());
+        m.put("fechaStatusAcademico", p.getFechaStatusAcademico() != null ? p.getFechaStatusAcademico().toString() : null);
+        m.put("observacionesStatusAcademico", p.getObservacionesStatusAcademico());
+        m.put("informacionStatusAcademico", p.getInformacionStatusAcademico());
+        m.put("statusAcademicoDocumentoId", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getId() : null);
+        m.put("statusAcademicoNombreArchivo", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getNombreArchivo() : null);
+        return m;
     }
 
     @DeleteMapping("/{postulacionId}")
@@ -655,3 +912,13 @@ public class PostulacionAdminController {
         return ResponseEntity.ok(response);
     }
 }
+
+
+
+
+
+
+
+
+
+

@@ -173,19 +173,6 @@ export class ContactoComponent implements AfterViewInit {
       });
     }
 
-    // ----- Copiar teléfono / correo institucional -----
-    const copy = async (text: string) => {
-      try { await navigator.clipboard.writeText(text); } catch {}
-    };
-    document.getElementById('copyPhone')?.addEventListener('click', () => {
-      const t = (document.getElementById('instPhone')?.textContent || '').trim();
-      copy(t);
-    });
-    document.getElementById('copyEmail')?.addEventListener('click', () => {
-      const t = (document.getElementById('instEmail')?.textContent || '').trim();
-      copy(t);
-    });
-
     // ----- Abierto ahora / Cerrado -----
     this.updateOpenStatus();
     setInterval(() => this.updateOpenStatus(), 60000);

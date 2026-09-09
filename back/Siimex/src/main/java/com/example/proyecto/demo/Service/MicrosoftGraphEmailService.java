@@ -1,6 +1,7 @@
 package com.example.proyecto.demo.Service;
 
 import com.example.proyecto.demo.Entity.Documento;
+import com.example.proyecto.demo.Entity.ConvocatoriaFormato;
 
 import java.util.Base64;
 import java.util.List;
@@ -139,7 +140,47 @@ public class MicrosoftGraphEmailService {
         log.info("Correo de aceptación de postulación enviado a {}", toEmail);
     }
 
-    /**
+    
+    public void sendPostulacionAceptadaConDocumento(String toEmail, String nombreUsuario, String tituloConvocatoria,
+                                                    ConvocatoriaFormato documentoAceptacion) {
+        if (documentoAceptacion == null || documentoAceptacion.getContenido() == null || documentoAceptacion.getContenido().length == 0) {
+            sendPostulacionAceptada(toEmail, nombreUsuario, tituloConvocatoria);
+            return;
+        }
+        sendGenericEmailWithAttachment(
+                toEmail,
+                "¡Felicidades! Tu postulación ha sido aceptada - SIIMEX COMECyT",
+                buildPostulacionAceptadaHtml(nombreUsuario, tituloConvocatoria),
+                documentoAceptacion.getNombreArchivo(),
+                documentoAceptacion.getContentType(),
+                documentoAceptacion.getContenido());
+        log.info("Correo de aceptación con documento adjunto enviado a {}", toEmail);
+    }
+
+    public void sendPostulacionAceptadaPersonalizada(String toEmail,
+                                                     String nombreUsuario,
+                                                     String tituloConvocatoria,
+                                                     String mensajePersonalizado,
+                                                     String attachmentName,
+                                                     String contentType,
+                                                     byte[] content) {
+        String html = buildPostulacionAceptadaHtml(nombreUsuario, tituloConvocatoria, mensajePersonalizado);
+        if (content != null && content.length > 0) {
+            sendGenericEmailWithAttachment(
+                    toEmail,
+                    "¡Felicidades! Tu postulación ha sido aceptada - SIIMEX COMECyT",
+                    html,
+                    attachmentName,
+                    contentType,
+                    content);
+        } else {
+            sendGenericEmail(toEmail,
+                    "¡Felicidades! Tu postulación ha sido aceptada - SIIMEX COMECyT",
+                    html);
+        }
+        log.info("Correo de aceptación personalizado enviado a {}", toEmail);
+    }
+/**
      * Envía correo de rechazo de postulación.
      */
     public void sendPostulacionRechazada(String toEmail, String nombreUsuario, String tituloConvocatoria) {
@@ -332,6 +373,36 @@ public class MicrosoftGraphEmailService {
               El equipo de SIIMEX te contactará con los siguientes pasos.
             </div>
             """.formatted(saludo, conv);
+        return buildEmailLayout(
+                "Resultado de postulación",
+                "Tu postulación fue aceptada",
+                "Excelente noticia: ya formas parte de esta convocatoria.",
+                body,
+                "#0f766e",
+                "Tu postulación fue aceptada"
+        );
+    }
+
+
+    private String buildPostulacionAceptadaHtml(String nombreUsuario, String tituloConvocatoria, String mensajePersonalizado) {
+        String saludo = (nombreUsuario != null && !nombreUsuario.isBlank())
+                ? "Hola, " + escapeHtml(nombreUsuario) + ","
+                : "Hola,";
+        String conv = (tituloConvocatoria != null && !tituloConvocatoria.isBlank())
+                ? escapeHtml(tituloConvocatoria)
+                : "la convocatoria";
+        String mensaje = mensajePersonalizado != null ? mensajePersonalizado.trim() : "";
+        String bloqueMensaje = mensaje.isBlank() ? "" : "<div style=\"margin:16px 0;padding:14px 16px;background:#f8fafc;border:1px solid #dbe3ef;border-radius:10px;color:#334155;font-size:13px;line-height:1.7;white-space:pre-wrap;\"><strong>Mensaje de COMECYT:</strong><br>" + escapeHtml(mensaje) + "</div>";
+        String body = """
+            <p style="margin:0 0 12px;color:#111827;font-size:15px;line-height:1.7;">%s</p>
+            <p style="margin:0 0 12px;color:#374151;font-size:14px;line-height:1.7;">
+              Nos complace informarte que <strong>tu postulación a &quot;%s&quot; fue aceptada</strong>.
+            </p>
+            %s
+            <div style="margin:16px 0;padding:14px 16px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;color:#065f46;font-size:13px;">
+              El equipo de SIIMEX te contactará con los siguientes pasos.
+            </div>
+            """.formatted(saludo, conv, bloqueMensaje);
         return buildEmailLayout(
                 "Resultado de postulación",
                 "Tu postulación fue aceptada",
@@ -627,3 +698,4 @@ public class MicrosoftGraphEmailService {
             """.formatted(titleSafe, preheaderSafe, accentColor, badgeSafe, titleSafe, introSafe, bodyHtml, year);
     }
 }
+

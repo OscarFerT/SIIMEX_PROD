@@ -18,7 +18,8 @@ interface BancariaPostulacionItem {
   titularCuenta?: string | null;
   cuentaBancaria?: string | null;
   clabeInterbancaria?: string | null;
-  medioNotificacion?: string | null;
+  estadoCuentaDocumentoId?: number | null;
+  estadoCuentaNombreArchivo?: string | null;
   fechaActualizacionBancaria?: string | null;
   nombramientoDocumentoId?: number | null;
   estadoEntregaApoyo?: string | null;
@@ -112,29 +113,41 @@ export class AdminBancariaComponent implements OnInit {
   }
 
   editarBancaria(p: BancariaPostulacionItem): void {
+    const tieneEstadoCuenta = !!p.estadoCuentaDocumentoId;
     Swal.fire({
-      title: `Información bancaria ${this.escapeHtml(p.folio || `SOL-${p.id}`)}`,
+      title: `${this.tieneBancaria(p) ? 'Editar' : 'Capturar'} datos bancarios`,
       html: `
-        <div class="text-start">
-          <label for="swal-banco" class="form-label small fw-semibold mb-1">Banco</label>
-          <input id="swal-banco" class="swal2-input mt-0 mb-2" maxlength="120" value="${this.escapeHtml(p.banco || '')}" />
-          <label for="swal-titular" class="form-label small fw-semibold mb-1">Titular de cuenta</label>
-          <input id="swal-titular" class="swal2-input mt-0 mb-2" maxlength="180" value="${this.escapeHtml(p.titularCuenta || '')}" />
-          <label for="swal-cuenta" class="form-label small fw-semibold mb-1">Cuenta bancaria</label>
-          <input id="swal-cuenta" class="swal2-input mt-0 mb-2" maxlength="34" value="${this.escapeHtml(p.cuentaBancaria || '')}" />
-          <label for="swal-clabe" class="form-label small fw-semibold mb-1">CLABE</label>
-          <input id="swal-clabe" class="swal2-input mt-0 mb-2" maxlength="18" value="${this.escapeHtml(p.clabeInterbancaria || '')}" />
-          <label for="swal-medio" class="form-label small fw-semibold mb-1">Medio de notificación</label>
-          <select id="swal-medio" class="swal2-select mt-0" style="display:block;width:100%;">
-            <option value="">Selecciona...</option>
-            <option value="CORREO" ${p.medioNotificacion === 'CORREO' ? 'selected' : ''}>Correo</option>
-            <option value="TELEFONO" ${p.medioNotificacion === 'TELEFONO' ? 'selected' : ''}>Teléfono</option>
-            <option value="AMBOS" ${p.medioNotificacion === 'AMBOS' ? 'selected' : ''}>Ambos</option>
-          </select>
+        <div class="text-start bancaria-modal-grid">
+          <p class="small text-muted mb-3">Captura los datos de pago de ${this.escapeHtml(p.nombre || 'la persona beneficiaria')}. El estado de cuenta es obligatorio la primera vez.</p>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="swal-banco" class="form-label small fw-semibold mb-1">Banco</label>
+              <input id="swal-banco" class="form-control" maxlength="120" value="${this.escapeHtml(p.banco || '')}" placeholder="Ej. BBVA, Banorte, Santander" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="swal-titular" class="form-label small fw-semibold mb-1">Titular de la cuenta</label>
+              <input id="swal-titular" class="form-control" maxlength="180" value="${this.escapeHtml(p.titularCuenta || '')}" placeholder="Nombre completo" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="swal-cuenta" class="form-label small fw-semibold mb-1">Número de cuenta</label>
+              <input id="swal-cuenta" class="form-control" maxlength="34" value="${this.escapeHtml(p.cuentaBancaria || '')}" placeholder="Solo números" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="swal-clabe" class="form-label small fw-semibold mb-1">CLABE interbancaria</label>
+              <input id="swal-clabe" class="form-control" maxlength="18" value="${this.escapeHtml(p.clabeInterbancaria || '')}" placeholder="18 dígitos" />
+            </div>
+            <div class="col-12">
+              <label for="swal-estado-cuenta" class="form-label small fw-semibold mb-1">Estado de cuenta</label>
+              <input id="swal-estado-cuenta" class="form-control" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf" />
+              <div class="form-text">PDF, Word o Excel. Máx. 2 MB según configuración.</div>
+              ${tieneEstadoCuenta ? `<div class="alert alert-light border mt-2 mb-0 py-2"><i class="fas fa-file-invoice me-1 text-borgona"></i> Archivo actual: <strong>${this.escapeHtml(p.estadoCuentaNombreArchivo || 'Estado de cuenta cargado')}</strong></div>` : ''}
+            </div>
+          </div>
         </div>
       `,
+      width: 760,
       showCancelButton: true,
-      confirmButtonText: 'Guardar',
+      confirmButtonText: 'Guardar datos bancarios',
       confirmButtonColor: '#7A1E48',
       cancelButtonText: 'Cancelar',
       preConfirm: () => {
@@ -142,27 +155,36 @@ export class AdminBancariaComponent implements OnInit {
         const titularCuenta = (document.getElementById('swal-titular') as HTMLInputElement | null)?.value?.trim() || '';
         const cuentaBancaria = (document.getElementById('swal-cuenta') as HTMLInputElement | null)?.value?.trim() || '';
         const clabeInterbancaria = (document.getElementById('swal-clabe') as HTMLInputElement | null)?.value?.trim() || '';
-        const medioNotificacion = (document.getElementById('swal-medio') as HTMLSelectElement | null)?.value?.trim() || '';
-        if (!banco || !titularCuenta || !cuentaBancaria || !clabeInterbancaria || !medioNotificacion) {
-          Swal.showValidationMessage('Completa todos los campos bancarios');
+        const estadoCuenta = (document.getElementById('swal-estado-cuenta') as HTMLInputElement | null)?.files?.[0] || null;
+        if (!banco || !titularCuenta || !cuentaBancaria || !clabeInterbancaria) {
+          Swal.showValidationMessage('Completa banco, titular, número de cuenta y CLABE');
           return false;
         }
-        return { banco, titularCuenta, cuentaBancaria, clabeInterbancaria, medioNotificacion };
+        if (!tieneEstadoCuenta && !estadoCuenta) {
+          Swal.showValidationMessage('Adjunta el estado de cuenta');
+          return false;
+        }
+        const formData = new FormData();
+        formData.append('banco', banco);
+        formData.append('titularCuenta', titularCuenta);
+        formData.append('cuentaBancaria', cuentaBancaria);
+        formData.append('clabeInterbancaria', clabeInterbancaria);
+        if (estadoCuenta) formData.append('estadoCuenta', estadoCuenta);
+        return formData;
       }
     }).then((res) => {
       if (!res.isConfirmed || !res.value || !this.convocatoriaId) return;
       this.http.post<any>(`${environment.apiBaseUrl}/admin/convocatorias/${this.convocatoriaId}/postulaciones/${p.id}/bancaria`, res.value).subscribe({
         next: () => {
           this.cargarPostulaciones();
-          Swal.fire({ icon: 'success', title: 'Guardado', text: 'La informacion bancaria fue actualizada.', confirmButtonColor: '#800020' });
+          Swal.fire({ icon: 'success', title: 'Guardado', text: 'Los datos bancarios fueron actualizados.', confirmButtonColor: '#800020' });
         },
         error: (err) => {
-          Swal.fire({ icon: 'error', title: 'Error', text: err?.error?.message || err?.error?.error || 'No se pudo guardar la informacion bancaria.', confirmButtonColor: '#800020' });
+          Swal.fire({ icon: 'error', title: 'Error', text: err?.error?.message || err?.error?.error || 'No se pudo guardar la información bancaria.', confirmButtonColor: '#800020' });
         }
       });
     });
   }
-
   revisarRecibo(p: BancariaPostulacionItem): void {
     if (!p.reciboPagoDocumentoId) {
       Swal.fire({ icon: 'info', title: 'Sin recibo', text: 'La persona beneficiaria aún no carga recibo de pago.', confirmButtonColor: '#800020' });
@@ -257,7 +279,7 @@ export class AdminBancariaComponent implements OnInit {
   }
 
   tieneBancaria(p: BancariaPostulacionItem): boolean {
-    return !!(p.banco && p.titularCuenta && p.cuentaBancaria && p.clabeInterbancaria && p.medioNotificacion);
+    return !!(p.banco && p.titularCuenta && p.cuentaBancaria && p.clabeInterbancaria && p.estadoCuentaDocumentoId);
   }
 
   tieneApoyoEntregado(p: BancariaPostulacionItem): boolean {

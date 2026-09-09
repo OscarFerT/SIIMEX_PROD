@@ -4,7 +4,7 @@
       <h1 class="h4 mb-1 text-borgona">
         <i class="fas fa-clipboard-check me-2"></i>Postulaciones asignadas
       </h1>
-      <p class="text-muted small mb-0">Vista de solo lectura para evaluación.</p>
+      <p class="text-muted small mb-0">Vista de solo lectura para evaluación. No muestra tus postulaciones como solicitante.</p>
     </div>
     <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cargarAsignadas()">
       <i class="fas fa-rotate me-1"></i>Actualizar
@@ -93,7 +93,7 @@
 
       <div *ngIf="postulaciones.length === 0" class="text-center py-5 text-muted">
         <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
-        No tienes postulaciones asignadas por el momento.
+        No tienes postulaciones asignadas como evaluador por el momento. Si buscas tu solicitud aceptada, revísala desde el apartado de tus postulaciones/convocatorias.
       </div>
     </div>
   </div>

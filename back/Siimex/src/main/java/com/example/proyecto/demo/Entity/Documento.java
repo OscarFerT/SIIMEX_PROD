@@ -85,8 +85,16 @@ public class Documento {
         CONSTANCIA_EVALUADOR,
         OFICIO_APROBACION,
         NOMBRAMIENTO,
+        ESTADO_CUENTA,
         RECIBO_PAGO,
+        SEGURO_MEDICO,
+        CONSTANCIA_FINAL,
+        CARTA_CIERRE,
+        STATUS_ACADEMICO,
+        RENUNCIA_APOYO,
         /** Adjunto de postulación (requisitos configurables por convocatoria) */
         ADJUNTO_POSTULACION
     }
 }
+
+

@@ -1,0 +1,49 @@
+.admin-modulo-seguimiento {
+  display: block;
+}
+
+.admin-filtros {
+  background: #f8fafc;
+}
+
+.stat-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  padding: 14px 16px;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+}
+
+.stat-card span {
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-card strong {
+  display: block;
+  color: #7a1e48;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  margin-top: 4px;
+}
+
+.stat-card.success strong {
+  color: #198754;
+}
+
+.stat-card.warning strong {
+  color: #b7791f;
+}
+
+.stat-card.danger strong {
+  color: #dc3545;
+}
+
+.notes-cell {
+  max-width: 260px;
+  white-space: normal;
+}

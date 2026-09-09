@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NotificacionService, Notificacion } from '../../core/notificacion.service';
 import { AuthService } from '../../core/auth.service';
@@ -8,7 +9,7 @@ import { Subscription, interval } from 'rxjs';
 @Component({
   selector: 'app-notificaciones',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './notificaciones.component.html',
   styleUrls: ['./notificaciones.component.css']
 })
@@ -22,6 +23,8 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
   loading = true;
   refreshing = false;
   filtroActivo: 'todas' | 'no-leidas' | 'leidas' = 'todas';
+  filtroTexto = '';
+  filtroTipo = '';
   private subs: Subscription[] = [];
   private readonly autoRefreshMs = 10000;
 
@@ -77,18 +80,44 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
   }
 
   aplicarFiltro(): void {
-    if (this.filtroActivo === 'no-leidas') {
-      this.filtradas = this.notificaciones.filter(n => !n.leida);
-    } else if (this.filtroActivo === 'leidas') {
-      this.filtradas = this.notificaciones.filter(n => n.leida);
-    } else {
-      this.filtradas = [...this.notificaciones];
-    }
+    const texto = this.normalizarTexto(this.filtroTexto);
+    const tipo = this.filtroTipo;
+
+    this.filtradas = this.notificaciones.filter(n => {
+      const coincideEstado = this.filtroActivo === 'no-leidas'
+        ? !n.leida
+        : this.filtroActivo === 'leidas'
+          ? n.leida
+          : true;
+      const coincideTipo = tipo ? n.tipo === tipo : true;
+      const contenido = this.normalizarTexto(`${n.titulo || ''} ${n.mensaje || ''} ${this.getTipoLabel(n.tipo)} ${n.tipo || ''}`);
+      const coincideTexto = texto ? contenido.includes(texto) : true;
+      return coincideEstado && coincideTipo && coincideTexto;
+    });
   }
 
   setFiltro(f: 'todas' | 'no-leidas' | 'leidas'): void {
     this.filtroActivo = f;
     this.aplicarFiltro();
+  }
+
+  limpiarFiltrosBusqueda(): void {
+    this.filtroTexto = '';
+    this.filtroTipo = '';
+    this.aplicarFiltro();
+  }
+
+  get hayFiltrosBusqueda(): boolean {
+    return !!(this.filtroTexto.trim() || this.filtroTipo);
+  }
+
+  get tiposDisponibles(): string[] {
+    return Array.from(new Set(this.notificaciones.map(n => n.tipo).filter(Boolean)))
+      .sort((a, b) => this.getTipoLabel(a).localeCompare(this.getTipoLabel(b), 'es', { sensitivity: 'base' }));
+  }
+
+  get countLeidas(): number {
+    return this.notificaciones.filter(n => n.leida).length;
   }
 
   get countNoLeidas(): number {
@@ -170,5 +199,13 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
     const days = Math.floor(hours / 24);
     if (days < 7) return `Hace ${days}d`;
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  private normalizarTexto(value: string): string {
+    return (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
   }
 }

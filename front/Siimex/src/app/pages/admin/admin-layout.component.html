@@ -1,4 +1,4 @@
-<div class="admin-layout">
+﻿<div class="admin-layout">
   <!-- Overlay for mobile sidebar -->
   <div class="admin-overlay" [class.admin-overlay--visible]="sidebarOpen" (click)="sidebarOpen = false"></div>
 
@@ -30,7 +30,7 @@
       </a>
       <a routerLink="/admin/instituciones-educativas" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
         <i class="fas fa-school"></i>
-        <span>Instituciones educativas</span>
+        <span>Instituciones de adscripción</span>
       </a>
       <a routerLink="/admin/feriados" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
         <i class="fas fa-calendar-xmark"></i>
@@ -43,6 +43,10 @@
       <a routerLink="/admin/configuracion-folios" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
         <i class="fas fa-hashtag"></i>
         <span>Folios de registro</span>
+      </a>
+      <a routerLink="/admin/limites-pdf" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
+        <i class="fas fa-file-pdf"></i>
+        <span>Límites PDF</span>
       </a>
       <a routerLink="/admin/reportes" routerLinkActive="active" class="admin-nav-link" (click)="sidebarOpen = false">
         <i class="fas fa-file-export"></i>

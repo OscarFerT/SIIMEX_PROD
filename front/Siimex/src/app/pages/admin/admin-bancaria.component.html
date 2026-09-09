@@ -2,7 +2,7 @@
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <div>
       <h1 class="h4 mb-1 text-borgona">
-        <i class="fas fa-building-columns me-2"></i>Información bancaria
+        <i class="fas fa-money-bill-transfer me-2"></i>Entrega de apoyo y recibo
       </h1>
       <p class="text-muted small mb-0">Convocatoria: <strong>{{ convocatoriaTitulo }}</strong></p>
     </div>
@@ -70,9 +70,9 @@
               <th>Dictamen comité</th>
               <th>Monto</th>
               <th>Banco</th>
-              <th>Cuenta</th>
+              <th>Número de cuenta</th>
               <th>CLABE</th>
-              <th>Medio notificación</th>
+              <th>Estado de cuenta</th>
               <th>Entrega apoyo</th>
               <th>Recibo pago</th>
               <th>Actualización</th>
@@ -91,7 +91,12 @@
               <td class="small">{{ p.banco || '—' }}</td>
               <td class="small">{{ p.cuentaBancaria || '—' }}</td>
               <td class="small">{{ p.clabeInterbancaria || '—' }}</td>
-              <td class="small">{{ p.medioNotificacion || '—' }}</td>
+              <td class="small">
+                <button *ngIf="p.estadoCuentaDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(p.estadoCuentaDocumentoId, p.estadoCuentaNombreArchivo || 'estado_cuenta.pdf')">
+                  <i class="fas fa-download me-1"></i>Descargar
+                </button>
+                <span *ngIf="!p.estadoCuentaDocumentoId" class="text-muted">Pendiente</span>
+              </td>
               <td class="small">
                 <div class="d-flex flex-column gap-1">
                   <span [class.text-success]="tieneApoyoEntregado(p)" [class.fw-semibold]="tieneApoyoEntregado(p)">

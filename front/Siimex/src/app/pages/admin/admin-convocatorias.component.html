@@ -197,19 +197,23 @@
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Fecha de apertura</label>
-              <input type="date" formControlName="fechaApertura" class="form-control" />
+              <input type="datetime-local" formControlName="fechaApertura" class="form-control" />
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Fecha de cierre <span class="text-danger">*</span></label>
-              <input type="date" formControlName="fechaCierre" class="form-control" />
+              <input type="datetime-local" formControlName="fechaCierre" class="form-control" />
               <div *ngIf="formModal.get('fechaCierre')?.touched && formModal.get('fechaCierre')?.errors?.['required']" class="invalid-feedback d-block">La fecha de cierre es obligatoria.</div>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Área</label>
-              <select formControlName="area" class="form-select">
+              <select formControlName="area" class="form-select" (change)="onAreaChange()">
                 <option value="">Seleccionar...</option>
                 <option *ngFor="let a of AREAS" [value]="a.value">{{ a.label }}</option>
               </select>
+              <div class="mt-2" *ngIf="esAreaOtroSeleccionada()">
+                <label class="form-label fw-semibold">Nombre del área</label>
+                <input type="text" formControlName="areaOtro" class="form-control text-uppercase" placeholder="ESCRIBE EL ÁREA" maxlength="120" (input)="normalizarAreaOtro($event)" />
+              </div>
             </div>
             <div class="col-md-6">
               <label class="form-label fw-semibold">Folio de convocatoria</label>
@@ -226,24 +230,44 @@
               <input type="text" formControlName="keywords" class="form-control" placeholder="Separadas por espacios" maxlength="300" />
             </div>
             <div class="col-md-3">
-              <label class="form-label fw-semibold">Límite de aceptados</label>
+              <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                <label class="form-label fw-semibold mb-0">Límite de aceptados</label>
+                <div class="form-check form-switch m-0" title="Habilitar o deshabilitar parámetro">
+                  <input class="form-check-input" type="checkbox" formControlName="limiteAceptadosHabilitado" />
+                </div>
+              </div>
               <input type="number" formControlName="limiteAceptados" class="form-control" placeholder="Vacío = sin límite" min="1" />
-              <div class="form-text">Máximo de postulaciones que se pueden aceptar. Dejar vacío para sin límite.</div>
+              <div class="form-text">Máximo de postulaciones que se pueden aceptar.</div>
             </div>
             <div class="col-md-3">
-              <label class="form-label fw-semibold">Puntaje máximo evaluación</label>
+              <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                <label class="form-label fw-semibold mb-0">Puntaje máximo evaluación</label>
+                <div class="form-check form-switch m-0" title="Habilitar o deshabilitar parámetro">
+                  <input class="form-check-input" type="checkbox" formControlName="puntajeMaximoEvaluacionHabilitado" />
+                </div>
+              </div>
               <input type="number" formControlName="puntajeMaximoEvaluacion" class="form-control" min="1" />
-              <div class="form-text">Escala del puntaje para evaluadores (mínimo 1).</div>
+              <div class="form-text">Escala del puntaje para evaluadores.</div>
             </div>
             <div class="col-md-3">
-              <label class="form-label fw-semibold">Días mínimos (evento)</label>
+              <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                <label class="form-label fw-semibold mb-0">Días mínimos (evento)</label>
+                <div class="form-check form-switch m-0" title="Habilitar o deshabilitar parámetro">
+                  <input class="form-check-input" type="checkbox" formControlName="diasMinAnticipacionHabilitado" />
+                </div>
+              </div>
               <input type="number" formControlName="diasMinAnticipacion" class="form-control" min="0" />
-              <div class="form-text">Anticipación mínima para fecha de evento (configurable, puede ser 0).</div>
+              <div class="form-text">Anticipación mínima para fecha de evento.</div>
             </div>
             <div class="col-md-3">
-              <label class="form-label fw-semibold">Días máximos (evento)</label>
+              <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                <label class="form-label fw-semibold mb-0">Días máximos (evento)</label>
+                <div class="form-check form-switch m-0" title="Habilitar o deshabilitar parámetro">
+                  <input class="form-check-input" type="checkbox" formControlName="diasMaxAnticipacionHabilitado" />
+                </div>
+              </div>
               <input type="number" formControlName="diasMaxAnticipacion" class="form-control" min="0" />
-              <div class="form-text">Anticipación máxima para fecha de evento (configurable, puede ser 0).</div>
+              <div class="form-text">Anticipación máxima para fecha de evento.</div>
             </div>
             <div class="col-12 mt-2">
               <div class="conv-section-banner">
@@ -320,32 +344,92 @@
             </div>
             <div class="col-12">
               <p class="text-muted small mb-3">
-                Adjunta formatos oficiales de la convocatoria. Las personas postulantes podrán descargarlos, llenarlos y subirlos como parte de su solicitud en los documentos requeridos.
+                Adjunta uno o varios formatos oficiales de la convocatoria. Las personas postulantes podrán descargarlos, llenarlos y subirlos como parte de su solicitud en los documentos requeridos.
               </p>
               <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
                 <input
                   #fileFormatos
                   type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  accept=".pdf,.docx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   multiple
-                  class="form-control form-control-sm"
-                  style="max-width: 360px"
+                  class="d-none"
                   (change)="onFormatosSeleccionados($event)"
                   [disabled]="guardando || subiendoFormatos" />
+                <button
+                  type="button"
+                  class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
+                  (click)="fileFormatos.click()"
+                  [disabled]="guardando || subiendoFormatos">
+                  <i class="fas fa-plus"></i>
+                  Agregar documentos
+                </button>
+                <input
+                  #fileDocumentoAceptacion
+                  type="file"
+                  accept=".pdf,.docx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  class="d-none"
+                  (change)="onDocumentoAceptacionSeleccionado($event)"
+                  [disabled]="guardando || subiendoFormatos || !formModal.get('reglaModuloAceptacion')?.value" />
+                <button
+                  *ngIf="formModal.get('reglaModuloAceptacion')?.value"
+                  type="button"
+                  class="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-2"
+                  (click)="fileDocumentoAceptacion.click()"
+                  [disabled]="guardando || subiendoFormatos">
+                  <i class="fas fa-paperclip"></i>
+                  Agregar documento de aceptación
+                </button>
+                <input
+                  #fileFormatoConstancia
+                  type="file"
+                  accept=".pdf,.docx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  class="d-none"
+                  (change)="onFormatoConstanciaSeleccionado($event)"
+                  [disabled]="guardando || subiendoFormatos || !formModal.get('reglaModuloConstancias')?.value" />
+                <button
+                  *ngIf="formModal.get('reglaModuloConstancias')?.value"
+                  type="button"
+                  class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
+                  (click)="fileFormatoConstancia.click()"
+                  [disabled]="guardando || subiendoFormatos">
+                  <i class="fas fa-certificate"></i>
+                  Agregar formato de constancia
+                </button>
+                <input
+                  #fileFormatoCartaCierre
+                  type="file"
+                  accept=".pdf,.docx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  class="d-none"
+                  (change)="onFormatoCartaCierreSeleccionado($event)"
+                  [disabled]="guardando || subiendoFormatos || !formModal.get('reglaModuloConstancias')?.value" />
+                <button
+                  *ngIf="formModal.get('reglaModuloConstancias')?.value"
+                  type="button"
+                  class="btn btn-outline-dark btn-sm d-inline-flex align-items-center gap-2"
+                  (click)="fileFormatoCartaCierre.click()"
+                  [disabled]="guardando || subiendoFormatos">
+                  <i class="fas fa-file-signature"></i>
+                  Agregar formato de carta cierre
+                </button>
                 <span *ngIf="subiendoFormatos" class="text-muted small"><i class="fas fa-spinner fa-spin me-1"></i>Subiendo formatos...</span>
               </div>
-              <div class="form-text mb-2">Formatos permitidos: PDF, Word y Excel. Máximo 10 MB por archivo.</div>
+              <div class="form-text mb-2">Puedes seleccionar más de un archivo a la vez para solicitud. Formatos permitidos: PDF, DOCX y XLSX. Máximo 10 MB por archivo.</div>
+              <div *ngIf="formModal.get('reglaModuloAceptacion')?.value" class="form-text mb-2 text-success">El documento de aceptación se usa internamente y se adjunta al correo cuando la postulación sea aceptada.</div>
+              <div *ngIf="formModal.get('reglaModuloConstancias')?.value" class="form-text mb-2 text-primary">Los formatos de constancia y carta de cierre se usan internamente al emitir documentos finales para personas aceptadas.</div>
               <div *ngIf="errorFormato" class="mt-2 px-3 py-2 rounded" style="background-color:#fff3cd;border:1px solid #ffc107;color:#856404;font-size:0.85rem;">
                 <i class="fas fa-exclamation-triangle me-1"></i>{{ errorFormato }}
               </div>
 
               <div *ngIf="formatosExistentes.length" class="mt-3">
-                <div class="small fw-semibold text-muted mb-2">Formatos cargados</div>
+                <div class="small fw-semibold text-muted mb-2">Formatos cargados ({{ formatosExistentes.length }})</div>
                 <div class="req-docs-list">
                   <div *ngFor="let formato of formatosExistentes" class="req-doc-item mb-2 p-3 border rounded bg-light">
                     <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
                       <div>
-                        <div class="fw-semibold">{{ formato.nombre || formato.nombreArchivo }}</div>
+                        <div class="fw-semibold d-flex flex-wrap align-items-center gap-2">
+                          <span>{{ formato.nombre || formato.nombreArchivo }}</span>
+                          <span class="badge" [ngClass]="claseUsoFormato(formato)">{{ etiquetaUsoFormato(formato) }}</span>
+                        </div>
                         <div class="text-muted small">{{ formato.nombreArchivo }} · {{ formatearPeso(formato.sizeBytes) }}</div>
                         <div *ngIf="formato.descripcion" class="small mt-1">{{ formato.descripcion }}</div>
                       </div>
@@ -363,7 +447,7 @@
               </div>
 
               <div *ngIf="formatosPendientes.length" class="mt-3">
-                <div class="small fw-semibold text-muted mb-2">Formatos por subir al guardar</div>
+                <div class="small fw-semibold text-muted mb-2">Formatos por subir al guardar ({{ formatosPendientes.length }})</div>
                 <div class="req-docs-list">
                   <div *ngFor="let formato of formatosPendientes; let i = index; trackBy: trackByIndex" class="req-doc-item mb-3 p-3 border rounded bg-light">
                     <div class="row g-2 align-items-start">
@@ -378,6 +462,7 @@
                       <div class="col-md-2">
                         <label class="form-label small mb-1">Archivo</label>
                         <div class="small text-muted">{{ formato.file.name }}</div>
+                        <span class="badge" [ngClass]="claseUsoFormato(formato)">{{ etiquetaUsoFormato(formato) }}</span>
                         <div class="small text-muted">{{ formatearPeso(formato.file.size) }}</div>
                       </div>
                       <div class="col-md-1 text-end">
@@ -435,24 +520,28 @@
                 <i class="fas fa-sliders me-2"></i>Reglas operativas (guiadas)
               </div>
               <p class="text-muted small mb-3">Configura reglas clave sin escribir clave/valor manual. Estos datos se guardan automáticamente dentro de reglas configurables.</p>
-              <div class="mb-3 p-3 border rounded bg-light">
+              <div class="mb-3 p-3 border rounded bg-light modulos-checklist-panel">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                   <div class="fw-semibold small text-uppercase text-muted">
                     <i class="fas fa-list-check me-1"></i>Checklist de módulos de convocatoria
                   </div>
                   <span class="badge text-bg-secondary">{{ MODULOS_CONVOCATORIA_OPTIONS.length }} módulos configurables</span>
                 </div>
-                <div class="row g-2">
+                <div class="row g-2 modulos-checklist-grid">
                   <div class="col-md-6" *ngFor="let modulo of MODULOS_CONVOCATORIA_OPTIONS">
-                    <div class="form-check form-switch border rounded px-3 py-2 h-100 bg-white">
-                      <input
-                        type="checkbox"
-                        class="form-check-input"
-                        [id]="'modulo_' + modulo.control"
-                        [formControlName]="modulo.control"
-                      />
-                      <label class="form-check-label fw-semibold" [for]="'modulo_' + modulo.control">{{ modulo.etiqueta }}</label>
-                      <div class="small text-muted mt-1">{{ modulo.descripcion }}</div>
+                    <div class="modulo-check-card h-100 bg-white">
+                      <div class="form-check form-switch modulo-check-switch">
+                        <input
+                          type="checkbox"
+                          class="form-check-input"
+                          [id]="'modulo_' + modulo.control"
+                          [formControlName]="modulo.control"
+                        />
+                      </div>
+                      <div class="modulo-check-content">
+                        <label class="form-check-label fw-semibold" [for]="'modulo_' + modulo.control">{{ modulo.etiqueta }}</label>
+                        <div class="small text-muted mt-1">{{ modulo.descripcion }}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -484,11 +573,44 @@
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label small fw-semibold mb-1">Inicio de postulación</label>
-                  <input type="date" formControlName="reglaPostulacionFechaInicio" class="form-control form-control-sm" />
+                  <input type="datetime-local" formControlName="reglaPostulacionFechaInicio" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-6">
                   <label class="form-label small fw-semibold mb-1">Cierre de postulación</label>
-                  <input type="date" formControlName="reglaPostulacionFechaFin" class="form-control form-control-sm" />
+                  <input type="datetime-local" formControlName="reglaPostulacionFechaFin" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-4">
+                  <div class="parametro-switch-card h-100">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                      <label class="form-label small fw-semibold mb-0" for="fechaEventoActivoCheck">Solicitar fecha del evento</label>
+                      <div class="form-check form-switch m-0" title="Mostrar u ocultar fecha del evento">
+                        <input class="form-check-input" type="checkbox" id="fechaEventoActivoCheck" formControlName="reglaFechaEventoActiva" />
+                      </div>
+                    </div>
+                    <div class="form-text muted-small">Activa la fecha del evento en la postulación.</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="parametro-switch-card h-100">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                      <label class="form-label small fw-semibold mb-0" for="tipoSolicitudActivoCheck">Solicitar tipo de solicitud</label>
+                      <div class="form-check form-switch m-0" title="Mostrar u ocultar Nacional/Internacional">
+                        <input class="form-check-input" type="checkbox" id="tipoSolicitudActivoCheck" formControlName="reglaTipoSolicitudActivo" />
+                      </div>
+                    </div>
+                    <div class="form-text muted-small">Activa el campo Nacional/Internacional en la postulación.</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="parametro-switch-card h-100">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                      <label class="form-label small fw-semibold mb-0" for="proyectoInfoActivoCheck">Solicitar información del proyecto</label>
+                      <div class="form-check form-switch m-0" title="Mostrar u ocultar título y descripción del proyecto">
+                        <input class="form-check-input" type="checkbox" id="proyectoInfoActivoCheck" formControlName="reglaProyectoInfoActivo" />
+                      </div>
+                    </div>
+                    <div class="form-text muted-small">Activa título y descripción del proyecto en la postulación.</div>
+                  </div>
                 </div>
                 <div class="col-md-4">
                   <label class="form-label small fw-semibold mb-1">Informes requeridos</label>
@@ -509,11 +631,28 @@
                   <input type="number" formControlName="reglaPlazoCorreccionHorasMax" min="1" max="720" class="form-control form-control-sm" />
                 </div>
                 <div class="col-12">
-                  <label class="form-label small fw-semibold mb-1">Estados editables de postulación</label>
-                  <select formControlName="reglaEstadosEditables" class="form-select form-select-sm" multiple size="4">
-                    <option *ngFor="let item of ESTADOS_EDITABLES_OPTIONS" [value]="item.value">{{ item.label }}</option>
-                  </select>
-                  <div class="form-text muted-small mt-1">Mantén presionada la tecla Ctrl/Cmd para selección múltiple.</div>
+                  <div class="estados-editables-panel">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                      <label class="form-label small fw-semibold mb-0">Estados editables de postulación</label>
+                      <span class="badge rounded-pill text-bg-light border">
+                        {{ (formModal.get('reglaEstadosEditables')?.value || []).length }} seleccionados
+                      </span>
+                    </div>
+                    <div class="estados-editables-grid" role="group" aria-label="Estados editables de postulación">
+                      <button
+                        type="button"
+                        class="estado-editable-chip"
+                        *ngFor="let item of ESTADOS_EDITABLES_OPTIONS"
+                        [class.activo]="estadoEditableSeleccionado(item.value)"
+                        (click)="toggleEstadoEditable(item.value)">
+                        <span class="estado-check" aria-hidden="true">
+                          <i class="fas fa-check"></i>
+                        </span>
+                        <span>{{ item.label }}</span>
+                      </button>
+                    </div>
+                    <div class="form-text muted-small mt-2">Selecciona los estados en los que una persona podrá corregir o editar su postulación.</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -565,16 +704,49 @@
               <div class="conv-section-banner mb-2">
                 <i class="fas fa-list-check me-2"></i>Criterios del formulario de postulación
               </div>
-              <p class="text-muted small mb-3">Define los campos que verán los usuarios al postularse. El <strong>peso</strong> (1-100) se usa para calcular el % de compatibilidad. Usa claves como <code>grado_academico</code>, <code>tipo_perfil</code>, <code>anios_experiencia</code>, <code>area_conocimiento</code>, <code>idiomas</code> para que coincidan con el perfil del usuario.</p>
+              <p class="text-muted small mb-3">
+                Selecciona indicadores alineados al perfil completo. El sistema guarda la clave correcta y ustedes solo ajustan peso, requerido y valores cuando aplique.
+              </p>
+
+              <div class="criterios-sugeridos-panel mb-3">
+                <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mb-3">
+                  <div>
+                    <div class="fw-semibold text-borgona">Indicadores sugeridos SIIMEX</div>
+                    <div class="text-muted small">Basados en trayectoria académica, área de conocimiento, experiencia, perfil e idiomas.</div>
+                  </div>
+                  <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <span class="criterios-peso-pill" [class.warn]="pesoTotalCriterios !== 100">
+                      Peso total: {{ pesoTotalCriterios }} / 100
+                    </span>
+                    <button type="button" class="btn btn-outline-borgona btn-sm" (click)="cargarPlantillaCriteriosSiimex()">
+                      <i class="fas fa-wand-magic-sparkles me-1"></i>Cargar plantilla SIIMEX
+                    </button>
+                  </div>
+                </div>
+
+                <div class="row g-2">
+                  <div class="col-md-6 col-xl-4" *ngFor="let preset of CRITERIOS_SIIMEX_PRESET">
+                    <button type="button" class="criterio-preset-card" [class.activo]="criterioYaAgregado(preset.clave)" [disabled]="criterioYaAgregado(preset.clave)" (click)="agregarCriterioSugerido(preset)">
+                      <span class="preset-title">{{ preset.etiqueta }}</span>
+                      <span class="preset-desc">{{ preset.descripcion }}</span>
+                      <span class="preset-meta">
+                        <code>{{ preset.clave }}</code>
+                        <span>{{ preset.peso }} pts</span>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div formArrayName="criterios" class="criterios-list">
                 <div *ngFor="let crit of criterios.controls; let i = index; trackBy: trackByIndex" [formGroupName]="i" class="criterio-item mb-3 p-3 border rounded bg-light">
                   <div class="row g-2 align-items-start">
                     <div class="col-md-4">
-                      <label class="form-label small mb-1">Etiqueta</label>
+                      <label class="form-label small mb-1">Indicador</label>
                       <input type="text" formControlName="etiqueta" class="form-control form-control-sm" placeholder="Ej. Grado académico" />
                     </div>
                     <div class="col-md-2">
-                      <label class="form-label small mb-1">Clave (ID)</label>
+                      <label class="form-label small mb-1">Clave del perfil</label>
                       <input type="text" formControlName="clave" class="form-control form-control-sm" placeholder="grado_academico" />
                     </div>
                     <div class="col-md-2">
@@ -584,7 +756,7 @@
                       </select>
                     </div>
                     <div class="col-md-2">
-                      <label class="form-label small mb-1">Peso (1-100)</label>
+                      <label class="form-label small mb-1">Peso</label>
                       <input type="number" formControlName="peso" class="form-control form-control-sm" min="1" max="100" />
                     </div>
                     <div class="col-md-1 d-flex align-items-end">
@@ -598,14 +770,18 @@
                         <i class="fas fa-trash"></i>
                       </button>
                     </div>
-                    <div *ngIf="necesitaOpciones(crit.get('tipo')?.value)" class="col-12">
-                      <label class="form-label small mb-1">Opciones (separadas por comas)</label>
+                    <div *ngIf="necesitaOpciones(crit.get('tipo')?.value)" class="col-md-8">
+                      <label class="form-label small mb-1">Valores aceptados para comparar</label>
                       <input type="text" formControlName="opciones" class="form-control form-control-sm" placeholder="Ej. Licenciatura, Maestría, Doctorado" />
+                    </div>
+                    <div *ngIf="crit.get('tipo')?.value === 'numero'" class="col-md-4">
+                      <label class="form-label small mb-1">Mínimo requerido para coincidir</label>
+                      <input type="number" formControlName="minimo" class="form-control form-control-sm" min="0" placeholder="Ej. 1" />
                     </div>
                   </div>
                 </div>
                 <button type="button" class="btn btn-outline-borgona btn-sm" (click)="agregarCriterio()">
-                  <i class="fas fa-plus me-1"></i>Agregar criterio
+                  <i class="fas fa-plus me-1"></i>Agregar criterio personalizado
                 </button>
               </div>
             </div>
@@ -661,3 +837,12 @@
   </div>
   <div class="modal-backdrop fade" [class.show]="modalVisible" (click)="cerrarModal()"></div>
 </div>
+
+
+
+
+
+
+
+
+

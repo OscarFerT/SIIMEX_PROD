@@ -7,13 +7,10 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 
 public record Registro1Request(
-
     @NotBlank
     String nombre,
-
     @NotBlank
     String apellidoPaterno,
-
     @NotBlank
     String apellidoMaterno,
 

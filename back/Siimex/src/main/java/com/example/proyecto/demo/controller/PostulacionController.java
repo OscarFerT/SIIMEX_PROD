@@ -144,6 +144,8 @@ public class PostulacionController {
             m.put("titularCuenta", p.getTitularCuenta());
             m.put("cuentaBancaria", p.getCuentaBancaria());
             m.put("clabeInterbancaria", p.getClabeInterbancaria());
+            m.put("estadoCuentaDocumentoId", p.getEstadoCuentaDocumento() != null ? p.getEstadoCuentaDocumento().getId() : null);
+            m.put("estadoCuentaNombreArchivo", p.getEstadoCuentaDocumento() != null ? p.getEstadoCuentaDocumento().getNombreArchivo() : null);
             m.put("medioNotificacion", p.getMedioNotificacion());
             m.put("fechaActualizacionBancaria", p.getFechaActualizacionBancaria() != null ? p.getFechaActualizacionBancaria().toString() : null);
             m.put("estadoEntregaApoyo", p.getEstadoEntregaApoyo());
@@ -169,6 +171,14 @@ public class PostulacionController {
             m.put("fechaReciboPago", p.getFechaReciboPago() != null ? p.getFechaReciboPago().toString() : null);
             m.put("fechaValidacionReciboPago", p.getFechaValidacionReciboPago() != null ? p.getFechaValidacionReciboPago().toString() : null);
             m.put("observacionesReciboPago", p.getObservacionesReciboPago());
+            m.put("estadoSeguroMedico", p.getEstadoSeguroMedico());
+            m.put("fechaSeguroMedico", p.getFechaSeguroMedico() != null ? p.getFechaSeguroMedico().toString() : null);
+            m.put("numeroSeguroMedico", p.getNumeroSeguroMedico());
+            m.put("seguroMedicoDocumentoId", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getId() : null);
+            m.put("seguroMedicoNombreArchivo", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getNombreArchivo() : null);
+            m.put("observacionesSeguroMedico", p.getObservacionesSeguroMedico());
+            m.put("renunciaDocumentoId", p.getRenunciaDocumento() != null ? p.getRenunciaDocumento().getId() : null);
+            m.put("renunciaNombreArchivo", p.getRenunciaDocumento() != null ? p.getRenunciaDocumento().getNombreArchivo() : null);
             m.put("criteriosJson", p.getCriteriosJson());
             m.put("fechaCreacion", p.getFechaCreacion() != null ? p.getFechaCreacion().toString() : null);
             m.put("estado", p.getEstado());
@@ -257,22 +267,20 @@ public class PostulacionController {
         }
     }
 
-    @PostMapping("/mias/{postulacionId}/bancaria")
+    @PostMapping(value = "/mias/{postulacionId}/bancaria", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> actualizarBancariaMia(
             @PathVariable Long postulacionId,
-            @RequestBody Map<String, Object> body,
+            @RequestParam("banco") String banco,
+            @RequestParam("titularCuenta") String titularCuenta,
+            @RequestParam("cuentaBancaria") String cuentaBancaria,
+            @RequestParam("clabeInterbancaria") String clabeInterbancaria,
+            @RequestPart(value = "estadoCuenta", required = false) MultipartFile estadoCuenta,
             Authentication auth) {
         if (auth == null || auth.getPrincipal() == null) {
             return ResponseEntity.status(401).body(Map.of("error", "No autenticado"));
         }
         Long authUserId = (Long) auth.getPrincipal();
         try {
-            String banco = body != null && body.get("banco") != null ? String.valueOf(body.get("banco")) : null;
-            String titularCuenta = body != null && body.get("titularCuenta") != null ? String.valueOf(body.get("titularCuenta")) : null;
-            String cuentaBancaria = body != null && body.get("cuentaBancaria") != null ? String.valueOf(body.get("cuentaBancaria")) : null;
-            String clabeInterbancaria = body != null && body.get("clabeInterbancaria") != null ? String.valueOf(body.get("clabeInterbancaria")) : null;
-            String medioNotificacion = body != null && body.get("medioNotificacion") != null ? String.valueOf(body.get("medioNotificacion")) : null;
-
             Postulacion p = postulacionService.actualizarInformacionBancaria(
                     postulacionId,
                     authUserId,
@@ -281,7 +289,8 @@ public class PostulacionController {
                     titularCuenta,
                     cuentaBancaria,
                     clabeInterbancaria,
-                    medioNotificacion
+                    estadoCuenta,
+                    null
             );
             Map<String, Object> response = new HashMap<>();
             response.put("id", p.getId());
@@ -289,7 +298,8 @@ public class PostulacionController {
             response.put("titularCuenta", p.getTitularCuenta());
             response.put("cuentaBancaria", p.getCuentaBancaria());
             response.put("clabeInterbancaria", p.getClabeInterbancaria());
-            response.put("medioNotificacion", p.getMedioNotificacion());
+            response.put("estadoCuentaDocumentoId", p.getEstadoCuentaDocumento() != null ? p.getEstadoCuentaDocumento().getId() : null);
+            response.put("estadoCuentaNombreArchivo", p.getEstadoCuentaDocumento() != null ? p.getEstadoCuentaDocumento().getNombreArchivo() : null);
             response.put("fechaActualizacionBancaria", p.getFechaActualizacionBancaria() != null ? p.getFechaActualizacionBancaria().toString() : null);
             response.put("message", "Informacion bancaria actualizada");
             return ResponseEntity.ok(response);
@@ -329,6 +339,66 @@ public class PostulacionController {
         }
     }
 
+    @PostMapping(value = "/mias/{postulacionId}/seguro-medico", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> subirSeguroMedico(
+            @PathVariable Long postulacionId,
+            @RequestParam("numeroSeguroMedico") String numeroSeguroMedico,
+            @RequestPart("file") MultipartFile file,
+            Authentication auth) {
+        if (auth == null || auth.getPrincipal() == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "No autenticado"));
+        }
+        Long authUserId = (Long) auth.getPrincipal();
+        try {
+            Postulacion p = postulacionService.subirSeguroMedico(postulacionId, authUserId, numeroSeguroMedico, file);
+            return ResponseEntity.ok(Map.of(
+                    "id", p.getId(),
+                    "estadoSeguroMedico", p.getEstadoSeguroMedico(),
+                    "fechaSeguroMedico", p.getFechaSeguroMedico() != null ? p.getFechaSeguroMedico().toString() : null,
+                    "numeroSeguroMedico", p.getNumeroSeguroMedico(),
+                    "seguroMedicoDocumentoId", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getId() : null,
+                    "seguroMedicoNombreArchivo", p.getSeguroMedicoDocumento() != null ? p.getSeguroMedicoDocumento().getNombreArchivo() : null,
+                    "message", "Seguro médico cargado"
+            ));
+        } catch (ApiException e) {
+            return ResponseEntity.status(e.getStatus())
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "No se pudo subir el seguro médico"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "No se pudo subir el seguro médico"));
+        }
+    }
+
+
+    @PostMapping(value = "/mias/{postulacionId}/status-academico", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> subirStatusAcademico(
+            @PathVariable Long postulacionId,
+            @RequestParam("informacionStatusAcademico") String informacionStatusAcademico,
+            @RequestPart(value = "file", required = false) MultipartFile file,
+            Authentication auth) {
+        if (auth == null || auth.getPrincipal() == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "No autenticado"));
+        }
+        Long authUserId = (Long) auth.getPrincipal();
+        try {
+            Postulacion p = postulacionService.subirStatusAcademico(postulacionId, authUserId, informacionStatusAcademico, file);
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", p.getId());
+            response.put("estadoStatusAcademico", p.getEstadoStatusAcademico());
+            response.put("fechaStatusAcademico", p.getFechaStatusAcademico() != null ? p.getFechaStatusAcademico().toString() : null);
+            response.put("informacionStatusAcademico", p.getInformacionStatusAcademico());
+            response.put("statusAcademicoDocumentoId", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getId() : null);
+            response.put("statusAcademicoNombreArchivo", p.getStatusAcademicoDocumento() != null ? p.getStatusAcademicoDocumento().getNombreArchivo() : null);
+            response.put("message", "Estatus académico actualizado");
+            return ResponseEntity.ok(response);
+        } catch (ApiException e) {
+            return ResponseEntity.status(e.getStatus())
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "No se pudo actualizar el estatus académico"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "No se pudo actualizar el estatus académico"));
+        }
+    }
     @PostMapping(value = "/mias/{postulacionId}/recibo-pago", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> subirReciboPago(
             @PathVariable Long postulacionId,
@@ -383,26 +453,26 @@ public class PostulacionController {
         }
     }
 
-    @PostMapping("/mias/{postulacionId}/renuncia")
+    @PostMapping(value = "/mias/{postulacionId}/renuncia", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> solicitarRenuncia(
             @PathVariable Long postulacionId,
-            @RequestBody Map<String, Object> body,
+            @RequestParam("motivoRenuncia") String motivoRenuncia,
+            @RequestPart("oficioBaja") MultipartFile oficioBaja,
             Authentication auth) {
         if (auth == null || auth.getPrincipal() == null) {
             return ResponseEntity.status(401).body(Map.of("error", "No autenticado"));
         }
         Long authUserId = (Long) auth.getPrincipal();
         try {
-            String motivoRenuncia = body != null && body.get("motivoRenuncia") != null
-                    ? String.valueOf(body.get("motivoRenuncia"))
-                    : null;
-            Postulacion p = postulacionService.solicitarRenuncia(postulacionId, authUserId, motivoRenuncia);
-            return ResponseEntity.ok(Map.of(
-                    "id", p.getId(),
-                    "estadoRenuncia", p.getEstadoRenuncia(),
-                    "fechaSolicitudRenuncia", p.getFechaSolicitudRenuncia() != null ? p.getFechaSolicitudRenuncia().toString() : null,
-                    "message", "Solicitud de renuncia enviada"
-            ));
+            Postulacion p = postulacionService.solicitarRenuncia(postulacionId, authUserId, motivoRenuncia, oficioBaja);
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", p.getId());
+            response.put("estadoRenuncia", p.getEstadoRenuncia());
+            response.put("fechaSolicitudRenuncia", p.getFechaSolicitudRenuncia() != null ? p.getFechaSolicitudRenuncia().toString() : null);
+            response.put("renunciaDocumentoId", p.getRenunciaDocumento() != null ? p.getRenunciaDocumento().getId() : null);
+            response.put("renunciaNombreArchivo", p.getRenunciaDocumento() != null ? p.getRenunciaDocumento().getNombreArchivo() : null);
+            response.put("message", "Solicitud de renuncia enviada");
+            return ResponseEntity.ok(response);
         } catch (ApiException e) {
             return ResponseEntity.status(e.getStatus())
                     .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "No se pudo enviar la solicitud de renuncia"));
@@ -482,3 +552,5 @@ public class PostulacionController {
         return out;
     }
 }
+
+

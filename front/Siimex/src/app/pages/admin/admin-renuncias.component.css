@@ -5,3 +5,8 @@
 .admin-filtros {
   background: #f8fafc;
 }
+
+.motivo-renuncia-cell {
+  max-width: 280px;
+  white-space: normal;
+}

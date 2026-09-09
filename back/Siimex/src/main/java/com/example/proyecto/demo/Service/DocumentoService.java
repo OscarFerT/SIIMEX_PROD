@@ -28,6 +28,7 @@ public class DocumentoService {
 
     private final DocumentoRepository documentoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
     @Value("${app.upload.directory}")
     private String uploadBaseDirectory;
@@ -225,11 +226,13 @@ public class DocumentoService {
     }
 
     private void validarArchivo(MultipartFile archivo, Documento.TipoDocumento tipo) {
-        if (archivo.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("El archivo " + archivo.getOriginalFilename() + 
-                    " excede el tamaño máximo permitido de 10MB");
+        long maxFileSize = tipo == Documento.TipoDocumento.FOTO_PERFIL ? MAX_FILE_SIZE : configuracionSistemaService.obtenerLimitePdfBytes(limiteKeyPorTipo(tipo));
+        if (archivo.getSize() > maxFileSize) {
+            long maxMb = maxFileSize / (1024L * 1024L);
+            throw new IllegalArgumentException("El archivo " + archivo.getOriginalFilename() +
+                    " excede el tamaño máximo permitido de " + maxMb + " MB");
         }
-        if (tipo == Documento.TipoDocumento.ADJUNTO_POSTULACION) {
+        if (tipo == Documento.TipoDocumento.ADJUNTO_POSTULACION || tipo == Documento.TipoDocumento.ESTADO_CUENTA) {
             if (!esFormatoSolicitud(archivo)) {
                 throw new IllegalArgumentException("El archivo " + archivo.getOriginalFilename() + " debe estar en formato PDF, DOCX o XLSX");
             }
@@ -246,6 +249,24 @@ public class DocumentoService {
         }
     }
 
+
+    private String limiteKeyPorTipo(Documento.TipoDocumento tipo) {
+        if (tipo == null) return "perfil.rubros";
+        return switch (tipo) {
+            case FISCAL_PDF, DOMICILIO, CEDULA_PROFESIONAL -> "registro.documentos";
+            case CERTIFICADO_1, CERTIFICADO_2, CONSTANCIA_SNII -> "registro.perfilAcademico";
+            case CERTIFICACION_IDIOMA -> "registro.idiomas";
+            case ESTANCIA_INVESTIGACION -> "registro.estancias";
+            case DIVULGACION -> "registro.divulgacion";
+            case CV, CURRICULUM -> "perfil.documentos";
+            case CV_POSTULACION -> "postulacion.curriculum";
+            case ADJUNTO_POSTULACION, ESTADO_CUENTA, SEGURO_MEDICO, STATUS_ACADEMICO, RENUNCIA_APOYO -> "postulacion.documentos";
+            case INFORME_PARCIAL, INFORME_FINAL -> "postulacion.informes";
+            case RECIBO_PAGO -> "postulacion.reciboPago";
+            case CARTA_EVALUADOR, DICTAMEN_EVALUADOR, CONSTANCIA_EVALUADOR -> "evaluacion.documentos";
+            default -> "perfil.rubros";
+        };
+    }
     private boolean esPdf(MultipartFile archivo) {
         if (archivo == null || archivo.isEmpty()) return false;
         return FileSecurityUtils.isPdf(archivo);
@@ -538,6 +559,57 @@ public class DocumentoService {
                 .build());
     }
 
+
+    /**
+     * Guarda un documento final emitido desde un formato oficial previamente validado.
+     */
+    @Transactional
+    public Documento guardarDocumentoEmitidoDesdeFormato(Long usuarioId,
+                                                         Documento.TipoDocumento tipo,
+                                                         String nombrePersonalizado,
+                                                         String contentType,
+                                                         byte[] contenido,
+                                                         boolean eliminarAnteriores) throws IOException {
+        if (contenido == null || contenido.length == 0) {
+            throw new IllegalArgumentException("El contenido del formato oficial no puede estar vacío");
+        }
+        if (contenido.length > MAX_FILE_SIZE) {
+            throw new IllegalArgumentException("El documento emitido excede el tamaño máximo permitido de 10MB");
+        }
+        String nombreSeguro = FileSecurityUtils.sanitizeFilename(
+                nombrePersonalizado,
+                tipo.name().toLowerCase(Locale.ROOT) + "_" + System.currentTimeMillis() + ".pdf");
+        String extension = FileSecurityUtils.extensionOf(nombreSeguro);
+        if (!("pdf".equals(extension) || "docx".equals(extension) || "xlsx".equals(extension))) {
+            throw new IllegalArgumentException("El formato oficial debe ser PDF, DOCX o XLSX");
+        }
+
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con ID: " + usuarioId));
+        Path usuarioDir = crearDirectorioUsuario(usuarioId);
+        if (eliminarAnteriores) {
+            eliminarDocumentosPorTipo(usuarioId, tipo, usuarioDir);
+        }
+        String nombreFinal = generarNombreArchivo(tipo, nombreSeguro, usuarioDir);
+        Path archivoPath = FileSecurityUtils.resolveInside(usuarioDir, nombreFinal);
+        byte[] contenidoFinal = contenido.clone();
+        if ("pdf".equals(extension)) {
+            contenidoFinal = FileSecurityUtils.stripDocumentMetadata(contenidoFinal, nombreFinal);
+        }
+        Files.write(archivoPath, contenidoFinal);
+
+        String ct = contentType != null && !contentType.isBlank()
+                ? contentType.trim()
+                : FileSecurityUtils.safeContentTypeForFilename(nombreFinal);
+        return documentoRepository.save(Documento.builder()
+                .usuario(usuario)
+                .tipo(tipo)
+                .nombreArchivo(nombreFinal)
+                .contentType(ct)
+                .sizeBytes(contenidoFinal.length)
+                .contenido(contenidoFinal)
+                .build());
+    }
     /**
      * Elimina un documento específico
      */
@@ -566,3 +638,6 @@ public class DocumentoService {
         log.info("Documento eliminado: {}", documentoId);
     }
 }
+
+
+

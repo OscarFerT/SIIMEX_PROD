@@ -32,7 +32,9 @@ public class FoliosAprobadosController {
             @RequestParam(required = false) Long convocatoriaId,
             @RequestParam(required = false) String q) {
         String query = normalizar(q);
-        List<Postulacion> aprobadas = postulacionRepository.findBeneficiariasAprobadas();
+        List<Postulacion> aprobadas = postulacionRepository.findBeneficiariasAprobadas().stream()
+                .filter(this::esFolioPublicable)
+                .toList();
         List<Map<String, Object>> items = aprobadas.stream()
                 .filter(p -> convocatoriaId == null || (p.getConvocatoria() != null && convocatoriaId.equals(p.getConvocatoria().getId())))
                 .filter(p -> query.isBlank() || normalizar(textoBusquedaPublico(p)).contains(query))
@@ -95,6 +97,15 @@ public class FoliosAprobadosController {
         return p.getFechaCreacion();
     }
 
+    private boolean esFolioPublicable(Postulacion p) {
+        String estado = normalizarEstado(p.getEstado());
+        String estadoComite = normalizarEstado(p.getEstadoComite());
+        if ("CANCELADA".equals(estado) || "RECHAZADA".equals(estado) || "RECHAZADA".equals(estadoComite)) {
+            return false;
+        }
+        return "ACEPTADA".equals(estado) || "APROBADA".equals(estadoComite);
+    }
+
     private String textoBusquedaPublico(Postulacion p) {
         return (p.getFolio() != null ? p.getFolio() : "")
                 + " " + (p.getConvocatoria() != null && p.getConvocatoria().getTitulo() != null ? p.getConvocatoria().getTitulo() : "")
@@ -104,4 +115,9 @@ public class FoliosAprobadosController {
     private String normalizar(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
+
+    private String normalizarEstado(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
 }
+

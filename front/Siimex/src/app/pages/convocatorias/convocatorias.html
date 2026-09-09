@@ -194,21 +194,6 @@
           </div>
         </section>
 
-        <section class="conv-modal-section" *ngIf="getReglasConfigurables(modalSeleccionada.reglasConfigurables).length">
-          <h6 class="text-borgona conv-section-title">
-            <i class="fas fa-sliders-h me-2"></i>Reglas de la convocatoria
-          </h6>
-          <div class="conv-section-body">
-            <ul class="conv-requisitos-list">
-              <li *ngFor="let regla of getReglasConfigurables(modalSeleccionada.reglasConfigurables)">
-                <i class="fas fa-check-circle text-success me-2"></i>
-                <strong>{{ regla.clave }}:</strong> {{ regla.valor }}
-                <span *ngIf="regla.descripcion"> - {{ regla.descripcion }}</span>
-              </li>
-            </ul>
-          </div>
-        </section>
-
         <!-- Información adicional -->
         <div class="conv-modal-info-box">
           <i class="fas fa-lightbulb me-2"></i>
@@ -226,4 +211,5 @@
     </div>
   </div>
 </div>
+
 

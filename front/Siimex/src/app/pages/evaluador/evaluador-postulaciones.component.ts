@@ -1,9 +1,10 @@
-import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+﻿import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import Swal from 'sweetalert2';
 import { environment } from '../../../environments/environment';
+import { PdfLimiteService } from "../../core/pdf-limite.service";
 
 interface EvaluadorPostulacionItem {
   id: number;
@@ -57,15 +58,24 @@ export class EvaluadorPostulacionesComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly pdfLimiteService = inject(PdfLimiteService);
   private readonly apiBase = environment.apiBaseUrl || 'http://localhost:8083';
-  private readonly puntajeMaximoCache = new Map<number, number>();
+  private readonly puntajeMaximoCache = new Map<number, number | null>();
 
   loading = true;
   error: string | null = null;
   postulaciones: EvaluadorPostulacionItem[] = [];
+  maxEvaluacionPdfMb = 2;
 
   ngOnInit(): void {
+    this.cargarLimitePdfEvaluacion();
     this.cargarAsignadas();
+  }
+
+  private cargarLimitePdfEvaluacion(): void {
+    this.pdfLimiteService.obtenerMapaLimites().subscribe((limites) => {
+      this.maxEvaluacionPdfMb = Number(limites["evaluacion.documentos"]) || 2;
+    });
   }
 
   cargarAsignadas(): void {
@@ -231,6 +241,9 @@ export class EvaluadorPostulacionesComponent implements OnInit {
 
   async evaluar(p: EvaluadorPostulacionItem): Promise<void> {
     const puntajeMax = await this.obtenerPuntajeMaximo(p.convocatoriaId);
+    const puntajeConTope = puntajeMax != null;
+    const puntajeLabel = puntajeConTope ? `Puntaje (0 a ${puntajeMax})` : 'Puntaje';
+    const puntajeMaxAttr = puntajeConTope ? `max="${puntajeMax}"` : '';
     const puntajeActual = typeof p.puntajeEvaluacion === 'number' ? p.puntajeEvaluacion : '';
     const resultadoActual = p.resultadoEvaluacion || '';
     const comentariosActual = p.comentariosEvaluacion || '';
@@ -244,8 +257,8 @@ export class EvaluadorPostulacionesComponent implements OnInit {
             <option value="APROBADA" ${resultadoActual === 'APROBADA' ? 'selected' : ''}>Aprobada</option>
             <option value="NO_APROBADA" ${resultadoActual === 'NO_APROBADA' ? 'selected' : ''}>No aprobada</option>
           </select>
-          <label for="swal-puntaje" class="form-label small fw-semibold mb-1">Puntaje (0 a ${puntajeMax})</label>
-          <input id="swal-puntaje" type="number" class="swal2-input mt-0 mb-2" min="0" max="${puntajeMax}" value="${puntajeActual}" />
+          <label for="swal-puntaje" class="form-label small fw-semibold mb-1">${puntajeLabel}</label>
+          <input id="swal-puntaje" type="number" class="swal2-input mt-0 mb-2" min="0" ${puntajeMaxAttr} value="${puntajeActual}" />
           <label for="swal-comentarios" class="form-label small fw-semibold mb-1">Comentarios</label>
           <textarea id="swal-comentarios" class="swal2-textarea mt-0" maxlength="3000" placeholder="Comentarios de evaluacion...">${this.escapeHtml(comentariosActual)}</textarea>
         </div>
@@ -265,7 +278,11 @@ export class EvaluadorPostulacionesComponent implements OnInit {
           Swal.showValidationMessage('Debes seleccionar un resultado');
           return false;
         }
-        if (!Number.isFinite(puntaje) || puntaje < 0 || puntaje > puntajeMax) {
+        if (!Number.isFinite(puntaje) || puntaje < 0) {
+          Swal.showValidationMessage('El puntaje debe ser mayor o igual a 0');
+          return false;
+        }
+        if (puntajeConTope && puntajeMax != null && puntaje > puntajeMax) {
           Swal.showValidationMessage(`El puntaje debe estar entre 0 y ${puntajeMax}`);
           return false;
         }
@@ -356,8 +373,9 @@ export class EvaluadorPostulacionesComponent implements OnInit {
           Swal.showValidationMessage('Solo se permiten archivos PDF');
           return false;
         }
-        if (file.size > 8 * 1024 * 1024) {
-          Swal.showValidationMessage('El archivo no puede superar 8 MB');
+        const maxMb = this.maxEvaluacionPdfMb;
+        if (file.size > maxMb * 1024 * 1024) {
+          Swal.showValidationMessage("El archivo no puede superar " + maxMb + " MB");
           return false;
         }
         return file;
@@ -417,20 +435,20 @@ export class EvaluadorPostulacionesComponent implements OnInit {
       .replaceAll("'", '&#39;');
   }
 
-  private obtenerPuntajeMaximo(convocatoriaId?: number | null): Promise<number> {
+  private obtenerPuntajeMaximo(convocatoriaId?: number | null): Promise<number | null> {
     if (!convocatoriaId || !Number.isFinite(convocatoriaId)) {
       return Promise.resolve(100);
     }
     const convId = Number(convocatoriaId);
-    const cached = this.puntajeMaximoCache.get(convId);
-    if (cached && cached > 0) {
-      return Promise.resolve(cached);
+    if (this.puntajeMaximoCache.has(convId)) {
+      return Promise.resolve(this.puntajeMaximoCache.get(convId) ?? null);
     }
     return new Promise((resolve) => {
       this.http.get<any>(`${environment.apiBaseUrl}/admin/convocatorias/${convId}`).subscribe({
         next: (c) => {
+          const habilitado = c?.puntajeMaximoEvaluacionHabilitado !== false;
           const max = Number(c?.puntajeMaximoEvaluacion);
-          const value = Number.isFinite(max) && max > 0 ? max : 100;
+          const value = habilitado ? (Number.isFinite(max) && max > 0 ? max : 100) : null;
           this.puntajeMaximoCache.set(convId, value);
           resolve(value);
         },
@@ -439,3 +457,5 @@ export class EvaluadorPostulacionesComponent implements OnInit {
     });
   }
 }
+
+

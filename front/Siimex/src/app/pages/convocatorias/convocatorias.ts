@@ -222,11 +222,20 @@ export class ConvocatoriasComponent implements OnInit, OnDestroy, AfterViewInit 
     });
   }
 
+  private parseFechaLocal(s: string): Date | null {
+    const value = String(s).trim();
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+    if (!match) return null;
+    const [, y, m, d, hh = '00', mm = '00'] = match;
+    const fecha = new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm));
+    return isNaN(fecha.getTime()) ? null : fecha;
+  }
+
   formatearFecha(s: string | null | undefined): string {
     if (!s) return '—';
     try {
-      const d = new Date(s);
-      return isNaN(d.getTime()) ? s : d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+      const d = this.parseFechaLocal(s);
+      return d ? d.toLocaleString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : s;
     } catch {
       return s;
     }

@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, Inject, ViewEncapsulation, OnInit } from '@angular/core';
+import { Component, AfterViewInit, Inject, ViewEncapsulation, OnInit, OnDestroy } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { environment } from '../../../environments/environment';
 import Swal from 'sweetalert2';
+import { PdfLimiteService } from '../../core/pdf-limite.service';
 
 export interface CriterioFormulario {
   clave: string;
@@ -20,6 +21,17 @@ export interface RequisitoDocumento {
   clave: string;
   etiqueta: string;
   requerido: boolean;
+}
+
+interface ArchivoSeleccionado {
+  file: File;
+  previewUrl: string;
+}
+
+interface DocumentoAdjuntoPostulacion {
+  clave?: string | null;
+  documentoId?: number | null;
+  nombreArchivo?: string | null;
 }
 
 export interface FormatoConvocatoria {
@@ -43,7 +55,9 @@ export interface Convocatoria {
   reglasConfigurables?: string | null;
   formatos?: FormatoConvocatoria[];
   diasMinAnticipacion?: number | null;
+  diasMinAnticipacionHabilitado?: boolean | null;
   diasMaxAnticipacion?: number | null;
+  diasMaxAnticipacionHabilitado?: boolean | null;
   avisoPrivacidadObligatorio?: boolean;
   avisoPrivacidadTexto?: string | null;
   avisoPrivacidadUrl?: string | null;
@@ -81,7 +95,8 @@ interface MiPostulacionDetalle {
   titularCuenta?: string | null;
   cuentaBancaria?: string | null;
   clabeInterbancaria?: string | null;
-  medioNotificacion?: string | null;
+  estadoCuentaDocumentoId?: number | null;
+  estadoCuentaNombreArchivo?: string | null;
   fechaActualizacionBancaria?: string | null;
   estadoEntregaApoyo?: string | null;
   fechaEntregaApoyo?: string | null;
@@ -108,8 +123,13 @@ interface MiPostulacionDetalle {
   fechaSolicitudRenuncia?: string | null;
   fechaResolucionRenuncia?: string | null;
   observacionesRenuncia?: string | null;
+  renunciaDocumentoId?: number | null;
+  renunciaNombreArchivo?: string | null;
   avisoPrivacidadAceptado?: boolean;
   fechaAceptacionAvisoPrivacidad?: string | null;
+  curriculumDocumentoId?: number | null;
+  curriculumNombreArchivo?: string | null;
+  documentosAdjuntos?: DocumentoAdjuntoPostulacion[] | null;
   cartaEvaluadorDocumentoId?: number | null;
   cartaEvaluadorNombreArchivo?: string | null;
   dictamenEvaluacionDocumentoId?: number | null;
@@ -128,6 +148,18 @@ interface MiPostulacionDetalle {
   fechaReciboPago?: string | null;
   fechaValidacionReciboPago?: string | null;
   observacionesReciboPago?: string | null;
+  estadoSeguroMedico?: string | null;
+  fechaSeguroMedico?: string | null;
+  numeroSeguroMedico?: string | null;
+  seguroMedicoDocumentoId?: number | null;
+  seguroMedicoNombreArchivo?: string | null;
+  observacionesSeguroMedico?: string | null;
+  estadoStatusAcademico?: string | null;
+  fechaStatusAcademico?: string | null;
+  observacionesStatusAcademico?: string | null;
+  informacionStatusAcademico?: string | null;
+  statusAcademicoDocumentoId?: number | null;
+  statusAcademicoNombreArchivo?: string | null;
 }
 
 @Component({
@@ -138,7 +170,7 @@ interface MiPostulacionDetalle {
   styleUrls: ['./postulacion.css'],
   encapsulation: ViewEncapsulation.None
 })
-export class PostulacionComponent implements OnInit, AfterViewInit {
+export class PostulacionComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly apiBase = environment.apiBaseUrl || 'http://localhost:8083';
   convocatoriaId: string | null = null;
   convocatoria: Convocatoria | null = null;
@@ -150,25 +182,37 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
   loadingConv = true;
   errorConv: string | null = null;
   estadoPostulacionPendiente: { id?: number; estado: string; fecha: string } | null = null;
+  estadoBorradorPostulacion: { fecha: string; archivos: string[] } | null = null;
   miPostulacion: MiPostulacionDetalle | null = null;
   modoEdicion = false;
   plazoCorreccionVencido = false;
   horasRestantesCorreccion: number | null = null;
   private vistaInicializada = false;
+  private cargaMiPostulacionTerminada = false;
+  private autosaveBorradorConfigurado = false;
+  private borradorRestaurado = false;
+  private borradorSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private beforeUnloadBorradorHandler: (() => void) | null = null;
   private datosPerfil: { curp?: string; email?: string; telefono?: string; cedulaProfesional?: string } | null = null;
   subiendoInformeParcial = false;
   subiendoInformeFinal = false;
   subiendoReciboPago = false;
+  subiendoSeguroMedico = false;
+  subiendoStatusAcademico = false;
+  pdfLimitMbByKey: Record<string, number> = {};
+  archivosSeleccionados: Record<string, ArchivoSeleccionado> = {};
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     @Inject(DOCUMENT) private doc: Document,
     private route: ActivatedRoute,
-    private http: HttpClient
+    private http: HttpClient,
+    private pdfLimiteService: PdfLimiteService
   ) {}
 
   ngOnInit(): void {
     this.cleanupFloatingOverlays();
+    this.cargarLimitesPdf();
     this.cargarDatosPerfil();
 
     this.convocatoriaId = this.route.snapshot.paramMap.get('convocatoriaId');
@@ -263,6 +307,50 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     }
   }
 
+  get tipoSolicitudActivo(): boolean {
+    const regla = this.buscarReglaConfigurable([
+      'tipo_solicitud_activo',
+      'tipo_solicitud_habilitado',
+      'solicitar_tipo_solicitud'
+    ]);
+    return regla ? this.resolverBooleanoRegla(regla.valor, true) : true;
+  }
+
+  
+  get fechaEventoActivo(): boolean {
+    const regla = this.buscarReglaConfigurable([
+      'fecha_evento_activa',
+      'fecha_evento_habilitada',
+      'solicitar_fecha_evento'
+    ]);
+    return regla ? this.resolverBooleanoRegla(regla.valor, true) : true;
+  }
+  private buscarReglaConfigurable(claves: string[]): ReglaConfigurable | null {
+    const buscadas = new Set((claves || []).map((clave) => this.normalizarClaveRegla(clave)).filter(Boolean));
+    if (!buscadas.size) return null;
+    return (this.reglasConfigurables || []).find((regla) => buscadas.has(this.normalizarClaveRegla(regla.clave))) || null;
+  }
+
+  private normalizarClaveRegla(value: string | null | undefined): string {
+    return (value || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+  }
+
+  private resolverBooleanoRegla(value: string | null | undefined, fallback: boolean): boolean {
+    if (value == null) return fallback;
+    const v = String(value).trim().toLowerCase();
+    if (!v) return fallback;
+    if (['true', '1', 'si', 'sí', 'yes', 'on'].includes(v)) return true;
+    if (['false', '0', 'no', 'off'].includes(v)) return false;
+    return fallback;
+  }
+  get informacionProyectoActiva(): boolean {
+    const regla = this.buscarReglaConfigurable([
+      'informacion_proyecto_activa',
+      'proyecto_info_activo',
+      'solicitar_informacion_proyecto'
+    ]);
+    return regla ? this.resolverBooleanoRegla(regla.valor, true) : true;
+  }
   getInputName(c: CriterioFormulario): string {
     return 'criterio_' + c.clave;
   }
@@ -282,10 +370,11 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
 
     const form = this.doc.getElementById('postulacionForm') as HTMLFormElement | null;
     if (!form) return;
+    this.configurarAutosaveBorrador(form);
+    this.programarRestauracionBorrador();
 
     const submitBtn   = this.doc.getElementById('submitBtn') as HTMLButtonElement | null;
     const cvInput     = this.doc.getElementById('cv') as HTMLInputElement | null;
-    const cvAlert     = this.doc.getElementById('cvAlert') as HTMLElement | null;
     const formMessage = this.doc.getElementById('formMessage') as HTMLElement | null;
 
     // CURP en mayúsculas y sin espacios
@@ -300,31 +389,6 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
       tel.value = tel.value.replace(/[^\d()+\-\s]/g,'').replace(/\s{2,}/g,' ');
       const telOk = /^[0-9()+\-\s]{7,20}$/.test(tel.value.trim());
       tel.setCustomValidity(telOk ? '' : 'Teléfono inválido');
-    });
-
-    // Archivo: 5MB + nombre sin caracteres raros
-    cvInput?.addEventListener('change', () => {
-      if (!cvInput.files?.length) return;
-      const f = cvInput.files[0];
-      const pdfOk = this.isPdfFile(f);
-      const nameOk = /^[\w\-. ]+$/.test(f.name);
-      const sizeOk = f.size <= 5 * 1024 * 1024;
-
-      let msg = '';
-      if (!pdfOk) msg += 'Solo se permiten archivos PDF. ';
-      if (!sizeOk) msg += 'El archivo supera 5 MB. ';
-      if (!nameOk) msg += 'Evita caracteres especiales en el nombre.';
-
-      if (cvAlert){
-        cvAlert.style.display = msg ? 'block' : 'none';
-        cvAlert.textContent = msg;
-      }
-      if (!pdfOk || !sizeOk || !nameOk){
-        cvInput.value = '';
-        cvInput.classList.add('is-invalid');
-      } else {
-        cvInput.classList.remove('is-invalid');
-      }
     });
 
     // Validación de correos coincidentes
@@ -347,7 +411,7 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     correoConfirm?.addEventListener('input', validateEmailMatch);
 
     // Submit UX
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
       event.preventDefault();
       event.stopPropagation();
 
@@ -374,12 +438,15 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
       form.classList.add('was-validated');
 
       if (!form.checkValidity()){
-        const firstInvalid = form.querySelector('.form-control:invalid') as HTMLElement | null;
+        const firstInvalid = form.querySelector('input:invalid, select:invalid, textarea:invalid') as HTMLElement | null;
         firstInvalid?.scrollIntoView({ behavior:'smooth', block:'center' });
         firstInvalid?.focus({ preventScroll:true });
-        this.showMessage(formMessage, 'Revisa los campos marcados en rojo.', false);
+        this.showMessage(formMessage, this.getInvalidFieldMessage(form), false);
         return;
       }
+
+      const confirmaBloqueo = await this.confirmarEnvioYBloqueoFormulario();
+      if (!confirmaBloqueo) return;
 
       if (submitBtn && this.convocatoriaId){
         const original = submitBtn.innerHTML;
@@ -419,13 +486,18 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
           this.showMessage(formMessage, 'El currículum debe estar en formato PDF.', false);
           return;
         }
-
-        const fd = new FormData();
-        const fechaEvento = (form.elements.namedItem('fechaEvento') as HTMLInputElement)?.value || '';
-        if (!this.fechaEventoEnRango(fechaEvento)) {
+        if (cvFile && !this.validarTamanoPdf(cvFile, 'postulacion.curriculum', 'El currículum', cvInput)) {
           submitBtn.disabled = false;
           submitBtn.innerHTML = original;
-          this.showMessage(formMessage, `La fecha del evento debe estar entre ${this.diasMinAnticipacion} y ${this.diasMaxAnticipacion} días a partir de hoy.`, false);
+          return;
+        }
+
+        const fd = new FormData();
+        const fechaEvento = this.fechaEventoActivo ? ((form.elements.namedItem('fechaEvento') as HTMLInputElement)?.value || '') : '';
+        if (this.fechaEventoActivo && !this.fechaEventoEnRango(fechaEvento)) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = original;
+          this.showMessage(formMessage, this.mensajeRangoFechaEvento(), false);
           return;
         }
         fd.append('convocatoriaId', this.convocatoriaId);
@@ -441,10 +513,13 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
           return;
         }
         fd.append('tipoApoyo', tipoApoyo);
-        fd.append('tipoSolicitud', (form.elements.namedItem('tipoSolicitud') as HTMLSelectElement)?.value || '');
+        const tipoSolicitud = this.tipoSolicitudActivo ? ((form.elements.namedItem('tipoSolicitud') as HTMLSelectElement)?.value || '') : '';
+        fd.append('tipoSolicitud', tipoSolicitud);
         fd.append('fechaEvento', fechaEvento);
-        fd.append('tituloProyecto', (form.elements.namedItem('tituloProyecto') as HTMLInputElement)?.value || '');
-        fd.append('descripcionProyecto', (form.elements.namedItem('descripcionProyecto') as HTMLTextAreaElement)?.value || '');
+        const tituloProyecto = this.informacionProyectoActiva ? ((form.elements.namedItem('tituloProyecto') as HTMLInputElement)?.value || '') : '';
+        const descripcionProyecto = this.informacionProyectoActiva ? ((form.elements.namedItem('descripcionProyecto') as HTMLTextAreaElement)?.value || '') : '';
+        fd.append('tituloProyecto', tituloProyecto);
+        fd.append('descripcionProyecto', descripcionProyecto);
         fd.append('observaciones', (form.elements.namedItem('observaciones') as HTMLTextAreaElement)?.value || '');
         fd.append('criteriosJson', Object.keys(criteriosData).length ? JSON.stringify(criteriosData) : '');
         const aceptaAvisoPrivacidad = (form.elements.namedItem('aceptaAvisoPrivacidad') as HTMLInputElement | null)?.checked;
@@ -462,10 +537,9 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
             this.showMessage(formMessage, `El documento "${r.etiqueta}" debe estar en formato PDF, Word o Excel.`, false);
             return;
           }
-          if (file.size > 10 * 1024 * 1024) {
+          if (!this.validarTamanoPdf(file, 'postulacion.documentos', `El documento "${r.etiqueta}"`, el)) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = original;
-            this.showMessage(formMessage, `El documento "${r.etiqueta}" no puede superar 10 MB.`, false);
             return;
           }
           fd.append('doc_' + r.clave, file);
@@ -482,12 +556,14 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
             if (!this.modoEdicion) {
               form.reset();
               form.classList.remove('was-validated');
-              cvInput.value = '';
+              this.quitarArchivoSeleccionado('cv', cvInput, false);
               this.requisitosDocs.forEach(r => {
                 const el = form.elements.namedItem('doc_' + r.clave) as HTMLInputElement;
-                if (el) el.value = '';
+                this.quitarArchivoSeleccionado('doc_' + r.clave, el, false);
               });
             }
+            this.limpiarBorradorPostulacion();
+
             this.marcarPendienteLocal(res?.id || this.miPostulacion?.id);
             this.showMessage(formMessage, this.modoEdicion ? 'Postulación actualizada.' : 'Postulación enviada.', true);
             const estadoFinal = res?.estado || (this.modoEdicion ? 'SUBSANADA' : 'PENDIENTE');
@@ -514,6 +590,64 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     }, { passive:false });
   }
 
+  private async confirmarEnvioYBloqueoFormulario(): Promise<boolean> {
+    const esCorreccion = this.modoEdicion;
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: esCorreccion ? '¿Enviar correcciones?' : '¿Enviar postulación?',
+      html: esCorreccion
+        ? 'Al enviar tus correcciones, el formulario volverá a quedar bloqueado hasta que COMECYT lo revise nuevamente.'
+        : 'Al enviar tu postulación, los datos y documentos quedarán bloqueados. Solo podrás editarlos si COMECYT activa observaciones/correcciones.',
+      showCancelButton: true,
+      confirmButtonText: esCorreccion ? 'Sí, enviar correcciones' : 'Sí, enviar y bloquear',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#8B1538'
+    });
+    return result.isConfirmed;
+  }
+  ngOnDestroy(): void {
+    if (this.borradorSaveTimer) {
+      clearTimeout(this.borradorSaveTimer);
+      this.borradorSaveTimer = null;
+    }
+    if (isPlatformBrowser(this.platformId) && this.beforeUnloadBorradorHandler) {
+      window.removeEventListener('beforeunload', this.beforeUnloadBorradorHandler);
+      this.beforeUnloadBorradorHandler = null;
+    }
+    Object.values(this.archivosSeleccionados).forEach((archivo) => URL.revokeObjectURL(archivo.previewUrl));
+    this.archivosSeleccionados = {};
+  }
+
+  private getInvalidFieldMessage(form: HTMLFormElement): string {
+    const firstInvalid = form.querySelector('input:invalid, select:invalid, textarea:invalid') as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+    if (!firstInvalid) return 'Revisa los campos marcados en rojo.';
+    const label = this.getFieldLabel(firstInvalid);
+    return label ? `Falta completar: ${label}. Revisa el campo marcado en rojo.` : 'Revisa los campos marcados en rojo.';
+  }
+
+  private getFieldLabel(control: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): string {
+    if (control.id) {
+      const label = this.doc.querySelector(`label[for="${control.id}"]`);
+      const text = label?.textContent?.replace('*', '').trim();
+      if (text) return text;
+    }
+    const name = control.name || control.id || '';
+    const labels: Record<string, string> = {
+      cedula: 'Número de cédula profesional',
+      curp: 'CURP',
+      correo: 'Correo electrónico',
+      correoConfirm: 'Confirmar correo electrónico',
+      telefono: 'Teléfono',
+      tipoApoyo: 'Tipo de apoyo',
+      tipoSolicitud: 'Tipo de solicitud',
+      fechaEvento: 'Fecha del evento',
+      cv: 'Currículum en PDF'
+    };
+    if (labels[name]) return labels[name];
+    if (name.startsWith('doc_')) return 'Documento requerido';
+    if (name.startsWith('criterio_')) return 'Criterio de compatibilidad';
+    return name;
+  }
   private showMessage(el: HTMLElement | null, msg: string, ok: boolean){
     if (!el) return;
     el.style.display = 'block';
@@ -522,6 +656,216 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
     setTimeout(() => { el.style.display = 'none'; }, 6000);
+  }
+
+  private cargarLimitesPdf(): void {
+    this.pdfLimiteService.obtenerMapaLimites().subscribe((limites) => {
+      this.pdfLimitMbByKey = limites;
+    });
+  }
+
+  getPdfLimitMb(key: string): number {
+    return Number(this.pdfLimitMbByKey[key]) || 2;
+  }
+
+  getArchivoSeleccionado(key: string): ArchivoSeleccionado | null {
+    return this.archivosSeleccionados[key] || null;
+  }
+
+  getDocumentoAdjuntoExistente(clave: string): DocumentoAdjuntoPostulacion | null {
+    const buscada = this.normalizarClaveDocumento(clave);
+    return (this.miPostulacion?.documentosAdjuntos || []).find((doc) =>
+      this.normalizarClaveDocumento(doc.clave) === buscada
+    ) || null;
+  }
+
+  getDocumentoAdjuntoId(doc: DocumentoAdjuntoPostulacion | null | undefined): number | null {
+    return doc?.documentoId ?? null;
+  }
+
+  getDocumentoAdjuntoNombre(doc: DocumentoAdjuntoPostulacion | null | undefined, fallback: string): string {
+    return doc?.nombreArchivo?.trim() || fallback || 'Documento cargado';
+  }
+
+  get curriculumExistenteId(): number | null {
+    return this.miPostulacion?.curriculumDocumentoId ?? null;
+  }
+
+  get curriculumExistenteNombre(): string {
+    return this.miPostulacion?.curriculumNombreArchivo?.trim() || 'Currículum cargado';
+  }
+
+  private normalizarClaveDocumento(valor: string | null | undefined): string {
+    return (valor || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  onDocumentoRequeridoSeleccionado(event: Event, requisito: RequisitoDocumento): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const key = 'doc_' + requisito.clave;
+    if (!file) {
+      this.quitarArchivoSeleccionado(key, input, false);
+      return;
+    }
+    if (!this.isFormatoSolicitudFile(file)) {
+      Swal.fire('Archivo inválido', `El documento "${requisito.etiqueta}" debe estar en formato PDF, Word o Excel.`, 'warning');
+      this.quitarArchivoSeleccionado(key, input, false);
+      return;
+    }
+    if (!this.validarTamanoPdf(file, 'postulacion.documentos', `El documento "${requisito.etiqueta}"`, input)) {
+      this.quitarArchivoSeleccionado(key, input, false);
+      return;
+    }
+    this.guardarArchivoSeleccionado(key, file);
+    input.classList.remove('is-invalid');
+  }
+
+  onCurriculumSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const alert = this.doc.getElementById('cvAlert') as HTMLElement | null;
+    if (!file) {
+      this.quitarArchivoSeleccionado('cv', input, false);
+      this.setCvAlert(alert, '');
+      return;
+    }
+
+    const maxCvMb = this.getPdfLimitMb('postulacion.curriculum');
+    const nameOk = /^[\w\-. ]+$/.test(file.name);
+    let msg = '';
+    if (!this.isPdfFile(file)) msg += 'Solo se permiten archivos PDF. ';
+    if (file.size > maxCvMb * 1024 * 1024) msg += `El archivo supera ${maxCvMb} MB. `;
+    if (!nameOk) msg += 'Evita caracteres especiales en el nombre.';
+
+    this.setCvAlert(alert, msg);
+    if (msg) {
+      this.quitarArchivoSeleccionado('cv', input, false);
+      input.classList.add('is-invalid');
+      return;
+    }
+
+    this.guardarArchivoSeleccionado('cv', file);
+    input.classList.remove('is-invalid');
+  }
+
+  puedePrevisualizarArchivo(key: string): boolean {
+    return this.isPdfFile(this.archivosSeleccionados[key]?.file);
+  }
+
+  visualizarArchivoSeleccionado(key: string): void {
+    const archivo = this.archivosSeleccionados[key];
+    if (!archivo || !isPlatformBrowser(this.platformId)) return;
+    if (!this.isPdfFile(archivo.file)) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Vista previa no disponible',
+        text: 'La previsualización desde el navegador solo está disponible para archivos PDF. Puedes enviar Word o Excel, pero no siempre se pueden abrir en vista previa.',
+        confirmButtonColor: '#8B1538'
+      });
+      return;
+    }
+    this.abrirPreviewPdf(archivo.previewUrl, archivo.file.name || 'documento.pdf', archivo.file.name || 'documento.pdf');
+  }
+
+
+  private abrirPreviewPdf(url: string, nombreArchivo: string, downloadName: string): void {
+    const win = window.open('', '_blank');
+    if (!win) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Ventana bloqueada',
+        text: 'Permite ventanas emergentes para ver la previsualización del documento.',
+        confirmButtonColor: '#8B1538'
+      });
+      return;
+    }
+
+    win.document.title = nombreArchivo || 'Vista previa';
+    win.document.body.style.margin = '0';
+    win.document.body.style.background = '#2f2f35';
+    win.document.body.style.fontFamily = 'Arial, sans-serif';
+    const topbar = win.document.createElement('div');
+    topbar.style.cssText = 'height:52px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:#1f2025;color:#fff;border-bottom:1px solid #44464f';
+    const title = win.document.createElement('div');
+    title.textContent = nombreArchivo || 'Vista previa';
+    title.style.cssText = 'font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    const download = win.document.createElement('a');
+    download.href = url;
+    download.download = downloadName || nombreArchivo || 'documento.pdf';
+    download.textContent = 'Descargar PDF';
+    download.style.cssText = 'background:#8B1538;color:#fff;text-decoration:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;white-space:nowrap';
+    topbar.appendChild(title);
+    topbar.appendChild(download);
+    const iframe = win.document.createElement('iframe');
+    iframe.src = url + '#toolbar=1&navpanes=0&view=FitH';
+    iframe.title = 'Vista previa de ' + (nombreArchivo || 'documento.pdf');
+    iframe.style.cssText = 'border:0;display:block;width:100vw;height:calc(100vh - 52px);background:#fff';
+    win.document.body.textContent = '';
+    win.document.body.appendChild(topbar);
+    win.document.body.appendChild(iframe);
+  }
+
+  quitarArchivoSeleccionado(key: string, inputOrId?: HTMLInputElement | string | null, mostrarAviso = true): void {
+    const archivo = this.archivosSeleccionados[key];
+    if (archivo) {
+      URL.revokeObjectURL(archivo.previewUrl);
+      delete this.archivosSeleccionados[key];
+    }
+    const input = typeof inputOrId === 'string'
+      ? this.doc.getElementById(inputOrId) as HTMLInputElement | null
+      : inputOrId;
+    if (input) {
+      input.value = '';
+      input.classList.remove('is-invalid');
+    }
+    if (key === 'cv') {
+      this.setCvAlert(this.doc.getElementById('cvAlert') as HTMLElement | null, '');
+    }
+    if (mostrarAviso) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Archivo quitado',
+        text: 'Puedes seleccionar otro archivo cuando quieras.',
+        timer: 1600,
+        showConfirmButton: false
+      });
+    }
+  }
+
+  private guardarArchivoSeleccionado(key: string, file: File): void {
+    const anterior = this.archivosSeleccionados[key];
+    if (anterior) URL.revokeObjectURL(anterior.previewUrl);
+    const previewBlob = this.isPdfFile(file)
+      ? new Blob([file], { type: 'application/pdf' })
+      : file;
+    this.archivosSeleccionados[key] = {
+      file,
+      previewUrl: URL.createObjectURL(previewBlob)
+    };
+  }
+
+  private setCvAlert(alert: HTMLElement | null, msg: string): void {
+    if (!alert) return;
+    alert.style.display = msg ? 'block' : 'none';
+    alert.textContent = msg;
+  }
+
+  private validarTamanoPdf(file: File, limiteKey: string, etiqueta: string, input?: HTMLInputElement | null): boolean {
+    const maxMb = this.getPdfLimitMb(limiteKey);
+    if (file.size <= maxMb * 1024 * 1024) {
+      return true;
+    }
+    if (input) {
+      input.value = '';
+    }
+    Swal.fire('Archivo muy grande', etiqueta + ' no puede superar ' + maxMb + ' MB.', 'warning');
+    return false;
   }
 
   private isPdfFile(file: File | null | undefined): boolean {
@@ -566,6 +910,7 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     this.http.get<MiPostulacionDetalle>(`${this.apiBase}/postulaciones/mias/convocatoria/${this.convocatoriaId}`).subscribe({
       next: (data) => {
         this.miPostulacion = data;
+        this.cargaMiPostulacionTerminada = true;
         if ((!this.tiposApoyoDisponibles || this.tiposApoyoDisponibles.length === 0) && data?.tipoApoyo) {
           this.tiposApoyoDisponibles = [data.tipoApoyo];
         }
@@ -581,11 +926,15 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
           this.modoEdicion = !this.plazoCorreccionVencido;
         }
         this.aplicarValoresMiPostulacionEnFormulario();
+        this.programarRestauracionBorrador();
       },
       error: () => {
         this.miPostulacion = null;
+        this.cargaMiPostulacionTerminada = true;
         this.plazoCorreccionVencido = false;
         this.horasRestantesCorreccion = null;
+        this.aplicarDatosPerfilEnFormulario();
+        this.programarRestauracionBorrador();
       }
     });
   }
@@ -630,6 +979,8 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
 
     const form = this.doc.getElementById('postulacionForm') as HTMLFormElement | null;
     if (!form) return;
+    this.configurarAutosaveBorrador(form);
+    this.programarRestauracionBorrador();
 
     const setValue = (name: string, value?: string | null) => {
       const el = form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
@@ -696,6 +1047,8 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
 
     const form = this.doc.getElementById('postulacionForm') as HTMLFormElement | null;
     if (!form) return;
+    this.configurarAutosaveBorrador(form);
+    this.programarRestauracionBorrador();
 
     const setIfEmpty = (name: string, value?: string | null) => {
       const el = form.elements.namedItem(name) as HTMLInputElement | null;
@@ -741,7 +1094,152 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     this.estadoPostulacionPendiente = payload;
   }
 
+  private getBorradorKey(): string | null {
+    if (!this.convocatoriaId) return null;
+    const scope = this.modoEdicion && this.miPostulacion?.id ? `edicion_${this.miPostulacion.id}` : 'nuevo';
+    return `postulacion_borrador_conv_${this.convocatoriaId}_${scope}`;
+  }
+
+  private configurarAutosaveBorrador(form: HTMLFormElement): void {
+    if (this.autosaveBorradorConfigurado || !isPlatformBrowser(this.platformId)) return;
+    this.autosaveBorradorConfigurado = true;
+    const guardar = () => this.programarGuardadoBorrador(form);
+    form.addEventListener('input', guardar);
+    form.addEventListener('change', guardar);
+    this.beforeUnloadBorradorHandler = () => this.guardarBorradorPostulacion(form);
+    window.addEventListener('beforeunload', this.beforeUnloadBorradorHandler);
+  }
+
+  private programarGuardadoBorrador(form: HTMLFormElement): void {
+    if (this.borradorSaveTimer) clearTimeout(this.borradorSaveTimer);
+    this.borradorSaveTimer = setTimeout(() => {
+      this.guardarBorradorPostulacion(form);
+      this.borradorSaveTimer = null;
+    }, 500);
+  }
+
+  private guardarBorradorPostulacion(form: HTMLFormElement): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (this.miPostulacion && !this.modoEdicion) return;
+    const key = this.getBorradorKey();
+    if (!key) return;
+
+    const campos: Record<string, string | boolean> = {};
+    const archivos: string[] = [];
+    Array.from(form.elements).forEach((control) => {
+      if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)) return;
+      const name = control.name || control.id;
+      if (!name) return;
+      if (control instanceof HTMLInputElement) {
+        if (['button', 'submit', 'reset', 'hidden'].includes(control.type)) return;
+        if (control.type === 'file') {
+          const file = control.files?.[0];
+          if (file?.name) archivos.push(file.name);
+          return;
+        }
+        if (control.type === 'checkbox') {
+          campos[name] = control.checked;
+          return;
+        }
+      }
+      campos[name] = control.value || '';
+    });
+
+    const tieneCampos = Object.values(campos).some((value) => typeof value === 'boolean' ? value : value.trim().length > 0);
+    if (!tieneCampos && !archivos.length) {
+      localStorage.removeItem(key);
+      this.estadoBorradorPostulacion = null;
+      return;
+    }
+
+    const payload = { fecha: new Date().toISOString(), campos, archivos };
+    localStorage.setItem(key, JSON.stringify(payload));
+    this.estadoBorradorPostulacion = { fecha: payload.fecha, archivos };
+  }
+
+  private programarRestauracionBorrador(): void {
+    if (!isPlatformBrowser(this.platformId) || this.borradorRestaurado) return;
+    setTimeout(() => this.restaurarBorradorPostulacionEnFormulario(), 0);
+  }
+
+  private restaurarBorradorPostulacionEnFormulario(): void {
+    if (!isPlatformBrowser(this.platformId) || this.borradorRestaurado || this.loadingConv || !this.cargaMiPostulacionTerminada) return;
+    const form = this.doc.getElementById('postulacionForm') as HTMLFormElement | null;
+    if (!form) return;
+    const key = this.getBorradorKey();
+    if (!key) return;
+    if (this.miPostulacion && !this.modoEdicion) {
+      localStorage.removeItem(key);
+      this.estadoBorradorPostulacion = null;
+      this.borradorRestaurado = true;
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { fecha?: string; campos?: Record<string, string | boolean>; archivos?: string[] };
+      const campos = parsed?.campos || {};
+      Object.entries(campos).forEach(([name, value]) => {
+        const control = form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+        if (!control || control instanceof HTMLButtonElement || control instanceof HTMLFieldSetElement) return;
+        if (control instanceof HTMLInputElement && control.type === 'file') return;
+        if (control instanceof HTMLInputElement && control.type === 'checkbox') {
+          control.checked = value === true || value === 'true';
+          return;
+        }
+        if (control instanceof HTMLSelectElement && typeof value === 'string') {
+          const existe = Array.from(control.options).some((opt) => opt.value === value);
+          if (!existe && value.trim()) {
+            const opt = this.doc.createElement('option');
+            opt.value = value;
+            opt.textContent = value;
+            control.appendChild(opt);
+          }
+        }
+        control.value = value == null ? '' : String(value);
+      });
+      this.estadoBorradorPostulacion = { fecha: parsed.fecha || new Date().toISOString(), archivos: parsed.archivos || [] };
+      this.borradorRestaurado = true;
+    } catch {
+      localStorage.removeItem(key);
+      this.estadoBorradorPostulacion = null;
+    }
+  }
+
+  private limpiarBorradorPostulacion(): void {
+    const key = this.getBorradorKey();
+    if (key && isPlatformBrowser(this.platformId)) localStorage.removeItem(key);
+    this.estadoBorradorPostulacion = null;
+    this.borradorRestaurado = true;
+  }
+
+  descartarBorradorPostulacion(): void {
+    const form = this.doc.getElementById('postulacionForm') as HTMLFormElement | null;
+    this.limpiarBorradorPostulacion();
+    if (form) {
+      form.reset();
+      form.classList.remove('was-validated');
+      this.aplicarValoresMiPostulacionEnFormulario();
+      this.aplicarDatosPerfilEnFormulario();
+    }
+    Swal.fire({
+      icon: 'info',
+      title: 'Borrador descartado',
+      text: 'Se eliminó la información guardada localmente para esta postulación.',
+      confirmButtonColor: '#8B1538'
+    });
+  }
+
+  formatearFechaBorrador(fecha?: string | null): string {
+    if (!fecha) return 'recientemente';
+    const d = new Date(fecha);
+    if (Number.isNaN(d.getTime())) return 'recientemente';
+    return d.toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
   private fechaEventoEnRango(fechaISO: string): boolean {
+    if (!this.fechaEventoActivo) return true;
     if (!fechaISO) return false;
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -749,7 +1247,17 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     if (Number.isNaN(fechaEvento.getTime())) return false;
     const ms = fechaEvento.getTime() - hoy.getTime();
     const dias = Math.floor(ms / (1000 * 60 * 60 * 24));
-    return dias >= this.diasMinAnticipacion && dias <= this.diasMaxAnticipacion;
+    if (this.diasMinAnticipacionHabilitado && dias < this.diasMinAnticipacion) return false;
+    if (this.diasMaxAnticipacionHabilitado && dias > this.diasMaxAnticipacion) return false;
+    return true;
+  }
+
+  get diasMinAnticipacionHabilitado(): boolean {
+    return this.convocatoria?.diasMinAnticipacionHabilitado !== false;
+  }
+
+  get diasMaxAnticipacionHabilitado(): boolean {
+    return this.convocatoria?.diasMaxAnticipacionHabilitado !== false;
   }
 
   get diasMinAnticipacion(): number {
@@ -760,9 +1268,22 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
   get diasMaxAnticipacion(): number {
     const value = Number(this.convocatoria?.diasMaxAnticipacion);
     if (Number.isFinite(value) && value >= 0) {
-      return Math.max(this.diasMinAnticipacion, value);
+      return this.diasMinAnticipacionHabilitado ? Math.max(this.diasMinAnticipacion, value) : value;
     }
     return 60;
+  }
+
+  mensajeRangoFechaEvento(): string {
+    if (this.diasMinAnticipacionHabilitado && this.diasMaxAnticipacionHabilitado) {
+      return `La fecha del evento debe estar entre ${this.diasMinAnticipacion} y ${this.diasMaxAnticipacion} días a partir de hoy.`;
+    }
+    if (this.diasMinAnticipacionHabilitado) {
+      return `La fecha del evento debe tener al menos ${this.diasMinAnticipacion} días de anticipación.`;
+    }
+    if (this.diasMaxAnticipacionHabilitado) {
+      return `La fecha del evento no puede exceder ${this.diasMaxAnticipacion} días a partir de hoy.`;
+    }
+    return 'La fecha del evento no es válida.';
   }
 
   get avisoPrivacidadObligatorio(): boolean {
@@ -779,7 +1300,7 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
   get tieneBancariaCapturada(): boolean {
     const p = this.miPostulacion;
     if (!p) return false;
-    return !!(p.banco && p.titularCuenta && p.cuentaBancaria && p.clabeInterbancaria && p.medioNotificacion);
+    return !!(p.banco && p.titularCuenta && p.cuentaBancaria && p.clabeInterbancaria && p.estadoCuentaDocumentoId);
   }
 
   get fechaActualizacionBancariaTexto(): string {
@@ -816,14 +1337,158 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     return this.formatearFechaSimpleConHora(this.miPostulacion?.fechaEntregaApoyo);
   }
 
+  get montoApoyoTexto(): string {
+    const monto = this.miPostulacion?.montoApoyoAsignado;
+    return monto === null || monto === undefined ? 'No asignado' : `$${Number(monto).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  get formularioPostulacionBloqueado(): boolean {
+    return !!this.miPostulacion && !this.modoEdicion;
+  }
+
+  get reciboPagoBloqueadoPorCarga(): boolean {
+    if (!this.miPostulacion?.reciboPagoDocumentoId) return false;
+    return (this.miPostulacion.estadoReciboPago || '').toUpperCase() !== 'RECIBO_RECHAZADO';
+  }
+
+  get mensajeBloqueoReciboPago(): string {
+    if (this.reciboPagoBloqueadoPorCarga) {
+      return 'El recibo ya fue cargado y queda bloqueado hasta que COMECYT lo revise. Si es rechazado, podrás reemplazarlo.';
+    }
+    return 'Se habilita cuando tu solicitud esté aprobada, el nombramiento haya sido emitido y COMECYT registre la entrega del apoyo económico.';
+  }
+
   get apoyoEntregado(): boolean {
     return (this.miPostulacion?.estadoEntregaApoyo || '').toUpperCase() === 'APOYO_ENTREGADO';
   }
 
   get puedeCargarReciboPago(): boolean {
-    return this.puedeCapturarBancaria && !!this.miPostulacion?.nombramientoDocumentoId && this.apoyoEntregado;
+    return this.puedeCapturarBancaria && !!this.miPostulacion?.nombramientoDocumentoId && this.apoyoEntregado && !this.reciboPagoBloqueadoPorCarga;
   }
 
+  get seguroMedicoActivo(): boolean {
+    const regla = this.buscarReglaConfigurable([
+      'modulo_seguro_medico_activo',
+      'modulo_seguro_medico',
+      'requiere_seguro_medico'
+    ]);
+    return regla ? this.resolverBooleanoRegla(regla.valor, true) : true;
+  }
+
+  get fechaSeguroMedicoTexto(): string {
+    return this.formatearFechaSimpleConHora(this.miPostulacion?.fechaSeguroMedico);
+  }
+
+  get solicitudAceptadaParaModulos(): boolean {
+    const estado = (this.miPostulacion?.estado || '').toUpperCase();
+    const estadoComite = (this.miPostulacion?.estadoComite || '').toUpperCase();
+    return estado === 'ACEPTADA' || estadoComite === 'APROBADA';
+  }
+
+  get puedeCargarSeguroMedico(): boolean {
+    return !!this.miPostulacion?.id && this.seguroMedicoActivo && this.solicitudAceptadaParaModulos;
+  }
+
+  seleccionarArchivoSeguroMedico(input: HTMLInputElement, numeroSeguroMedico: string): void {
+    if (!this.puedeCargarSeguroMedico || !this.miPostulacion?.id) return;
+    if (!numeroSeguroMedico?.trim()) {
+      Swal.fire('Dato requerido', 'Captura el número de seguro médico antes de adjuntar la evidencia.', 'info');
+      return;
+    }
+    input.click();
+  }
+
+  onSeguroMedicoSeleccionado(event: Event, numeroSeguroMedico: string): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || !this.miPostulacion?.id) return;
+    const numero = numeroSeguroMedico?.trim() || '';
+    if (!numero) {
+      Swal.fire('Dato requerido', 'Captura el número de seguro médico antes de adjuntar la evidencia.', 'info');
+      input.value = '';
+      return;
+    }
+    if (!this.isPdfFile(file)) {
+      Swal.fire('Archivo inválido', 'La evidencia de seguro médico debe ser PDF.', 'warning');
+      input.value = '';
+      return;
+    }
+    if (!this.validarTamanoPdf(file, 'postulacion.documentos', 'La evidencia de seguro médico', input)) {
+      return;
+    }
+    const fd = new FormData();
+    fd.append('numeroSeguroMedico', numero);
+    fd.append('file', file);
+    this.subiendoSeguroMedico = true;
+    this.http.post(`${this.apiBase}/postulaciones/mias/${this.miPostulacion.id}/seguro-medico`, fd).subscribe({
+      next: () => {
+        this.subiendoSeguroMedico = false;
+        input.value = '';
+        Swal.fire({ icon: 'success', title: 'Seguro médico cargado', text: 'Tu evidencia de seguro médico se cargó correctamente.', confirmButtonColor: '#8B1538' });
+        this.cargarMiPostulacion();
+      },
+      error: (err) => {
+        this.subiendoSeguroMedico = false;
+        input.value = '';
+        Swal.fire({ icon: 'error', title: 'No se pudo subir', text: err?.error?.error || err?.error?.message || 'Error al subir el seguro médico.', confirmButtonColor: '#8B1538' });
+      }
+    });
+  }
+
+
+  get statusAcademicoActivo(): boolean {
+    const regla = this.buscarReglaConfigurable([
+      'modulo_status_academico_activo',
+      'modulo_status_academico',
+      'requiere_status_academico',
+      'modulo_estatus_academico_activo',
+      'modulo_estatus_academico',
+      'requiere_estatus_academico'
+    ]);
+    return regla ? this.resolverBooleanoRegla(regla.valor, true) : true;
+  }
+
+  get fechaStatusAcademicoTexto(): string {
+    return this.formatearFechaSimpleConHora(this.miPostulacion?.fechaStatusAcademico);
+  }
+
+  get puedeActualizarStatusAcademico(): boolean {
+    return !!this.miPostulacion?.id && this.statusAcademicoActivo && this.solicitudAceptadaParaModulos;
+  }
+
+  guardarStatusAcademico(informacionStatusAcademico: string, input: HTMLInputElement): void {
+    if (!this.puedeActualizarStatusAcademico || !this.miPostulacion?.id) return;
+    const informacion = informacionStatusAcademico?.trim() || '';
+    if (!informacion) {
+      Swal.fire('Dato requerido', 'Describe la actualización de tu estatus académico.', 'info');
+      return;
+    }
+    const file = input.files?.[0] || null;
+    if (file && !this.isPdfFile(file)) {
+      Swal.fire('Archivo inválido', 'La evidencia de estatus académico debe ser PDF.', 'warning');
+      input.value = '';
+      return;
+    }
+    if (file && !this.validarTamanoPdf(file, 'postulacion.documentos', 'La evidencia de estatus académico', input)) {
+      return;
+    }
+    const fd = new FormData();
+    fd.append('informacionStatusAcademico', informacion);
+    if (file) fd.append('file', file);
+    this.subiendoStatusAcademico = true;
+    this.http.post(`${this.apiBase}/postulaciones/mias/${this.miPostulacion.id}/status-academico`, fd).subscribe({
+      next: () => {
+        this.subiendoStatusAcademico = false;
+        input.value = '';
+        Swal.fire({ icon: 'success', title: 'Estatus académico actualizado', text: 'Tu información fue enviada correctamente.', confirmButtonColor: '#8B1538' });
+        this.cargarMiPostulacion();
+      },
+      error: (err) => {
+        this.subiendoStatusAcademico = false;
+        Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: err?.error?.error || err?.error?.message || 'Error al actualizar el estatus académico.', confirmButtonColor: '#8B1538' });
+      }
+    });
+  }
   abrirModalBancaria(): void {
     if (!this.miPostulacion?.id) return;
     if (!this.puedeCapturarBancaria) {
@@ -835,29 +1500,41 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
       });
       return;
     }
+    const tieneEstadoCuenta = !!this.miPostulacion.estadoCuentaDocumentoId;
     Swal.fire({
-      title: this.tieneBancariaCapturada ? 'Editar información bancaria' : 'Capturar información bancaria',
+      title: this.tieneBancariaCapturada ? 'Editar datos bancarios' : 'Capturar datos bancarios',
       html: `
-        <div class="text-start">
-          <label for="swal-banco" class="form-label small fw-semibold mb-1">Banco</label>
-          <input id="swal-banco" class="swal2-input mt-0 mb-2" maxlength="120" value="${(this.miPostulacion.banco || '').replace(/"/g, '&quot;')}" />
-          <label for="swal-titular" class="form-label small fw-semibold mb-1">Titular de cuenta</label>
-          <input id="swal-titular" class="swal2-input mt-0 mb-2" maxlength="180" value="${(this.miPostulacion.titularCuenta || '').replace(/"/g, '&quot;')}" />
-          <label for="swal-cuenta" class="form-label small fw-semibold mb-1">Cuenta bancaria</label>
-          <input id="swal-cuenta" class="swal2-input mt-0 mb-2" maxlength="34" value="${(this.miPostulacion.cuentaBancaria || '').replace(/"/g, '&quot;')}" />
-          <label for="swal-clabe" class="form-label small fw-semibold mb-1">CLABE</label>
-          <input id="swal-clabe" class="swal2-input mt-0 mb-2" maxlength="18" value="${(this.miPostulacion.clabeInterbancaria || '').replace(/"/g, '&quot;')}" />
-          <label for="swal-medio" class="form-label small fw-semibold mb-1">Medio de notificación</label>
-          <select id="swal-medio" class="swal2-select mt-0" style="display:block;width:100%;">
-            <option value="">Selecciona...</option>
-            <option value="CORREO" ${(this.miPostulacion.medioNotificacion || '') === 'CORREO' ? 'selected' : ''}>Correo</option>
-            <option value="TELEFONO" ${(this.miPostulacion.medioNotificacion || '') === 'TELEFONO' ? 'selected' : ''}>Teléfono</option>
-            <option value="AMBOS" ${(this.miPostulacion.medioNotificacion || '') === 'AMBOS' ? 'selected' : ''}>Ambos</option>
-          </select>
+        <div class="text-start bancaria-modal-grid">
+          <p class="small text-muted mb-3">Captura la cuenta donde se realizará el apoyo. El estado de cuenta es obligatorio la primera vez.</p>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="swal-banco" class="form-label small fw-semibold mb-1">Banco</label>
+              <input id="swal-banco" class="form-control" maxlength="120" value="${(this.miPostulacion.banco || '').replace(/"/g, '&quot;')}" placeholder="Ej. BBVA, Banorte, Santander" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="swal-titular" class="form-label small fw-semibold mb-1">Titular de la cuenta</label>
+              <input id="swal-titular" class="form-control" maxlength="180" value="${(this.miPostulacion.titularCuenta || '').replace(/"/g, '&quot;')}" placeholder="Nombre completo" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="swal-cuenta" class="form-label small fw-semibold mb-1">Número de cuenta</label>
+              <input id="swal-cuenta" class="form-control" maxlength="34" value="${(this.miPostulacion.cuentaBancaria || '').replace(/"/g, '&quot;')}" placeholder="Solo números" />
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="swal-clabe" class="form-label small fw-semibold mb-1">CLABE interbancaria</label>
+              <input id="swal-clabe" class="form-control" maxlength="18" value="${(this.miPostulacion.clabeInterbancaria || '').replace(/"/g, '&quot;')}" placeholder="18 dígitos" />
+            </div>
+            <div class="col-12">
+              <label for="swal-estado-cuenta" class="form-label small fw-semibold mb-1">Estado de cuenta</label>
+              <input id="swal-estado-cuenta" class="form-control" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf" />
+              <div class="form-text">PDF, Word o Excel. Máx. 2 MB según configuración.</div>
+              ${tieneEstadoCuenta ? `<div class="alert alert-light border mt-2 mb-0 py-2"><i class="fas fa-file-invoice me-1 text-borgona"></i> Archivo actual: <strong>${(this.miPostulacion.estadoCuentaNombreArchivo || 'Estado de cuenta cargado').replace(/"/g, '&quot;')}</strong></div>` : ''}
+            </div>
+          </div>
         </div>
       `,
+      width: 760,
       showCancelButton: true,
-      confirmButtonText: 'Guardar',
+      confirmButtonText: 'Guardar datos bancarios',
       confirmButtonColor: '#8B1538',
       cancelButtonText: 'Cancelar',
       preConfirm: () => {
@@ -865,12 +1542,22 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
         const titularCuenta = (this.doc.getElementById('swal-titular') as HTMLInputElement | null)?.value?.trim() || '';
         const cuentaBancaria = (this.doc.getElementById('swal-cuenta') as HTMLInputElement | null)?.value?.trim() || '';
         const clabeInterbancaria = (this.doc.getElementById('swal-clabe') as HTMLInputElement | null)?.value?.trim() || '';
-        const medioNotificacion = (this.doc.getElementById('swal-medio') as HTMLSelectElement | null)?.value?.trim() || '';
-        if (!banco || !titularCuenta || !cuentaBancaria || !clabeInterbancaria || !medioNotificacion) {
-          Swal.showValidationMessage('Completa todos los campos bancarios');
+        const estadoCuenta = (this.doc.getElementById('swal-estado-cuenta') as HTMLInputElement | null)?.files?.[0] || null;
+        if (!banco || !titularCuenta || !cuentaBancaria || !clabeInterbancaria) {
+          Swal.showValidationMessage('Completa banco, titular, número de cuenta y CLABE');
           return false;
         }
-        return { banco, titularCuenta, cuentaBancaria, clabeInterbancaria, medioNotificacion };
+        if (!tieneEstadoCuenta && !estadoCuenta) {
+          Swal.showValidationMessage('Adjunta el estado de cuenta');
+          return false;
+        }
+        const formData = new FormData();
+        formData.append('banco', banco);
+        formData.append('titularCuenta', titularCuenta);
+        formData.append('cuentaBancaria', cuentaBancaria);
+        formData.append('clabeInterbancaria', clabeInterbancaria);
+        if (estadoCuenta) formData.append('estadoCuenta', estadoCuenta);
+        return formData;
       }
     }).then((res) => {
       if (!res.isConfirmed || !res.value || !this.miPostulacion?.id) return;
@@ -878,7 +1565,7 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
         next: () => {
           Swal.fire({
             icon: 'success',
-            title: 'Información bancaria guardada',
+            title: 'Datos bancarios guardados',
             text: 'Tus datos bancarios se actualizaron correctamente.',
             confirmButtonColor: '#8B1538'
           });
@@ -895,7 +1582,6 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
       });
     });
   }
-
   get puedeGestionarInformes(): boolean {
     if (!this.puedeCapturarBancaria) return false;
     return this.requiereInformeParcial || this.requiereInformeFinal;
@@ -941,23 +1627,52 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     Swal.fire({
       title: 'Solicitar renuncia del apoyo',
       html: `
-        <div class="text-start">
+        <div class="text-start renuncia-modal-content">
+          <div class="alert alert-warning border-0 mb-3 py-2 px-3 small">
+            <i class="fas fa-circle-exclamation me-2"></i>
+            Esta solicitud será revisada por COMECYT. Adjunta el oficio formal de baja que respalda tu renuncia.
+          </div>
           <label for="swal-renuncia-motivo" class="form-label small fw-semibold mb-1">Motivo de renuncia</label>
-          <textarea id="swal-renuncia-motivo" class="swal2-textarea mt-0" maxlength="3000" placeholder="Describe el motivo de tu renuncia..."></textarea>
+          <textarea id="swal-renuncia-motivo" class="form-control mb-3" rows="5" maxlength="3000" placeholder="Describe de forma clara el motivo de tu renuncia..."></textarea>
+          <label for="swal-renuncia-oficio" class="form-label small fw-semibold mb-1">Oficio formal de baja (PDF)</label>
+          <input id="swal-renuncia-oficio" class="form-control" type="file" accept=".pdf,application/pdf" />
+          <div class="form-text">Archivo PDF obligatorio. Máx. ${this.getPdfLimitMb('postulacion.documentos')} MB.</div>
         </div>
       `,
       icon: 'warning',
+      width: 720,
       showCancelButton: true,
       confirmButtonText: 'Enviar solicitud',
       confirmButtonColor: '#8B1538',
       cancelButtonText: 'Cancelar',
       preConfirm: () => {
         const motivoRenuncia = (this.doc.getElementById('swal-renuncia-motivo') as HTMLTextAreaElement | null)?.value?.trim() || '';
+        const input = this.doc.getElementById('swal-renuncia-oficio') as HTMLInputElement | null;
+        const oficioBaja = input?.files?.[0] || null;
         if (!motivoRenuncia) {
           Swal.showValidationMessage('Debes capturar el motivo de renuncia');
           return false;
         }
-        return { motivoRenuncia };
+        if (!oficioBaja) {
+          Swal.showValidationMessage('Debes adjuntar el oficio formal de baja en PDF');
+          return false;
+        }
+        if (!this.isPdfFile(oficioBaja)) {
+          Swal.showValidationMessage('El oficio formal de baja debe ser un archivo PDF');
+          if (input) input.value = '';
+          return false;
+        }
+        const limiteMb = this.getPdfLimitMb('postulacion.documentos');
+        const limiteBytes = limiteMb * 1024 * 1024;
+        if (oficioBaja.size > limiteBytes) {
+          Swal.showValidationMessage('El oficio formal de baja excede el límite permitido de ' + limiteMb + ' MB');
+          if (input) input.value = '';
+          return false;
+        }
+        const fd = new FormData();
+        fd.append('motivoRenuncia', motivoRenuncia);
+        fd.append('oficioBaja', oficioBaja);
+        return fd;
       }
     }).then((res) => {
       if (!res.isConfirmed || !res.value || !this.miPostulacion?.id) return;
@@ -966,7 +1681,7 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
           Swal.fire({
             icon: 'success',
             title: 'Renuncia enviada',
-            text: 'Tu solicitud de renuncia fue enviada para revisión administrativa.',
+            text: 'Tu solicitud de renuncia y oficio formal de baja fueron enviados para revisión administrativa.',
             confirmButtonColor: '#8B1538'
           });
           this.cargarMiPostulacion();
@@ -982,7 +1697,6 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
       });
     });
   }
-
   get fechaLimiteInformeParcialTexto(): string {
     if (!this.requiereInformeParcial) return 'No requerido';
     return this.formatearFechaSimple(this.miPostulacion?.fechaLimiteInformeParcial);
@@ -1007,9 +1721,18 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     input.click();
   }
 
-  seleccionarArchivoReciboPago(input: HTMLInputElement): void {
+  async seleccionarArchivoReciboPago(input: HTMLInputElement): Promise<void> {
     if (!this.puedeCargarReciboPago || !this.miPostulacion?.id) return;
-    input.click();
+    const res = await Swal.fire({
+      icon: 'warning',
+      title: '¿Cargar recibo de pago?',
+      html: 'Al subir el recibo, la carga quedará bloqueada hasta que COMECYT lo revise. Si el recibo es rechazado, podrás reemplazarlo.',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, cargar recibo',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#8B1538'
+    });
+    if (res.isConfirmed) input.click();
   }
 
   onInformeParcialSeleccionado(event: Event): void {
@@ -1024,6 +1747,9 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     if (!this.isPdfFile(file)) {
       Swal.fire('Archivo inválido', 'El informe parcial debe ser PDF.', 'warning');
       input.value = '';
+      return;
+    }
+    if (!this.validarTamanoPdf(file, 'postulacion.informes', 'El informe parcial', input)) {
       return;
     }
     const fd = new FormData();
@@ -1058,6 +1784,9 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
       input.value = '';
       return;
     }
+    if (!this.validarTamanoPdf(file, 'postulacion.informes', 'El informe final', input)) {
+      return;
+    }
     const fd = new FormData();
     fd.append('file', file);
     this.subiendoInformeFinal = true;
@@ -1090,6 +1819,9 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
       input.value = '';
       return;
     }
+    if (!this.validarTamanoPdf(file, 'postulacion.reciboPago', 'El recibo de pago', input)) {
+      return;
+    }
     const fd = new FormData();
     fd.append('file', file);
     this.subiendoReciboPago = true;
@@ -1108,9 +1840,89 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     });
   }
 
-  descargarDocumento(documentoId?: number | null): void {
-    if (!documentoId) return;
-    window.open(`${this.apiBase}/documentos/${documentoId}`, '_blank');
+  visualizarDocumento(documentoId?: number | null, nombreArchivo?: string | null): void {
+    if (!documentoId || !isPlatformBrowser(this.platformId)) return;
+    const win = window.open('', '_blank');
+    if (!win) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Ventana bloqueada',
+        text: 'Permite ventanas emergentes para ver la previsualización del documento.',
+        confirmButtonColor: '#8B1538'
+      });
+      return;
+    }
+    win.document.title = nombreArchivo || 'Documento';
+    win.document.body.style.fontFamily = 'Arial, sans-serif';
+    win.document.body.style.padding = '24px';
+    win.document.body.textContent = 'Cargando documento...';
+
+    this.http.get(`${this.apiBase}/documentos/${documentoId}?inline=true`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const nombre = nombreArchivo?.trim() || `documento_${documentoId}.pdf`;
+        if (!this.esBlobPdf(blob, nombre)) {
+          win.close();
+          this.descargarBlob(blob, nombre);
+          Swal.fire({
+            icon: 'info',
+            title: 'Vista previa no disponible',
+            text: 'Este archivo no es PDF. Se descargó para que puedas abrirlo en tu equipo.',
+            confirmButtonColor: '#8B1538'
+          });
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        win.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
+      },
+      error: (err) => {
+        win.close();
+        Swal.fire({
+          icon: 'error',
+          title: 'No se pudo abrir',
+          text: this.mensajeErrorDocumento(err, 'No se pudo abrir el documento.'),
+          confirmButtonColor: '#8B1538'
+        });
+      }
+    });
+  }
+
+  descargarDocumento(documentoId?: number | null, nombreArchivo?: string | null): void {
+    if (!documentoId || !isPlatformBrowser(this.platformId)) return;
+    this.http.get(`${this.apiBase}/documentos/${documentoId}`, { responseType: 'blob' }).subscribe({
+      next: (blob) => this.descargarBlob(blob, nombreArchivo?.trim() || `documento_${documentoId}`),
+      error: (err) => {
+        Swal.fire({
+          icon: 'error',
+          title: 'No se pudo descargar',
+          text: this.mensajeErrorDocumento(err, 'No se pudo descargar el documento.'),
+          confirmButtonColor: '#8B1538'
+        });
+      }
+    });
+  }
+
+  private esBlobPdf(blob: Blob, nombreArchivo: string): boolean {
+    return (blob.type || '').toLowerCase().includes('pdf') || nombreArchivo.toLowerCase().endsWith('.pdf');
+  }
+
+  private descargarBlob(blob: Blob, nombreArchivo: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = this.doc.createElement('a');
+    a.href = url;
+    a.download = nombreArchivo || 'documento';
+    a.style.display = 'none';
+    this.doc.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+  }
+
+  private mensajeErrorDocumento(err: any, fallback: string): string {
+    if (err?.status === 401) return 'Tu sesión expiró. Inicia sesión nuevamente para consultar el documento.';
+    if (err?.status === 403) return 'No tienes permisos para consultar este documento.';
+    if (err?.status === 404) return 'El documento no fue encontrado.';
+    return err?.error?.message || err?.error?.error || fallback;
   }
 
   descargarFormatoConvocatoria(formato: FormatoConvocatoria): void {
@@ -1149,3 +1961,22 @@ export class PostulacionComponent implements OnInit, AfterViewInit {
     });
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

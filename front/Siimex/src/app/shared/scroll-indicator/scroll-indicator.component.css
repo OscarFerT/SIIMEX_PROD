@@ -1,0 +1,84 @@
+.scroll-indicator {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 1040;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.62rem 0.9rem 0.62rem 1rem;
+  border: 1px solid rgba(128, 0, 56, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #820033;
+  box-shadow: 0 14px 34px rgba(37, 16, 26, 0.16);
+  backdrop-filter: blur(12px);
+  transform: translateX(-50%);
+  animation: scrollIndicatorIn 0.28s ease-out both;
+  cursor: pointer;
+}
+
+.scroll-indicator:hover,
+.scroll-indicator:focus-visible {
+  background: #fff;
+  box-shadow: 0 18px 42px rgba(37, 16, 26, 0.22);
+  outline: none;
+}
+
+.scroll-indicator__text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.scroll-indicator__icon {
+  display: inline-flex;
+  width: 1.65rem;
+  height: 1.65rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #8a0038, #b78347);
+  color: #fff;
+  font-size: 0.72rem;
+  animation: scrollIndicatorPulse 1.35s ease-in-out infinite;
+}
+
+@keyframes scrollIndicatorIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes scrollIndicatorPulse {
+  0%, 100% {
+    transform: translateY(-1px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+@media (max-width: 768px) {
+  .scroll-indicator {
+    bottom: 14px;
+    padding: 0.55rem 0.72rem 0.55rem 0.82rem;
+  }
+
+  .scroll-indicator__text {
+    font-size: 0.76rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-indicator,
+  .scroll-indicator__icon {
+    animation: none;
+  }
+}

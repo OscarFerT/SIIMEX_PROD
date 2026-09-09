@@ -1,0 +1,12 @@
+<button
+  *ngIf="visible()"
+  type="button"
+  class="scroll-indicator"
+  aria-label="Ver más contenido"
+  title="Ver más contenido"
+  (click)="scrollDown()">
+  <span class="scroll-indicator__text">Hay más contenido</span>
+  <span class="scroll-indicator__icon" aria-hidden="true">
+    <i class="fas fa-chevron-down"></i>
+  </span>
+</button>

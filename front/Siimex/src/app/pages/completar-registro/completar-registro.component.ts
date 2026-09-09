@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth.service';
+import { PdfLimiteService } from '../../core/pdf-limite.service';
 import { Usuario } from '../../core/models/user';
 import Swal from 'sweetalert2';
 import { firstValueFrom } from 'rxjs';
@@ -169,6 +170,7 @@ export class CompletarRegistroComponent implements OnInit {
   private router = inject(Router);
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private pdfLimiteService = inject(PdfLimiteService);
 
   // Estados
   // La vista inicial del flujo es Migración SECIHTI.
@@ -388,11 +390,13 @@ export class CompletarRegistroComponent implements OnInit {
 
   // Años disponibles para publicaciones y logros (de 2030 a 1990).
   readonly catalogoYears: number[] = this.generarCatalogoYears();
+  pdfLimitMbByKey: Record<string, number> = {};
 
   ngOnInit(): void {
     this.initForm();
     this.configurarSuscripcionesCatalogo();
     this.loadCatalogos();
+    this.cargarLimitesPdf();
     
     // Verificar si el usuario ya completó el registro
     this.checkIfRegistrationCompleted();
@@ -3584,6 +3588,27 @@ export class CompletarRegistroComponent implements OnInit {
     }
   }
 
+  private cargarLimitesPdf(): void {
+    this.pdfLimiteService.obtenerMapaLimites().subscribe((limites) => {
+      this.pdfLimitMbByKey = limites;
+    });
+  }
+
+  getPdfLimitMb(key: string): number {
+    return Number(this.pdfLimitMbByKey[key]) || 2;
+  }
+
+  private getPdfLimitKeyForControl(controlName: string): string {
+    const map: Record<string, string> = {
+      cert1: 'registro.perfilAcademico',
+      cert2: 'registro.perfilAcademico',
+      acad_constancia_snii: 'registro.perfilAcademico',
+      idioma_cert_documento: 'registro.idiomas',
+      estancia_documento: 'registro.estancias',
+      divulg_archivo: 'registro.divulgacion'
+    };
+    return map[controlName] || 'registro.perfilAcademico';
+  }
   onFileChange(event: Event, controlName: string): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
@@ -3599,13 +3624,15 @@ export class CompletarRegistroComponent implements OnInit {
         input.value = '';
         return;
       }
-      if (file.size > MAX_BYTES) {
+      const maxMb = this.getPdfLimitMb(this.getPdfLimitKeyForControl(controlName));
+      if (file.size > maxMb * 1024 * 1024) {
         Swal.fire({
           icon: 'error',
           title: 'Archivo muy grande',
-          text: `El archivo excede el tamaño máximo permitido de ${MAX_MB}MB`,
+          text: `El archivo excede el tamaño máximo permitido de ${maxMb} MB`,
           confirmButtonColor: '#800020'
         });
+        input.value = '';
         return;
       }
       this.form.patchValue({ [controlName]: file });

@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 public class ConvocatoriaRequest {
@@ -16,10 +16,10 @@ public class ConvocatoriaRequest {
     private String resumen;
     private String requisitos;
 
-    private LocalDate fechaApertura;
+    private LocalDateTime fechaApertura;
 
     @NotNull(message = "La fecha de cierre es obligatoria")
-    private LocalDate fechaCierre;
+    private LocalDateTime fechaCierre;
 
     private String area;
     private String folioConvocatoria;
@@ -36,6 +36,7 @@ public class ConvocatoriaRequest {
 
     /** Límite de postulaciones aceptadas (null = sin límite) */
     private Integer limiteAceptados;
+    private Boolean limiteAceptadosHabilitado;
 
     /** JSON: requisitos de documentos [{"clave","etiqueta","requerido"}] */
     private String requisitosDocumentos;
@@ -48,10 +49,13 @@ public class ConvocatoriaRequest {
 
     /** Maximo de puntaje en evaluacion por convocatoria. */
     private Integer puntajeMaximoEvaluacion;
+    private Boolean puntajeMaximoEvaluacionHabilitado;
 
     /** Ventana editable de anticipación de evento para postulaciones. */
     private Integer diasMinAnticipacion;
+    private Boolean diasMinAnticipacionHabilitado;
     private Integer diasMaxAnticipacion;
+    private Boolean diasMaxAnticipacionHabilitado;
 
     /** Aviso de privacidad configurable por convocatoria. */
     private Boolean avisoPrivacidadObligatorio;

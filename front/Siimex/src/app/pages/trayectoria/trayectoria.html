@@ -438,7 +438,7 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">Archivo <span class="text-danger">*</span></label>
             <input id="certFile" class="form-control input-custom" type="file" accept=".pdf,application/pdf" required (change)="onCertFileChange($event)" />
-            <small class="form-text text-muted">Solo PDF · máx. 10MB</small>
+            <small class="form-text text-muted">Solo PDF · máx. {{ getPdfLimitMb('perfil.certificaciones') }} MB</small>
           </div>
           <div id="certFormMsg" class="pub-inline-feedback mt-2" role="status" style="display:none;"></div>
           <div class="modal-footer-actions">
@@ -691,7 +691,7 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">Documento adjunto (opcional)</label>
             <input id="piDocumento" class="form-control input-custom" type="file" accept=".pdf,application/pdf" (change)="onPiFileChange($event)" />
-            <small class="form-text text-muted">Solo PDF · máx. 10MB</small>
+            <small class="form-text text-muted">Solo PDF · máx. {{ getPdfLimitMb('perfil.propiedadIntelectual') }} MB</small>
           </div>
           <div class="modal-footer-actions mt-3">
             <button type="button" class="btn btn-outline-secondary" (click)="cerrarModal()">Cancelar</button>
@@ -953,7 +953,7 @@
                    type="file"
                    accept=".pdf,application/pdf"
                    (change)="onEvidenciaModalFileChange($event)" />
-            <small class="text-muted">Solo se aceptan archivos PDF. El archivo se guarda al presionar "Guardar" en el modal.</small>
+            <small class="text-muted">Solo se aceptan archivos PDF · máx. {{ getPdfLimitMb('perfil.rubros') }} MB. El archivo se guarda al presionar "Guardar" en el modal.</small>
           </div>
           <div *ngIf="getEvidenciasModalActuales().length > 0; else sinEvidenciasModal" class="d-flex flex-column gap-2">
             <div class="d-flex justify-content-between align-items-center border rounded px-2 py-1"

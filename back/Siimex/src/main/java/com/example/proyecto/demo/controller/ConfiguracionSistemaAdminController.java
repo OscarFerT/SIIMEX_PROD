@@ -51,6 +51,27 @@ public class ConfiguracionSistemaAdminController {
         return ResponseEntity.ok(despues);
     }
 
+    @GetMapping("/limites-pdf")
+    public ResponseEntity<Map<String, Object>> obtenerLimitesPdf() {
+        return ResponseEntity.ok(configuracionSistemaService.obtenerLimitesPdf());
+    }
+
+    @PatchMapping("/limites-pdf")
+    public ResponseEntity<Map<String, Object>> actualizarLimitesPdf(@RequestBody Map<String, Object> body,
+                                                                    Authentication auth,
+                                                                    HttpServletRequest http) {
+        Map<String, Object> despues = configuracionSistemaService.actualizarLimitesPdf(body);
+        auditLogService.registrarAdmin(
+                "ACTUALIZAR_LIMITES_PDF",
+                "Actualizacion de limites de carga para documentos PDF.",
+                getAdminId(auth),
+                getAdminEmail(auth),
+                "ConfiguracionSistema",
+                null,
+                getIp(http)
+        );
+        return ResponseEntity.ok(despues);
+    }
     private String construirDetalleCambios(Map<String, Object> antes, Map<String, Object> despues) {
         String invAntes = valor(antes, "investigador");
         String indAntes = valor(antes, "innovador");

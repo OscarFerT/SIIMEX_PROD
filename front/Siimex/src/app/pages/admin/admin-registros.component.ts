@@ -875,12 +875,7 @@ export class AdminRegistrosComponent implements OnInit {
         doc.save(nombreArchivo);
       } else {
         const blob = doc.output('blob');
-        const url = URL.createObjectURL(blob);
-        const win = window.open(url, '_blank');
-        if (!win) {
-          doc.save(nombreArchivo);
-        }
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        this.abrirPdfEnPestana(blob, nombreArchivo, () => doc.save(nombreArchivo));
       }
     } catch (e) {
       alert(modo === 'descargar'
@@ -924,6 +919,42 @@ export class AdminRegistrosComponent implements OnInit {
       return `${dia}/${mes}/${anio}`;
     }
     return fecha;
+  }
+
+
+  private abrirPdfEnPestana(blob: Blob, nombreArchivo: string, fallback?: () => void): void {
+    const win = window.open('', '_blank');
+    if (!win) {
+      fallback?.();
+      return;
+    }
+
+    const pdfBlob = blob.type?.toLowerCase().includes('pdf') ? blob : new Blob([blob], { type: 'application/pdf' });
+    const url = URL.createObjectURL(pdfBlob);
+    win.document.title = nombreArchivo || 'Vista previa';
+    win.document.body.style.margin = '0';
+    win.document.body.style.background = '#2f2f35';
+    win.document.body.style.fontFamily = 'Arial, sans-serif';
+    const topbar = win.document.createElement('div');
+    topbar.style.cssText = 'height:52px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:#1f2025;color:#fff;border-bottom:1px solid #44464f';
+    const title = win.document.createElement('div');
+    title.textContent = nombreArchivo || 'Vista previa';
+    title.style.cssText = 'font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    const download = win.document.createElement('a');
+    download.href = url;
+    download.download = nombreArchivo || 'documento.pdf';
+    download.textContent = 'Descargar PDF';
+    download.style.cssText = 'background:#8B1538;color:#fff;text-decoration:none;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;white-space:nowrap';
+    topbar.appendChild(title);
+    topbar.appendChild(download);
+    const iframe = win.document.createElement('iframe');
+    iframe.src = url + '#toolbar=1&navpanes=0&view=FitH';
+    iframe.title = 'Vista previa de ' + (nombreArchivo || 'documento.pdf');
+    iframe.style.cssText = 'border:0;display:block;width:100vw;height:calc(100vh - 52px);background:#fff';
+    win.document.body.textContent = '';
+    win.document.body.appendChild(topbar);
+    win.document.body.appendChild(iframe);
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
   }
 
   private async obtenerFotoBase64(documentoId: number): Promise<string | null> {

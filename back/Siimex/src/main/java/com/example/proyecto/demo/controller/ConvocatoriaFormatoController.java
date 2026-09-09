@@ -30,12 +30,12 @@ public class ConvocatoriaFormatoController {
 
     @GetMapping("/convocatorias/{convocatoriaId}/formatos")
     public ResponseEntity<List<Map<String, Object>>> listarPublicos(@PathVariable Long convocatoriaId) {
-        return ResponseEntity.ok(formatoService.listar(convocatoriaId));
+        return ResponseEntity.ok(formatoService.listarPublicos(convocatoriaId));
     }
 
     @GetMapping("/convocatorias/{convocatoriaId}/formatos/{formatoId}")
     public ResponseEntity<byte[]> descargar(@PathVariable Long convocatoriaId, @PathVariable Long formatoId) {
-        ConvocatoriaFormato formato = formatoService.obtener(convocatoriaId, formatoId);
+        ConvocatoriaFormato formato = formatoService.obtenerPublico(convocatoriaId, formatoId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(formato.getNombreArchivo()))
                 .contentType(MediaType.parseMediaType(formato.getContentType()))
@@ -47,13 +47,23 @@ public class ConvocatoriaFormatoController {
         return ResponseEntity.ok(formatoService.listar(convocatoriaId));
     }
 
+    @GetMapping("/admin/convocatorias/{convocatoriaId}/formatos/{formatoId}")
+    public ResponseEntity<byte[]> descargarAdmin(@PathVariable Long convocatoriaId, @PathVariable Long formatoId) {
+        ConvocatoriaFormato formato = formatoService.obtener(convocatoriaId, formatoId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(formato.getNombreArchivo()))
+                .contentType(MediaType.parseMediaType(formato.getContentType()))
+                .body(formato.getContenido());
+    }
+
     @PostMapping(value = "/admin/convocatorias/{convocatoriaId}/formatos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> subirAdmin(
             @PathVariable Long convocatoriaId,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "nombre", required = false) String nombre,
-            @RequestParam(value = "descripcion", required = false) String descripcion) throws IOException {
-        return ResponseEntity.ok(formatoService.guardar(convocatoriaId, file, nombre, descripcion));
+            @RequestParam(value = "descripcion", required = false) String descripcion,
+            @RequestParam(value = "uso", required = false) String uso) throws IOException {
+        return ResponseEntity.ok(formatoService.guardar(convocatoriaId, file, nombre, descripcion, uso));
     }
 
     @DeleteMapping("/admin/convocatorias/{convocatoriaId}/formatos/{formatoId}")
@@ -69,3 +79,5 @@ public class ConvocatoriaFormatoController {
         return "attachment; filename=\"" + ascii + "\"; filename*=UTF-8''" + encoded;
     }
 }
+
+

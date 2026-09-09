@@ -3,7 +3,6 @@ package com.example.proyecto.demo.Entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -39,11 +38,11 @@ public class Convocatoria {
     @Column(columnDefinition = "TEXT")
     private String requisitos;
 
-    @Column(name = "fecha_apertura")
-    private LocalDate fechaApertura;
+    @Column(name = "fecha_apertura", columnDefinition = "DATETIME")
+    private LocalDateTime fechaApertura;
 
-    @Column(name = "fecha_cierre", nullable = false)
-    private LocalDate fechaCierre;
+    @Column(name = "fecha_cierre", nullable = false, columnDefinition = "DATETIME")
+    private LocalDateTime fechaCierre;
 
     /** Área o categoría: Energías, Educación, Tecnología, etc. */
     @Column(length = 80)
@@ -94,6 +93,10 @@ public class Convocatoria {
     /** Límite de postulaciones aceptadas (null = sin límite). */
     @Column(name = "limite_aceptados")
     private Integer limiteAceptados;
+    /** Activa/desactiva el limite de postulaciones aceptadas. */
+    @Column(name = "limite_aceptados_habilitado")
+    @Builder.Default
+    private Boolean limiteAceptadosHabilitado = false;
 
     /**
      * Requisitos de documentos configurables por convocatoria (JSON).
@@ -119,16 +122,28 @@ public class Convocatoria {
     /** Puntaje maximo permitido en evaluacion (default 100). */
     @Column(name = "puntaje_maximo_evaluacion")
     private Integer puntajeMaximoEvaluacion;
+    /** Activa/desactiva el puntaje maximo personalizado en evaluacion. */
+    @Column(name = "puntaje_maximo_evaluacion_habilitado")
+    @Builder.Default
+    private Boolean puntajeMaximoEvaluacionHabilitado = true;
 
     /** Días mínimos de anticipación para la fecha de evento en la postulación. */
     @Column(name = "dias_min_anticipacion")
     @Builder.Default
     private Integer diasMinAnticipacion = 20;
+    /** Activa/desactiva la regla de dias minimos de anticipacion. */
+    @Column(name = "dias_min_anticipacion_habilitado")
+    @Builder.Default
+    private Boolean diasMinAnticipacionHabilitado = true;
 
     /** Días máximos de anticipación para la fecha de evento en la postulación. */
     @Column(name = "dias_max_anticipacion")
     @Builder.Default
     private Integer diasMaxAnticipacion = 60;
+    /** Activa/desactiva la regla de dias maximos de anticipacion. */
+    @Column(name = "dias_max_anticipacion_habilitado")
+    @Builder.Default
+    private Boolean diasMaxAnticipacionHabilitado = true;
 
     /** Si true, exige aceptación de aviso de privacidad al postularse. */
     @Column(name = "aviso_privacidad_obligatorio", nullable = false)

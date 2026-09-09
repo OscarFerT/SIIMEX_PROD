@@ -26,6 +26,17 @@ public class CompatibilidadService {
     private final TrayectoriaAcademicaRepository trayectoriaAcademicaRepo;
     private final TrayectoriaProfesionalRepository trayectoriaProfesionalRepo;
     private final IdiomaRepository idiomaRepo;
+    private final CursoRepository cursoRepo;
+    private final ArticuloRepository articuloRepo;
+    private final CongresoRepository congresoRepo;
+    private final DivulgacionRepository divulgacionRepo;
+    private final EstanciaRepository estanciaRepo;
+    private final LogroRepository logroRepo;
+    private final HerramientaRepository herramientaRepo;
+    private final PropiedadIntelectualRepository propiedadIntelectualRepo;
+    private final IncidenciaSocialRepository incidenciaSocialRepo;
+    private final InstitucionRepository institucionRepo;
+    private final InteresHabilidadRepository interesHabilidadRepo;
     private final ConvocatoriaService convocatoriaService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -99,13 +110,115 @@ public class CompatibilidadService {
 
         List<Idioma> idiomas = idiomaRepo.findByUsuarioId(userId);
         map.put("idiomas", idiomas.stream()
-                .map(Idioma::getNombre)
-                .filter(Objects::nonNull)
+                .map(i -> unirTexto(i.getNombre(), i.getDominioNombre(), i.getConversacion(), i.getLectura(), i.getEscritura(), i.getCertInstitucion(), i.getCertPuntuacion()))
+                .filter(s -> !s.isBlank())
                 .collect(Collectors.joining(", ")));
+        map.put("idiomas_count", idiomas.size());
+        map.put("idioma_certificado", idiomas.stream().anyMatch(i -> Boolean.TRUE.equals(i.getEsCertificado())) ? "SI" : null);
+
+        List<Curso> cursos = cursoRepo.findByUsuarioId(userId);
+        map.put("cursos", cursos.stream()
+                .map(c -> unirTexto(c.getNombre(), c.getPrograma(), c.getInstitucion(), c.getNivelEscolaridad()))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" ")));
+        map.put("cursos_count", cursos.size());
+        map.put("horas_cursos", cursos.stream().map(Curso::getHorasTotales).filter(Objects::nonNull).mapToInt(Integer::intValue).sum());
+
+        List<Articulo> articulos = articuloRepo.findByUsuarioId(userId);
+        map.put("articulos", articulos.stream()
+                .map(a -> unirTexto(a.getTitulo(), a.getNombreRevista(), a.getEje(), a.getTipo(), a.getRolParticipacionNombre(), a.getEstadoNombre(), a.getObjetivoNombre(), a.getFondoProgramaNombre(), a.getDoi(), a.getIssn()))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" ")));
+        map.put("articulos_count", articulos.size());
+        map.put("citas_count", articulos.stream().map(Articulo::getTotalCitas).filter(Objects::nonNull).mapToInt(Integer::intValue).sum());
+
+        List<Congreso> congresos = congresoRepo.findByUsuarioId(userId);
+        map.put("congresos", congresos.stream()
+                .map(c -> unirTexto(c.getNombreEvento(), c.getTituloTrabajo(), c.getTipoParticipacionNombre(), c.getPaisSede()))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" ")));
+        map.put("congresos_count", congresos.size());
+
+        List<Divulgacion> divulgaciones = divulgacionRepo.findByUsuarioId(userId);
+        map.put("divulgacion", divulgaciones.stream()
+                .map(d -> unirTexto(d.getTitulo(), d.getTipoDivulgacionNombre(), d.getMedioNombre(), d.getDirigidoA(), d.getProductoObtenidoNombre(), d.getInstitucionOrganizadora()))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" ")));
+        map.put("divulgacion_count", divulgaciones.size());
+
+        List<Estancia> estancias = estanciaRepo.findByUsuarioId(userId);
+        map.put("estancias", estancias.stream()
+                .map(e -> unirTexto(e.getNombreProyecto(), e.getTipoNombre(), e.getLogros(), e.getInstitucionReceptora()))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" ")));
+        map.put("estancias_count", estancias.size());
+
+        List<Logro> logros = logroRepo.findByUsuarioId(userId);
+        map.put("logros", logros.stream()
+                .map(l -> unirTexto(l.getTipo(), l.getNombre(), l.getAnio()))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" ")));
+        map.put("logros_count", logros.size());
+
+        List<Herramienta> herramientas = herramientaRepo.findByUsuarioId(userId);
+        map.put("herramientas", herramientas.stream()
+                .map(Herramienta::getNombre)
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining(" ")));
+        map.put("herramientas_count", herramientas.size());
+
+        List<PropiedadIntelectual> propiedadIntelectual = propiedadIntelectualRepo.findByUsuarioId(userId);
+        map.put("propiedad_intelectual", propiedadIntelectual.stream()
+                .map(pi -> unirTexto(pi.getTipo(), pi.getTitulo(), pi.getNumeroRegistro(), pi.getInstitucionOficina(), pi.getPais(), pi.getDescripcion()))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" ")));
+        map.put("propiedad_intelectual_count", propiedadIntelectual.size());
+
+        List<IncidenciaSocial> incidenciaSocial = incidenciaSocialRepo.findByUsuarioId(userId);
+        map.put("incidencia_social", incidenciaSocial.stream()
+                .map(i -> unirTexto(i.getTitulo(), i.getUbicacion(), i.getDescripcion(), i.getAnio()))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" ")));
+        map.put("incidencia_social_count", incidenciaSocial.size());
+
+        List<Institucion> instituciones = institucionRepo.findByUsuarioId(userId);
+        map.put("institucion_adscripcion", instituciones.stream()
+                .map(i -> unirTexto(i.getClaveOficial(), i.getNombre(), i.getTipoNombre(), i.getPaisNombre(), i.getEntidadNombre(), i.getMunicipioNombre(), i.getNivelUnoNombre(), i.getNivelDosNombre()))
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" ")));
+        if (!instituciones.isEmpty()) {
+            map.put("tipo_institucion", instituciones.stream()
+                    .map(Institucion::getTipoNombre)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.joining(" ")));
+        }
+
+        interesHabilidadRepo.findByUsuarioId(userId).ifPresent(ih -> map.put("intereses_habilidades",
+                unirTexto(ih.getInteresDescripcion(), ih.getHabilidadDescripcion(), ih.getHabilidadNivel())));
+
+        map.put("estatus_academico", trayAcad.stream()
+                .map(TrayectoriaAcademica::getEstatusNombre)
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining(" ")));
+        map.put("cedula_profesional", trayAcad.stream().anyMatch(t -> t.getCedulaProfesional() != null && !t.getCedulaProfesional().isBlank()) ? "SI" : null);
+        map.put("perfil_snii", trayAcad.stream().anyMatch(t -> Boolean.TRUE.equals(t.getEsPerfilSnii())) ? "SI" : null);
+        map.put("experiencia_actual", trayProf.stream().anyMatch(t -> Boolean.TRUE.equals(t.getEsActual())) ? "SI" : null);
 
         return map;
     }
 
+    private String unirTexto(Object... partes) {
+        return Arrays.stream(partes)
+                .filter(Objects::nonNull)
+                .map(Object::toString)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(" "));
+    }
+
+    private boolean esClaveCantidad(String clave) {
+        return clave.endsWith("_count") || clave.contains("cantidad") || clave.contains("numero") || clave.contains("número");
+    }
     private int compararGrado(String a, String b) {
         int ordenA = ordenGrado(a);
         int ordenB = ordenGrado(b);
@@ -156,17 +269,44 @@ public class CompatibilidadService {
         String k = clave.toLowerCase().replace("-", "_").replace(" ", "_");
         if (perfil.containsKey(k)) return perfil.get(k);
 
-        if (k.contains("grado") || k.contains("academico")) return perfil.get("grado_academico");
+        if (esClaveCantidad(k)) {
+            if (k.contains("curso")) return perfil.get("cursos_count");
+            if (k.contains("articulo") || k.contains("publicacion")) return perfil.get("articulos_count");
+            if (k.contains("congreso")) return perfil.get("congresos_count");
+            if (k.contains("divulgacion")) return perfil.get("divulgacion_count");
+            if (k.contains("estancia")) return perfil.get("estancias_count");
+            if (k.contains("logro") || k.contains("reconocimiento")) return perfil.get("logros_count");
+            if (k.contains("herramienta") || k.contains("habilidad")) return perfil.get("herramientas_count");
+            if (k.contains("propiedad") || k.contains("patente")) return perfil.get("propiedad_intelectual_count");
+            if (k.contains("incidencia") || k.contains("social")) return perfil.get("incidencia_social_count");
+            if (k.contains("idioma")) return perfil.get("idiomas_count");
+        }
+
+        if (k.contains("cedula")) return perfil.get("cedula_profesional");
+        if (k.contains("snii")) return perfil.get("perfil_snii");
+        if (k.contains("estatus") && k.contains("academico")) return perfil.get("estatus_academico");
+        if (k.contains("grado") || k.equals("academico")) return perfil.get("grado_academico");
         if (k.contains("area") || k.contains("conocimiento")) return perfil.get("area_conocimiento");
+        if (k.contains("experiencia_actual") || k.contains("laboral_vigente")) return perfil.get("experiencia_actual");
         if (k.contains("experiencia") || k.contains("anios") || k.contains("años")) return perfil.get("anios_experiencia");
         if (k.contains("tipo") && k.contains("perfil")) return perfil.get("tipo_perfil");
+        if (k.contains("idioma") && k.contains("cert")) return perfil.get("idioma_certificado");
         if (k.contains("idioma")) return perfil.get("idiomas");
+        if (k.contains("curso") || k.contains("capacitacion")) return perfil.get("cursos");
+        if (k.contains("articulo") || k.contains("publicacion")) return perfil.get("articulos");
+        if (k.contains("congreso")) return perfil.get("congresos");
+        if (k.contains("divulgacion")) return perfil.get("divulgacion");
+        if (k.contains("estancia")) return perfil.get("estancias");
+        if (k.contains("logro") || k.contains("reconocimiento")) return perfil.get("logros");
+        if (k.contains("herramienta") || k.contains("habilidad")) return perfil.get("herramientas");
+        if (k.contains("propiedad") || k.contains("patente")) return perfil.get("propiedad_intelectual");
+        if (k.contains("incidencia") || k.contains("social")) return perfil.get("incidencia_social");
+        if (k.contains("institucion")) return perfil.get("institucion_adscripcion");
 
         String areas = (String) perfil.get("areas");
         if (areas != null && !areas.isBlank()) return areas;
         return perfil.get("tipo_perfil");
     }
-
     private boolean evaluarCoincidencia(String clave, Object valorUsuario, List<String> opciones, Map<String, Object> criterio) {
         if (valorUsuario == null) return false;
 

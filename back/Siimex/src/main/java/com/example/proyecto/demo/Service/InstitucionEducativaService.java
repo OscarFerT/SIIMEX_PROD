@@ -124,17 +124,17 @@ public class InstitucionEducativaService {
     public byte[] generarPlantillaExcel() {
         String[] headers = {
                 "CCT",
-                "Nombre",
-                "Domicilio",
-                "Colonia",
-                "Codigo postal",
-                "Municipio",
-                "Entidad federativa",
-                "Telefono",
-                "Director",
-                "Correo",
-                "Nivel educativo",
-                "Estado (ACTIVA/PENDIENTE_VALIDACION/RECHAZADA)"
+                "NOMBRE",
+                "DOMICILIO",
+                "COLONIA",
+                "CODIGO POSTAL",
+                "MUNICIPIO",
+                "ENTIDAD FEDERATIVA",
+                "TELEFONO",
+                "DIRECTOR",
+                "CORREO",
+                "NIVEL EDUCATIVO",
+                "ESTADO (ACTIVA/PENDIENTE_VALIDACION/RECHAZADA)"
         };
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Instituciones");

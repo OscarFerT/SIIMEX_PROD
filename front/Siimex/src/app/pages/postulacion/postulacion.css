@@ -49,8 +49,8 @@
 
 .header-icon i {
   font-size: 2.5rem;
-  color: var(--borgona);
-  filter: brightness(0.9);
+  color: #fff;
+  filter: none;
 }
 
 .postulacion-title {
@@ -498,4 +498,79 @@ textarea.input-custom {
     padding: 0.65rem 0.875rem;
     font-size: 0.9rem;
   }
+}
+
+
+.selected-file-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #d7e8df;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f7fffb 0%, #ffffff 100%);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.existing-file-card {
+  border-color: #d9deea;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.existing-file-card .selected-file-info i {
+  color: #8B1538;
+}
+
+.selected-file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.selected-file-info i {
+  color: #198754;
+  font-size: 1.35rem;
+}
+
+.selected-file-name {
+  color: #1f2937;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-file-meta {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.selected-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 576px) {
+  .selected-file-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .selected-file-actions {
+    justify-content: flex-start;
+  }
+}
+
+.formulario-bloqueado {
+  opacity: 0.72;
+}
+
+.formulario-bloqueado .form-section {
+  filter: grayscale(0.15);
 }

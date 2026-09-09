@@ -207,15 +207,150 @@ export class AdminAuditoriaComponent implements OnInit {
     return 'accion-default';
   }
 
+  formatAccion(accion: string): string {
+    const raw = (accion || '').trim();
+    if (!raw) return 'Actividad registrada';
+
+    const upper = raw.toUpperCase();
+    const acciones: Record<string, string> = {
+      LOGIN_ADMIN: 'Inicio de sesión de administrador',
+      LOGIN_2FA_SKIP: 'Entró con dispositivo de confianza',
+      LOGIN_2FA_CODIGO: 'Solicitó código de acceso',
+      LOGIN_2FA_OK: 'Confirmó el código de acceso',
+      LOGIN_OK: 'Inició sesión',
+      LOGIN_FAIL: 'Intento fallido de inicio de sesión',
+      LOGOUT: 'Cerró sesión',
+      REGISTRO: 'Creó una cuenta',
+      REGISTRO_OK: 'Registro completado',
+      VERIFICACION_CORREO: 'Confirmó su correo',
+      RESET_PASSWORD: 'Solicitó recuperar contraseña',
+      CAMBIO_PASSWORD: 'Cambió su contraseña',
+      CREAR_USUARIO: 'Creó un usuario',
+      SUSPENDER_USUARIO: 'Suspendió un usuario',
+      REACTIVAR_USUARIO: 'Reactivó un usuario',
+      ELIMINAR_USUARIO: 'Eliminó un usuario',
+      OTORGAR_ROL: 'Asignó permisos',
+      REVOCAR_ROL: 'Quitó permisos'
+    };
+
+    if (acciones[upper]) return acciones[upper];
+
+    const requestMatch = raw.match(/^(GET|POST|PUT|PATCH|DELETE)\s+(.+)$/i);
+    if (requestMatch) {
+      return this.formatAccionHttp(requestMatch[1].toUpperCase(), requestMatch[2]);
+    }
+
+    return raw
+      .toLowerCase()
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+
+  formatDetalle(detalle: string | null | undefined, accion?: string): string {
+    const raw = (detalle || '').trim();
+    if (!raw) return 'Sin detalle adicional';
+
+    const httpMatch = raw.match(/^HTTP\s+(\d{3})$/i);
+    if (httpMatch) {
+      return this.formatHttpStatus(Number(httpMatch[1]));
+    }
+
+    const detalles: Record<string, string> = {
+      'LOGIN CON TOKEN DE CONFIANZA (SIN 2FA)': 'Ingresó desde un dispositivo ya reconocido.',
+      'CODIGO 2FA SOLICITADO': 'Se envió un código de verificación al correo.',
+      'CÓDIGO 2FA SOLICITADO': 'Se envió un código de verificación al correo.',
+      'VERIFICACION 2FA EXITOSA': 'El código de verificación fue correcto.',
+      'VERIFICACIÓN 2FA EXITOSA': 'El código de verificación fue correcto.',
+      'INICIO DE SESION DE ADMINISTRADOR': 'Acceso correcto al panel de administración.',
+      'INICIO DE SESIÓN DE ADMINISTRADOR': 'Acceso correcto al panel de administración.'
+    };
+
+    const normalized = this.normalizarTexto(raw);
+    const detalleComun = detalles[normalized] || detalles[raw.toUpperCase()];
+    if (detalleComun) return detalleComun;
+
+    return raw;
+  }
+
+  private formatAccionHttp(method: string, path: string): string {
+    const cleanPath = (path || '').split('?')[0].replace(/^\/api/i, '');
+    const seccionMatch = cleanPath.match(/\/usuarios\/me\/completar-registro\/seccion\/([^/\s]+)/i);
+    if (seccionMatch) {
+      return `Guardó la sección ${this.nombreSeccion(seccionMatch[1])}`;
+    }
+
+    if (/\/usuarios\/me$/i.test(cleanPath)) return 'Actualizó su perfil';
+    if (/\/usuarios/i.test(cleanPath)) return this.verboHttp(method, 'usuario');
+    if (/\/documentos/i.test(cleanPath)) return method === 'DELETE' ? 'Eliminó un documento' : 'Cargó o actualizó documentos';
+    if (/\/postulaciones/i.test(cleanPath)) return this.verboHttp(method, 'postulación');
+    if (/\/convocatorias/i.test(cleanPath)) return this.verboHttp(method, 'convocatoria');
+    if (/\/admin/i.test(cleanPath)) return 'Realizó una acción administrativa';
+
+    return this.verboHttp(method, 'información del sistema');
+  }
+
+  private verboHttp(method: string, objetivo: string): string {
+    switch (method) {
+      case 'GET': return `Consultó ${objetivo}`;
+      case 'POST': return `Registró ${objetivo}`;
+      case 'PUT':
+      case 'PATCH': return `Actualizó ${objetivo}`;
+      case 'DELETE': return `Eliminó ${objetivo}`;
+      default: return `Gestionó ${objetivo}`;
+    }
+  }
+
+  private nombreSeccion(slug: string): string {
+    const key = this.normalizarTexto(slug).replace(/[-_\s]/g, '');
+    const secciones: Record<string, string> = {
+      datospersonales: 'Datos personales',
+      padroninstitucional: 'Padrón institucional',
+      institucion: 'Institución',
+      areaconocimiento: 'Área de conocimiento',
+      perfilacademico: 'Perfil académico',
+      trayectoriaacademica: 'Perfil académico',
+      trayectoriaprofesional: 'Trayectoria profesional',
+      cursosimpartidos: 'Cursos impartidos',
+      idiomas: 'Dominio de idiomas',
+      aportacionescientificas: 'Aportaciones científicas',
+      produccioncientifica: 'Aportaciones científicas',
+      logros: 'Logros y reconocimientos',
+      reconocimientos: 'Logros y reconocimientos',
+      estancias: 'Estancias',
+      divulgacion: 'Divulgación',
+      desarrollotecnologico: 'Desarrollo tecnológico'
+    };
+    return secciones[key] || slug.replace(/[-_]/g, ' ');
+  }
+
+  private formatHttpStatus(status: number): string {
+    if (status >= 200 && status < 300) return 'Operación realizada correctamente.';
+    if (status === 400) return 'No se pudo completar: revisa los datos capturados.';
+    if (status === 401) return 'No autorizado o sesión vencida.';
+    if (status === 403) return 'No tiene permisos para realizar esta acción.';
+    if (status === 404) return 'La información solicitada no fue encontrada.';
+    if (status === 409) return 'No se pudo completar por conflicto con información existente.';
+    if (status === 429) return 'Demasiados intentos. Intenta más tarde.';
+    if (status >= 500) return 'Ocurrió un error interno del servidor.';
+    return `Resultado del sistema: ${status}`;
+  }
+
+  private normalizarTexto(value: string): string {
+    return (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toUpperCase();
+  }
   exportarExcel(): void {
     const headers = ['ID', 'Fecha', 'Categoría', 'Acción', 'Email', 'Detalle', 'IP', 'Entidad', 'Entidad ID'];
     const rows = this.items.map(i => [
       i.id,
       i.fecha,
       i.categoria,
-      i.accion,
+      this.formatAccion(i.accion),
       i.usuarioEmail || '',
-      i.detalle || '',
+      this.formatDetalle(i.detalle, i.accion),
       i.ipAddress || '',
       i.entidadTipo || '',
       i.entidadId ?? ''

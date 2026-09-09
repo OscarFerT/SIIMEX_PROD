@@ -101,10 +101,10 @@
                 </span>
               </td>
               <td>
-                <span class="audit-accion" [ngClass]="getAccionClase(item.accion)">{{ item.accion }}</span>
+                <span class="audit-accion" [ngClass]="getAccionClase(item.accion)">{{ formatAccion(item.accion) }}</span>
               </td>
               <td class="audit-email">{{ item.usuarioEmail || '—' }}</td>
-              <td class="audit-detalle-cell">{{ item.detalle || '—' }}</td>
+              <td class="audit-detalle-cell">{{ formatDetalle(item.detalle, item.accion) }}</td>
               <td class="audit-ip"><code>{{ item.ipAddress || '—' }}</code></td>
               <td class="text-center">
                 <button class="btn btn-sm btn-outline-secondary btn-icon" (click)="verDetalle(item); $event.stopPropagation()" title="Ver detalle">
@@ -210,7 +210,7 @@
             <div class="audit-bars">
               <div *ngFor="let a of stats.porAccion; let i = index" class="audit-bar-row">
                 <span class="audit-bar-label audit-bar-label-accion">
-                  <span class="audit-accion" [ngClass]="getAccionClase(a.accion)">{{ a.accion }}</span>
+                  <span class="audit-accion" [ngClass]="getAccionClase(a.accion)">{{ formatAccion(a.accion) }}</span>
                 </span>
                 <div class="audit-bar-track">
                   <div class="audit-bar-fill" [style.width.%]="stats.total30d > 0 ? (a.total / stats.total30d * 100) : 0" style="background: #6a0032;"></div>
@@ -234,12 +234,12 @@
                 <span class="audit-cat-badge audit-cat-badge-sm" [style.background]="getCategoriaInfo(ev.categoria).color + '18'" [style.color]="getCategoriaInfo(ev.categoria).color">
                   {{ getCategoriaInfo(ev.categoria).label }}
                 </span>
-                <span class="audit-accion audit-accion-sm" [ngClass]="getAccionClase(ev.accion)">{{ ev.accion }}</span>
+                <span class="audit-accion audit-accion-sm" [ngClass]="getAccionClase(ev.accion)">{{ formatAccion(ev.accion) }}</span>
                 <span class="audit-timeline-date">{{ formatFechaCorta(ev.fecha) }}</span>
               </div>
               <div class="audit-timeline-detail">
                 <span *ngIf="ev.usuarioEmail" class="audit-timeline-user"><i class="fas fa-user me-1"></i>{{ ev.usuarioEmail }}</span>
-                <span class="audit-timeline-msg">{{ ev.detalle || '—' }}</span>
+                <span class="audit-timeline-msg">{{ formatDetalle(ev.detalle, ev.accion) }}</span>
               </div>
             </div>
           </div>
@@ -276,7 +276,7 @@
           </div>
           <div class="audit-detail-field">
             <label>Acción</label>
-            <span class="audit-accion" [ngClass]="getAccionClase(detalleItem.accion)">{{ detalleItem.accion }}</span>
+            <span class="audit-accion" [ngClass]="getAccionClase(detalleItem.accion)">{{ formatAccion(detalleItem.accion) }}</span>
           </div>
           <div class="audit-detail-field audit-detail-full">
             <label>Usuario</label>
@@ -284,7 +284,7 @@
           </div>
           <div class="audit-detail-field audit-detail-full">
             <label>Detalle</label>
-            <span>{{ detalleItem.detalle || '—' }}</span>
+            <span>{{ formatDetalle(detalleItem.detalle, detalleItem.accion) }}</span>
           </div>
           <div class="audit-detail-field">
             <label>Dirección IP</label>

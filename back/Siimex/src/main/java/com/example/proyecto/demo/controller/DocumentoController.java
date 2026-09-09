@@ -4,6 +4,7 @@ import com.example.proyecto.demo.Entity.Documento;
 import com.example.proyecto.demo.Entity.Usuario;
 import com.example.proyecto.demo.Repository.UsuarioRepository;
 import com.example.proyecto.demo.Service.DocumentoService;
+import com.example.proyecto.demo.Service.ConfiguracionSistemaService;
 import com.example.proyecto.demo.util.FileSecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,19 +30,21 @@ public class DocumentoController {
 
     private final DocumentoService documentoService;
     private final UsuarioRepository usuarioRepository;
-    private static final long MAX_PDF_EVIDENCIA_SIZE = 2L * 1024L * 1024L; // 2MB
+    private final ConfiguracionSistemaService configuracionSistemaService;
 
     @GetMapping("/{documentoId}")
-    public ResponseEntity<byte[]> descargarDocumento(@PathVariable Long documentoId, Authentication auth) {
+    public ResponseEntity<byte[]> descargarDocumento(@PathVariable Long documentoId,
+                                                     @RequestParam(name = "inline", defaultValue = "false") boolean inline,
+                                                     Authentication auth) {
         var documento = documentoService.obtenerDocumento(documentoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Documento no encontrado"));
 
         validarAccesoDocumento(auth, documento.getUsuario().getId());
         String safeFilename = FileSecurityUtils.sanitizeFilename(documento.getNombreArchivo(), "documento");
+        String disposition = (inline ? "inline" : "attachment") + "; filename=\"" + safeFilename + "\"";
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + safeFilename + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
                 .contentType(MediaType.parseMediaType(documento.getContentType()))
                 .body(documento.getContenido());
     }
@@ -134,9 +137,9 @@ public class DocumentoController {
             @RequestPart(value = "cert2", required = false) MultipartFile cert2) {
         
         try {
-            validarMaximoDosMb(fiscalPdf, "INE");
-            validarMaximoDosMb(cedulaPdf, "Cédula profesional");
-            validarMaximoDosMb(constanciaSnii, "Constancia SNII");
+            validarLimitePdf(fiscalPdf, "registro.documentos", "INE");
+            validarLimitePdf(cedulaPdf, "registro.documentos", "Cédula profesional");
+            validarLimitePdf(constanciaSnii, "registro.documentos", "Constancia SNII");
 
             Long authUserId = (Long) auth.getPrincipal();
             Usuario usuario = usuarioRepository.findByAuthUserIdWithRegistro1(authUserId)
@@ -199,9 +202,9 @@ public class DocumentoController {
         }
     }
 
-    private void validarMaximoDosMb(MultipartFile archivo, String etiqueta) {
-        if (archivo != null && !archivo.isEmpty() && archivo.getSize() > MAX_PDF_EVIDENCIA_SIZE) {
-            throw new IllegalArgumentException(etiqueta + ": el archivo no puede superar 2 MB");
+    private void validarLimitePdf(MultipartFile archivo, String limiteKey, String etiqueta) {
+        if (archivo != null && !archivo.isEmpty() && archivo.getSize() > configuracionSistemaService.obtenerLimitePdfBytes(limiteKey)) {
+            throw new IllegalArgumentException(configuracionSistemaService.mensajeLimitePdf(etiqueta, limiteKey));
         }
     }
 }

@@ -14,6 +14,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { PdfLimiteService } from '../../core/pdf-limite.service';
 import Swal from 'sweetalert2';
 
 /* ===== Validadores de archivos ===== */
@@ -73,11 +74,12 @@ export class RegistroStep2Component implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
   private authService = inject(AuthService);
+  private pdfLimiteService = inject(PdfLimiteService);
   
   @ViewChild('fotoInput') fotoInputRef!: ElementRef<HTMLInputElement>;
 
-  readonly MAX_MB_INE_CEDULA = 2;
-  readonly MAX_MB_CERT = 10;
+  MAX_MB_INE_CEDULA = 2;
+  MAX_MB_CERT = 2;
   showCerts = false;
   submitting = false;
   archivosYaCargados = false;
@@ -115,9 +117,24 @@ export class RegistroStep2Component implements OnInit {
   }
 
   ngOnInit(): void {
+    this.cargarLimitesPdf();
     this.cargarDatosUsuario();
   }
 
+  private cargarLimitesPdf(): void {
+    this.pdfLimiteService.obtenerMapaLimites().subscribe((limites) => {
+      this.MAX_MB_INE_CEDULA = Number(limites['registro.documentos']) || 2;
+      this.MAX_MB_CERT = Number(limites['registro.perfilAcademico']) || 2;
+      this.f.fiscalPdf.setValidators([fileRequired, fileMaxSizeMB(this.MAX_MB_INE_CEDULA), fileAccept(['.pdf', 'application/pdf'])]);
+      this.f.cedulaPdf.setValidators([fileRequired, fileMaxSizeMB(this.MAX_MB_INE_CEDULA), fileAccept(['.pdf', 'application/pdf'])]);
+      this.f.fiscalPdf.updateValueAndValidity({ emitEvent: false });
+      this.f.cedulaPdf.updateValueAndValidity({ emitEvent: false });
+      this.certificadosArray.controls.forEach((control) => {
+        control.setValidators([fileMaxSizeMB(this.MAX_MB_CERT), fileAccept(['.pdf', 'application/pdf'])]);
+        control.updateValueAndValidity({ emitEvent: false });
+      });
+    });
+  }
   private cargarDatosUsuario(): void {
     if (!this.authService.isLoggedIn()) return;
 

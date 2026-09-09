@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+﻿import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -45,7 +45,8 @@ export class AdminEvaluacionComponent implements OnInit {
 
   convocatoriaId: number | null = null;
   convocatoriaTitulo = 'Convocatoria';
-  puntajeMaximoEvaluacion = 100;
+  puntajeMaximoEvaluacion: number | null = 100;
+  puntajeMaximoEvaluacionHabilitado = true;
 
   loading = true;
   error: string | null = null;
@@ -74,14 +75,20 @@ export class AdminEvaluacionComponent implements OnInit {
     this.http.get<any>(`${environment.apiBaseUrl}/admin/convocatorias/${this.convocatoriaId}`).subscribe({
       next: (c) => {
         this.convocatoriaTitulo = c?.titulo || 'Convocatoria';
+        this.puntajeMaximoEvaluacionHabilitado = c?.puntajeMaximoEvaluacionHabilitado !== false;
         const max = Number(c?.puntajeMaximoEvaluacion);
-        this.puntajeMaximoEvaluacion = Number.isFinite(max) && max > 0 ? max : 100;
+        this.puntajeMaximoEvaluacion = this.puntajeMaximoEvaluacionHabilitado && Number.isFinite(max) && max > 0 ? max : null;
       },
       error: () => {
         this.convocatoriaTitulo = 'Convocatoria';
+        this.puntajeMaximoEvaluacionHabilitado = true;
         this.puntajeMaximoEvaluacion = 100;
       }
     });
+  }
+
+  get puntajeMaximoLabel(): string {
+    return this.puntajeMaximoEvaluacionHabilitado ? String(this.puntajeMaximoEvaluacion ?? 100) : 'Sin límite';
   }
 
   cargarPostulaciones(): void {
@@ -144,6 +151,9 @@ export class AdminEvaluacionComponent implements OnInit {
     const puntajeActual = typeof p.puntajeEvaluacion === 'number' ? p.puntajeEvaluacion : '';
     const resultadoActual = p.resultadoEvaluacion || '';
     const comentariosActual = p.comentariosEvaluacion || '';
+    const puntajeConTope = this.puntajeMaximoEvaluacionHabilitado && this.puntajeMaximoEvaluacion != null;
+    const puntajeLabel = puntajeConTope ? `Puntaje (0 a ${this.puntajeMaximoEvaluacion})` : 'Puntaje';
+    const puntajeMaxAttr = puntajeConTope ? `max="${this.puntajeMaximoEvaluacion}"` : '';
     Swal.fire({
       title: `Evaluar ${this.escapeHtml(p.folio || `SOL-${p.id}`)}`,
       html: `
@@ -154,8 +164,8 @@ export class AdminEvaluacionComponent implements OnInit {
             <option value="APROBADA" ${resultadoActual === 'APROBADA' ? 'selected' : ''}>Aprobada</option>
             <option value="NO_APROBADA" ${resultadoActual === 'NO_APROBADA' ? 'selected' : ''}>No aprobada</option>
           </select>
-          <label for="swal-puntaje" class="form-label small fw-semibold mb-1">Puntaje (0 a ${this.puntajeMaximoEvaluacion})</label>
-          <input id="swal-puntaje" type="number" class="swal2-input mt-0 mb-2" min="0" max="${this.puntajeMaximoEvaluacion}" value="${puntajeActual}" />
+          <label for="swal-puntaje" class="form-label small fw-semibold mb-1">${puntajeLabel}</label>
+          <input id="swal-puntaje" type="number" class="swal2-input mt-0 mb-2" min="0" ${puntajeMaxAttr} value="${puntajeActual}" />
           <label for="swal-comentarios" class="form-label small fw-semibold mb-1">Comentarios</label>
           <textarea id="swal-comentarios" class="swal2-textarea mt-0" maxlength="3000" placeholder="Comentarios de evaluacion...">${this.escapeHtml(comentariosActual)}</textarea>
         </div>
@@ -175,8 +185,12 @@ export class AdminEvaluacionComponent implements OnInit {
           Swal.showValidationMessage('Debes seleccionar un resultado');
           return false;
         }
-        if (!Number.isFinite(puntaje) || puntaje < 0 || puntaje > this.puntajeMaximoEvaluacion) {
-          Swal.showValidationMessage(`El puntaje debe estar entre 0 y ${this.puntajeMaximoEvaluacion}`);
+        if (!Number.isFinite(puntaje) || puntaje < 0) {
+          Swal.showValidationMessage('El puntaje debe ser mayor o igual a 0');
+          return false;
+        }
+        if (puntajeConTope && puntaje > (this.puntajeMaximoEvaluacion ?? 100)) {
+          Swal.showValidationMessage(`El puntaje debe estar entre 0 y ${this.puntajeMaximoEvaluacion ?? 100}`);
           return false;
         }
         return { resultado, puntaje, comentarios };

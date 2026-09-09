@@ -226,6 +226,12 @@ export class AdminInstitucionesEducativasComponent implements OnInit {
     return 'Pendiente';
   }
 
+
+  estadoPillClass(value: string | null | undefined): string {
+    if (value === 'ACTIVA') return 'institution-status-pill--active';
+    if (value === 'RECHAZADA') return 'institution-status-pill--rejected';
+    return 'institution-status-pill--pending';
+  }
   estadoBadge(value: string | null | undefined): string {
     if (value === 'ACTIVA') return 'bg-success';
     if (value === 'RECHAZADA') return 'bg-danger';

@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import Swal from 'sweetalert2';
 import { jsPDF } from 'jspdf';
 import { AuthService } from '../../core/auth.service';
+import { PdfLimiteService } from '../../core/pdf-limite.service';
 import { from, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 
@@ -217,6 +218,7 @@ const TABS_VALIDOS = ['institucion', 'areaConocimiento', 'certs', 'cursos', 'her
 export class TrayectoriaComponent implements OnInit, AfterViewInit {
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
+  private pdfLimiteService = inject(PdfLimiteService);
 
   // Datos
   cursos: Curso[] = [];
@@ -240,6 +242,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
   areaConocimientoRubro: AreaConocimientoRubro | null = null;
   evidenciasRubros: Partial<Record<ClaveEvidenciaRubro, DocumentoRubro | null>> = {};
   evidenciasRubrosPersonalizadas: Record<string, DocumentoRubro[]> = {};
+  pdfLimitMbByKey: Record<string, number> = {};
 
   // Estados de carga
   loadingCursos = false;
@@ -317,6 +320,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     window.trayectoriaComponent = this;
+    this.cargarLimitesPdf();
     this.cargarTodosLosDatos();
   }
 
@@ -554,6 +558,23 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
     return map[this.modalTipo || ''] || 'Agregar';
   }
 
+  private cargarLimitesPdf(): void {
+    this.pdfLimiteService.obtenerMapaLimites().subscribe((limites) => {
+      this.pdfLimitMbByKey = limites;
+    });
+  }
+
+  getPdfLimitMb(key: string): number {
+    return Number(this.pdfLimitMbByKey[key]) || 2;
+  }
+
+  private validarTamanoPdf(file: File, limiteKey: string, input?: HTMLInputElement | null): boolean {
+    const maxMb = this.getPdfLimitMb(limiteKey);
+    if (file.size <= maxMb * 1024 * 1024) return true;
+    if (input) input.value = '';
+    Swal.fire('Archivo muy grande', `El archivo excede el tamaño máximo permitido de ${maxMb} MB.`, 'warning');
+    return false;
+  }
   onPiFileChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
@@ -565,6 +586,10 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
       this.piFileSelected = null;
       input.value = '';
       Swal.fire('Formato no permitido', 'Solo se aceptan archivos PDF.', 'warning');
+      return;
+    }
+    if (!this.validarTamanoPdf(file, 'perfil.propiedadIntelectual', input)) {
+      this.piFileSelected = null;
       return;
     }
     this.piFileSelected = file;
@@ -581,6 +606,10 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
       this.certFileSelected = null;
       input.value = '';
       Swal.fire('Formato no permitido', 'Solo se aceptan archivos PDF.', 'warning');
+      return;
+    }
+    if (!this.validarTamanoPdf(file, 'perfil.certificaciones', input)) {
+      this.certFileSelected = null;
       return;
     }
     this.certFileSelected = file;
@@ -602,6 +631,10 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
       return;
     }
 
+    if (!this.validarTamanoPdf(file, 'perfil.rubros', input)) {
+      this.evidenciaModalFile = null;
+      return;
+    }
     this.evidenciaModalFile = file;
   }
 
@@ -663,6 +696,12 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
       return Promise.resolve(false);
     }
 
+    const evidenciaFile = document.getElementById('modalEvidenceFile') as HTMLInputElement;
+    if (!this.validarTamanoPdf(this.evidenciaModalFile, 'perfil.rubros', evidenciaFile)) {
+      this.evidenciaModalFile = null;
+      return Promise.resolve(false);
+    }
+
     const formData = new FormData();
     formData.append('file', this.evidenciaModalFile);
     formData.append('nombre', this.evidenciaModalFile.name);
@@ -709,6 +748,12 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
       if (certFile) certFile.value = '';
       return;
     }
+    const certFile = document.getElementById('certFile') as HTMLInputElement;
+    if (!this.validarTamanoPdf(this.certFileSelected, 'perfil.certificaciones', certFile)) {
+      this.certFileSelected = null;
+      return;
+    }
+
     const formData = new FormData();
     formData.append('file', this.certFileSelected);
     formData.append('nombre', nombre);
@@ -2330,6 +2375,12 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
         Swal.fire('Formato no permitido', 'Solo se aceptan archivos PDF.', 'warning');
         return;
       }
+      const piFile = document.getElementById('piDocumento') as HTMLInputElement;
+      if (!this.validarTamanoPdf(this.piFileSelected, 'perfil.propiedadIntelectual', piFile)) {
+        this.piFileSelected = null;
+        return;
+      }
+
       const formData = new FormData();
       formData.append('file', this.piFileSelected);
       formData.append('nombre', titulo);

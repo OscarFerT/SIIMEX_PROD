@@ -19,6 +19,8 @@ interface RenunciaItem {
   fechaSolicitudRenuncia?: string | null;
   fechaResolucionRenuncia?: string | null;
   observacionesRenuncia?: string | null;
+  renunciaDocumentoId?: number | null;
+  renunciaNombreArchivo?: string | null;
 }
 
 @Component({
@@ -148,6 +150,46 @@ export class AdminRenunciasComponent implements OnInit {
     });
   }
 
+  visualizarDocumento(documentoId?: number | null, nombreArchivo?: string | null): void {
+    if (!documentoId) return;
+    const win = window.open('', '_blank');
+    if (!win) {
+      Swal.fire({ icon: 'warning', title: 'Ventana bloqueada', text: 'Permite ventanas emergentes para ver el oficio.', confirmButtonColor: '#800020' });
+      return;
+    }
+    win.document.body.textContent = 'Cargando oficio...';
+    this.http.get(`${environment.apiBaseUrl}/documentos/${documentoId}?inline=true`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        win.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
+      },
+      error: () => {
+        win.close();
+        Swal.fire({ icon: 'error', title: 'No se pudo abrir', text: 'No se pudo abrir el oficio formal de baja.', confirmButtonColor: '#800020' });
+      }
+    });
+  }
+
+  descargarDocumento(documentoId?: number | null, nombreArchivo?: string | null): void {
+    if (!documentoId) return;
+    this.http.get(`${environment.apiBaseUrl}/documentos/${documentoId}`, { responseType: 'blob' }).subscribe({
+      next: (blob) => this.descargarBlob(blob, nombreArchivo?.trim() || `oficio_baja_${documentoId}.pdf`),
+      error: () => Swal.fire({ icon: 'error', title: 'No se pudo descargar', text: 'No se pudo descargar el oficio formal de baja.', confirmButtonColor: '#800020' })
+    });
+  }
+
+  private descargarBlob(blob: Blob, nombreArchivo: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreArchivo || 'oficio_baja.pdf';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+  }
   formatearFecha(s: string | null | undefined): string {
     if (!s) return '—';
     try {

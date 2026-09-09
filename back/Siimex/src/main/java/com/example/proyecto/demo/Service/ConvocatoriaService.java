@@ -84,12 +84,16 @@ public class ConvocatoriaService {
         m.put("estadoPublicacion", calcularEstadoPublicacion(c));
         m.put("criteriosFormulario", c.getCriteriosFormulario());
         m.put("limiteAceptados", c.getLimiteAceptados());
+        m.put("limiteAceptadosHabilitado", parametroHabilitado(c.getLimiteAceptadosHabilitado(), c.getLimiteAceptados() != null && c.getLimiteAceptados() > 0));
         m.put("requisitosDocumentos", c.getRequisitosDocumentos());
         m.put("tiposApoyo", c.getTiposApoyo());
         m.put("reglasConfigurables", c.getReglasConfigurables());
         m.put("puntajeMaximoEvaluacion", c.getPuntajeMaximoEvaluacion());
+        m.put("puntajeMaximoEvaluacionHabilitado", parametroHabilitado(c.getPuntajeMaximoEvaluacionHabilitado(), true));
         m.put("diasMinAnticipacion", c.getDiasMinAnticipacion());
+        m.put("diasMinAnticipacionHabilitado", parametroHabilitado(c.getDiasMinAnticipacionHabilitado(), true));
         m.put("diasMaxAnticipacion", c.getDiasMaxAnticipacion());
+        m.put("diasMaxAnticipacionHabilitado", parametroHabilitado(c.getDiasMaxAnticipacionHabilitado(), true));
         m.put("avisoPrivacidadObligatorio", c.isAvisoPrivacidadObligatorio());
         m.put("avisoPrivacidadTexto", c.getAvisoPrivacidadTexto());
         m.put("avisoPrivacidadUrl", c.getAvisoPrivacidadUrl());
@@ -287,12 +291,16 @@ public class ConvocatoriaService {
         copia.setVisibilidadPublica(false);
         copia.setCriteriosFormulario(base.getCriteriosFormulario());
         copia.setLimiteAceptados(base.getLimiteAceptados());
+        copia.setLimiteAceptadosHabilitado(base.getLimiteAceptadosHabilitado());
         copia.setRequisitosDocumentos(base.getRequisitosDocumentos());
         copia.setTiposApoyo(base.getTiposApoyo());
         copia.setReglasConfigurables(base.getReglasConfigurables());
         copia.setPuntajeMaximoEvaluacion(base.getPuntajeMaximoEvaluacion());
+        copia.setPuntajeMaximoEvaluacionHabilitado(base.getPuntajeMaximoEvaluacionHabilitado());
         copia.setDiasMinAnticipacion(base.getDiasMinAnticipacion());
+        copia.setDiasMinAnticipacionHabilitado(base.getDiasMinAnticipacionHabilitado());
         copia.setDiasMaxAnticipacion(base.getDiasMaxAnticipacion());
+        copia.setDiasMaxAnticipacionHabilitado(base.getDiasMaxAnticipacionHabilitado());
         copia.setAvisoPrivacidadObligatorio(base.isAvisoPrivacidadObligatorio());
         copia.setAvisoPrivacidadTexto(base.getAvisoPrivacidadTexto());
         copia.setAvisoPrivacidadUrl(base.getAvisoPrivacidadUrl());
@@ -328,7 +336,14 @@ public class ConvocatoriaService {
             c.setFechaPublicacion(LocalDateTime.now());
         }
         c.setCriteriosFormulario(req.getCriteriosFormulario() != null ? req.getCriteriosFormulario().trim() : null);
-        c.setLimiteAceptados(req.getLimiteAceptados() != null && req.getLimiteAceptados() > 0 ? req.getLimiteAceptados() : null);
+        boolean limiteHabilitado = req.getLimiteAceptadosHabilitado() != null
+                ? req.getLimiteAceptadosHabilitado()
+                : req.getLimiteAceptados() != null && req.getLimiteAceptados() > 0;
+        c.setLimiteAceptadosHabilitado(limiteHabilitado);
+        if (limiteHabilitado && (req.getLimiteAceptados() == null || req.getLimiteAceptados() <= 0)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Define un limite de aceptados mayor a 0 o deshabilita el parametro");
+        }
+        c.setLimiteAceptados(limiteHabilitado ? req.getLimiteAceptados() : null);
         c.setRequisitosDocumentos(req.getRequisitosDocumentos() != null ? req.getRequisitosDocumentos().trim() : null);
         c.setTiposApoyo(req.getTiposApoyo() != null ? req.getTiposApoyo().trim() : null);
         String reglasConfigurables = req.getReglasConfigurables() != null ? req.getReglasConfigurables().trim() : null;
@@ -336,10 +351,16 @@ public class ConvocatoriaService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Cada convocatoria debe tener al menos una regla configurada");
         }
         c.setReglasConfigurables(reglasConfigurables);
-        c.setPuntajeMaximoEvaluacion(normalizarPuntajeMaximo(req.getPuntajeMaximoEvaluacion()));
-        c.setDiasMinAnticipacion(normalizarDiasAnticipacion(req.getDiasMinAnticipacion(), 20));
-        c.setDiasMaxAnticipacion(normalizarDiasAnticipacion(req.getDiasMaxAnticipacion(), 60));
-        if (c.getDiasMinAnticipacion() > c.getDiasMaxAnticipacion()) {
+        boolean puntajeHabilitado = parametroHabilitado(req.getPuntajeMaximoEvaluacionHabilitado(), true);
+        boolean diasMinHabilitado = parametroHabilitado(req.getDiasMinAnticipacionHabilitado(), true);
+        boolean diasMaxHabilitado = parametroHabilitado(req.getDiasMaxAnticipacionHabilitado(), true);
+        c.setPuntajeMaximoEvaluacionHabilitado(puntajeHabilitado);
+        c.setDiasMinAnticipacionHabilitado(diasMinHabilitado);
+        c.setDiasMaxAnticipacionHabilitado(diasMaxHabilitado);
+        c.setPuntajeMaximoEvaluacion(puntajeHabilitado ? normalizarPuntajeMaximo(req.getPuntajeMaximoEvaluacion()) : null);
+        c.setDiasMinAnticipacion(diasMinHabilitado ? normalizarDiasAnticipacion(req.getDiasMinAnticipacion(), 20) : null);
+        c.setDiasMaxAnticipacion(diasMaxHabilitado ? normalizarDiasAnticipacion(req.getDiasMaxAnticipacion(), 60) : null);
+        if (diasMinHabilitado && diasMaxHabilitado && c.getDiasMinAnticipacion() > c.getDiasMaxAnticipacion()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Los dias mínimos de anticipación no pueden ser mayores al máximo");
         }
         c.setAvisoPrivacidadObligatorio(req.getAvisoPrivacidadObligatorio() != null ? req.getAvisoPrivacidadObligatorio() : false);
@@ -348,6 +369,9 @@ public class ConvocatoriaService {
         return c;
     }
 
+    private boolean parametroHabilitado(Boolean value, boolean fallback) {
+        return value != null ? value : fallback;
+    }
     private Integer normalizarPuntajeMaximo(Integer value) {
         if (value == null) return 100;
         if (value < 1) return 1;
@@ -391,19 +415,21 @@ public class ConvocatoriaService {
     private long calcularDiasNaturalesVigencia(Convocatoria c) {
         if (c == null || c.getFechaApertura() == null || c.getFechaCierre() == null) return 0;
         if (c.getFechaCierre().isBefore(c.getFechaApertura())) return 0;
-        return ChronoUnit.DAYS.between(c.getFechaApertura(), c.getFechaCierre()) + 1;
+        LocalDate apertura = c.getFechaApertura().toLocalDate();
+        LocalDate cierre = c.getFechaCierre().toLocalDate();
+        return ChronoUnit.DAYS.between(apertura, cierre) + 1;
     }
 
     private long contarFeriadosEnVigencia(Convocatoria c) {
         if (c == null || c.getFechaApertura() == null || c.getFechaCierre() == null) return 0;
         if (c.getFechaCierre().isBefore(c.getFechaApertura())) return 0;
-        return feriadoService.contarFeriadosEnRango(c.getFechaApertura(), c.getFechaCierre());
+        return feriadoService.contarFeriadosEnRango(c.getFechaApertura().toLocalDate(), c.getFechaCierre().toLocalDate());
     }
 
     private long calcularDiasSinFeriadosVigencia(Convocatoria c) {
         if (c == null || c.getFechaApertura() == null || c.getFechaCierre() == null) return 0;
         if (c.getFechaCierre().isBefore(c.getFechaApertura())) return 0;
-        return feriadoService.diasNaturalesSinFeriadosInclusivo(c.getFechaApertura(), c.getFechaCierre());
+        return feriadoService.diasNaturalesSinFeriadosInclusivo(c.getFechaApertura().toLocalDate(), c.getFechaCierre().toLocalDate());
     }
 
     private Map<String, Object> pasoOperacion(int numero, String titulo, String descripcion, boolean completo, boolean enProceso, String evidencia) {
@@ -438,9 +464,9 @@ public class ConvocatoriaService {
             return c.getFechaPublicacion() != null ? "RETIRADA" : "BORRADOR";
         }
         if (!c.isVigente()) return "INACTIVA";
-        LocalDate hoy = LocalDate.now();
-        if (c.getFechaApertura() != null && c.getFechaApertura().isAfter(hoy)) return "PROGRAMADA";
-        if (c.getFechaCierre() != null && c.getFechaCierre().isBefore(hoy)) return "CERRADA";
+        LocalDateTime ahora = LocalDateTime.now();
+        if (c.getFechaApertura() != null && c.getFechaApertura().isAfter(ahora)) return "PROGRAMADA";
+        if (c.getFechaCierre() != null && c.getFechaCierre().isBefore(ahora)) return "CERRADA";
         return "PUBLICADA";
     }
 

@@ -6,6 +6,7 @@ import { Usuario } from '../../core/models/user';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
+import { PdfLimiteService } from '../../core/pdf-limite.service';
 import Swal from 'sweetalert2';
 
 /** Niveles de visibilidad en el módulo público de personas investigadoras e innovadoras */
@@ -120,20 +121,27 @@ export class PerfilComponent implements OnInit {
   perfilSniiEditable = false;
   perfilSniiInicial = false;
   semblanzaTexto: string = '';
-  readonly MAX_DOC_SIZE_MB = 2;
+  maxDocSizeMb = 2;
   
   uploading = false;
 
   constructor(
     private authService: AuthService,
     private http: HttpClient,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private pdfLimiteService: PdfLimiteService
   ) {}
 
   ngOnInit(): void {
+    this.cargarLimitesPdf();
     this.cargarPerfil();
   }
 
+  private cargarLimitesPdf(): void {
+    this.pdfLimiteService.obtenerMapaLimites().subscribe((limites) => {
+      this.maxDocSizeMb = Number(limites['perfil.documentos']) || 2;
+    });
+  }
   cargarPerfil(): void {
     this.loading = true;
     this.authService.me().subscribe({
@@ -292,11 +300,11 @@ export class PerfilComponent implements OnInit {
       input.value = '';
       return;
     }
-    if (file.size > this.MAX_DOC_SIZE_MB * 1024 * 1024) {
+    if (file.size > this.maxDocSizeMb * 1024 * 1024) {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: `El archivo es demasiado grande. Máximo ${this.MAX_DOC_SIZE_MB}MB`,
+        text: `El archivo es demasiado grande. Máximo ${this.maxDocSizeMb} MB`,
         confirmButtonColor: '#800020'
       });
       input.value = '';

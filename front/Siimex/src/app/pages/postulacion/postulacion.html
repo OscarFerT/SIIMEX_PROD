@@ -70,7 +70,7 @@
               <div class="col-md-6">
                 <div class="small text-muted mb-1">Oficio de aprobación</div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <button *ngIf="miPostulacion.oficioAprobacionDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.oficioAprobacionDocumentoId)">
+                  <button *ngIf="miPostulacion.oficioAprobacionDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.oficioAprobacionDocumentoId, miPostulacion.oficioAprobacionNombreArchivo || 'oficio_aprobacion.pdf')">
                     <i class="fas fa-download me-1"></i>{{ miPostulacion.oficioAprobacionNombreArchivo || 'Descargar oficio' }}
                   </button>
                   <span *ngIf="!miPostulacion.oficioAprobacionDocumentoId" class="text-muted">Pendiente de emisión</span>
@@ -80,7 +80,7 @@
               <div class="col-md-6">
                 <div class="small text-muted mb-1">Nombramiento</div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <button *ngIf="miPostulacion.nombramientoDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.nombramientoDocumentoId)">
+                  <button *ngIf="miPostulacion.nombramientoDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.nombramientoDocumentoId, miPostulacion.nombramientoNombreArchivo || 'nombramiento.pdf')">
                     <i class="fas fa-download me-1"></i>{{ miPostulacion.nombramientoNombreArchivo || 'Descargar nombramiento' }}
                   </button>
                   <span *ngIf="!miPostulacion.nombramientoDocumentoId" class="text-muted">Pendiente de emisión</span>
@@ -96,10 +96,17 @@
                 <div class="small text-muted">Última actualización bancaria</div>
                 <div class="fw-semibold">{{ fechaActualizacionBancariaTexto }}</div>
               </div>
+              <div class="col-12">
+                <div class="small text-muted mb-1">Estado de cuenta</div>
+                <button *ngIf="miPostulacion.estadoCuentaDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.estadoCuentaDocumentoId, miPostulacion.estadoCuentaNombreArchivo || 'estado_cuenta.pdf')">
+                  <i class="fas fa-download me-1"></i>{{ miPostulacion.estadoCuentaNombreArchivo || 'Descargar estado de cuenta' }}
+                </button>
+                <span *ngIf="!miPostulacion.estadoCuentaDocumentoId" class="text-muted">Pendiente de carga</span>
+              </div>
             </div>
             <div class="mt-3">
               <button type="button" class="btn btn-outline-primary btn-sm" (click)="abrirModalBancaria()" [disabled]="!puedeCapturarBancaria">
-                <i class="fas fa-building-columns me-1"></i>{{ tieneBancariaCapturada ? 'Editar información bancaria' : 'Capturar información bancaria' }}
+                <i class="fas fa-building-columns me-1"></i>{{ tieneBancariaCapturada ? 'Editar datos bancarios' : 'Capturar datos bancarios' }}
               </button>
               <div *ngIf="!puedeCapturarBancaria" class="form-text text-muted mt-1">
                 Se habilita únicamente cuando tu solicitud esté aprobada.
@@ -127,6 +134,10 @@
                 <div class="fw-semibold">{{ fechaValidacionReciboPagoTexto }}</div>
               </div>
               <div class="col-md-4">
+                <div class="small text-muted">Monto asignado</div>
+                <div class="fw-semibold">{{ montoApoyoTexto }}</div>
+              </div>
+              <div class="col-md-4">
                 <div class="small text-muted">Entrega del apoyo</div>
                 <div class="fw-semibold">{{ apoyoEntregado ? 'Registrada' : 'Pendiente' }}</div>
               </div>
@@ -143,7 +154,7 @@
                 <div>{{ miPostulacion.observacionesEntregaApoyo }}</div>
               </div>
               <div class="col-12">
-                <button *ngIf="miPostulacion.reciboPagoDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.reciboPagoDocumentoId)">
+                <button *ngIf="miPostulacion.reciboPagoDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.reciboPagoDocumentoId, miPostulacion.reciboPagoNombreArchivo || 'recibo_pago.pdf')">
                   <i class="fas fa-download me-1"></i>{{ miPostulacion.reciboPagoNombreArchivo || 'Descargar recibo' }}
                 </button>
               </div>
@@ -152,15 +163,103 @@
               <input #reciboPagoInput type="file" accept=".pdf,application/pdf" class="d-none" (change)="onReciboPagoSeleccionado($event)" />
               <button type="button" class="btn btn-outline-primary btn-sm" (click)="seleccionarArchivoReciboPago(reciboPagoInput)" [disabled]="!puedeCargarReciboPago || subiendoReciboPago">
                 <span *ngIf="subiendoReciboPago" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
-                <i *ngIf="!subiendoReciboPago" class="fas fa-file-upload me-1"></i>{{ miPostulacion.reciboPagoDocumentoId ? 'Reemplazar recibo' : 'Cargar recibo' }}
+                <i *ngIf="!subiendoReciboPago" class="fas fa-file-upload me-1"></i>{{ miPostulacion.reciboPagoDocumentoId ? 'Recibo cargado' : 'Cargar recibo' }}
               </button>
               <div *ngIf="!puedeCargarReciboPago" class="form-text text-muted mt-1">
-                Se habilita cuando tu solicitud esté aprobada, el nombramiento haya sido emitido y COMECYT registre la entrega del apoyo económico.
+                {{ mensajeBloqueoReciboPago }}
               </div>
             </div>
           </div>
         </div>
 
+        <div *ngIf="!errorConv && miPostulacion && seguroMedicoActivo" class="postulacion-card mb-4">
+          <div class="card-body">
+            <h5 class="section-title mb-3">
+              <i class="fas fa-kit-medical me-2"></i>Seguro médico
+            </h5>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="small text-muted">Estatus</div>
+                <div class="fw-semibold">{{ miPostulacion.estadoSeguroMedico || 'Pendiente' }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Número de seguro</div>
+                <div class="fw-semibold">{{ miPostulacion.numeroSeguroMedico || 'Sin capturar' }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Última actualización</div>
+                <div class="fw-semibold">{{ fechaSeguroMedicoTexto }}</div>
+              </div>
+              <div class="col-12" *ngIf="miPostulacion.observacionesSeguroMedico">
+                <div class="small text-muted">Observaciones administrativas</div>
+                <div>{{ miPostulacion.observacionesSeguroMedico }}</div>
+              </div>
+              <div class="col-12">
+                <button *ngIf="miPostulacion.seguroMedicoDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.seguroMedicoDocumentoId, miPostulacion.seguroMedicoNombreArchivo || 'seguro_medico.pdf')">
+                  <i class="fas fa-download me-1"></i>{{ miPostulacion.seguroMedicoNombreArchivo || 'Descargar evidencia' }}
+                </button>
+                <span *ngIf="!miPostulacion.seguroMedicoDocumentoId" class="text-muted small">Sin evidencia cargada</span>
+              </div>
+            </div>
+            <div class="mt-3">
+              <label for="numeroSeguroMedico" class="form-label small fw-semibold mb-1">Número de seguro médico</label>
+              <input #numeroSeguroMedicoInput id="numeroSeguroMedico" type="text" class="form-control input-custom mb-2" maxlength="100" [value]="miPostulacion.numeroSeguroMedico || ''" placeholder="Número de póliza, afiliación o referencia" [disabled]="!puedeCargarSeguroMedico || subiendoSeguroMedico" />
+              <input #seguroMedicoInput type="file" accept=".pdf,application/pdf" class="d-none" (change)="onSeguroMedicoSeleccionado($event, numeroSeguroMedicoInput.value)" />
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="seleccionarArchivoSeguroMedico(seguroMedicoInput, numeroSeguroMedicoInput.value)" [disabled]="!puedeCargarSeguroMedico || subiendoSeguroMedico">
+                <span *ngIf="subiendoSeguroMedico" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                <i *ngIf="!subiendoSeguroMedico" class="fas fa-file-upload me-1"></i>{{ miPostulacion.seguroMedicoDocumentoId ? 'Reemplazar evidencia' : 'Cargar evidencia' }}
+              </button>
+              <div class="form-text text-muted mt-1">Adjunta la evidencia del seguro médico en PDF. Máx. {{ getPdfLimitMb('postulacion.documentos') }} MB.</div>
+              <div *ngIf="seguroMedicoActivo && !solicitudAceptadaParaModulos" class="form-text text-muted mt-1">Se habilita cuando tu solicitud esté aceptada.</div>
+            </div>
+          </div>
+        </div>
+
+
+        <div *ngIf="!errorConv && miPostulacion && statusAcademicoActivo" class="postulacion-card mb-4">
+          <div class="card-body">
+            <h5 class="section-title mb-3">
+              <i class="fas fa-graduation-cap me-2"></i>Estatus académico
+            </h5>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="small text-muted">Estatus del módulo</div>
+                <div class="fw-semibold">{{ miPostulacion.estadoStatusAcademico || 'Pendiente' }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted">Última actualización</div>
+                <div class="fw-semibold">{{ fechaStatusAcademicoTexto }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="small text-muted mb-1">Evidencia</div>
+                <button *ngIf="miPostulacion.statusAcademicoDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.statusAcademicoDocumentoId, miPostulacion.statusAcademicoNombreArchivo || 'estatus_academico.pdf')">
+                  <i class="fas fa-download me-1"></i>{{ miPostulacion.statusAcademicoNombreArchivo || 'Descargar evidencia' }}
+                </button>
+                <span *ngIf="!miPostulacion.statusAcademicoDocumentoId" class="text-muted small">Sin evidencia cargada</span>
+              </div>
+              <div class="col-12" *ngIf="miPostulacion.informacionStatusAcademico">
+                <div class="small text-muted">Información enviada</div>
+                <div>{{ miPostulacion.informacionStatusAcademico }}</div>
+              </div>
+              <div class="col-12" *ngIf="miPostulacion.observacionesStatusAcademico">
+                <div class="small text-muted">Observaciones administrativas</div>
+                <div>{{ miPostulacion.observacionesStatusAcademico }}</div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <label for="informacionStatusAcademico" class="form-label small fw-semibold mb-1">Información de actualización académica</label>
+              <textarea #informacionStatusAcademicoInput id="informacionStatusAcademico" class="form-control mb-2" rows="3" maxlength="4000" placeholder="Ej. concluí materias, obtuve título, actualicé grado, estoy en trámite de titulación..." [disabled]="!puedeActualizarStatusAcademico || subiendoStatusAcademico">{{ miPostulacion.informacionStatusAcademico || '' }}</textarea>
+              <label for="statusAcademicoArchivo" class="form-label small fw-semibold mb-1">Documento de evidencia (PDF)</label>
+              <input #statusAcademicoInput id="statusAcademicoArchivo" type="file" accept=".pdf,application/pdf" class="form-control form-control-sm mb-2" [disabled]="!puedeActualizarStatusAcademico || subiendoStatusAcademico" />
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="guardarStatusAcademico(informacionStatusAcademicoInput.value, statusAcademicoInput)" [disabled]="!puedeActualizarStatusAcademico || subiendoStatusAcademico">
+                <span *ngIf="subiendoStatusAcademico" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                <i *ngIf="!subiendoStatusAcademico" class="fas fa-file-upload me-1"></i>{{ miPostulacion.statusAcademicoDocumentoId ? 'Actualizar información / reemplazar evidencia' : 'Enviar actualización académica' }}
+              </button>
+              <div class="form-text text-muted mt-1">Adjunta un PDF cuando tengas constancia, comprobante o documento de soporte. Máx. {{ getPdfLimitMb('postulacion.documentos') }} MB.</div>
+              <div *ngIf="statusAcademicoActivo && !solicitudAceptadaParaModulos" class="form-text text-muted mt-1">Se habilita cuando tu solicitud esté aceptada.</div>
+            </div>
+          </div>
+        </div>
         <div *ngIf="!errorConv && miPostulacion" class="postulacion-card mb-4">
           <div class="card-body">
             <h5 class="section-title mb-3">
@@ -191,7 +290,7 @@
               <div class="col-md-6">
                 <div class="small text-muted mb-1">Informe parcial</div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <button *ngIf="requiereInformeParcial && miPostulacion.informeParcialDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.informeParcialDocumentoId)">
+                  <button *ngIf="requiereInformeParcial && miPostulacion.informeParcialDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.informeParcialDocumentoId, miPostulacion.informeParcialNombreArchivo || 'informe_parcial.pdf')">
                     <i class="fas fa-download me-1"></i>{{ miPostulacion.informeParcialNombreArchivo || 'Descargar' }}
                   </button>
                   <span *ngIf="!requiereInformeParcial" class="text-muted">No requerido</span>
@@ -201,7 +300,7 @@
               <div class="col-md-6">
                 <div class="small text-muted mb-1">Informe final</div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <button *ngIf="requiereInformeFinal && miPostulacion.informeFinalDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.informeFinalDocumentoId)">
+                  <button *ngIf="requiereInformeFinal && miPostulacion.informeFinalDocumentoId" type="button" class="btn btn-outline-secondary btn-sm" (click)="descargarDocumento(miPostulacion.informeFinalDocumentoId, miPostulacion.informeFinalNombreArchivo || 'informe_final.pdf')">
                     <i class="fas fa-download me-1"></i>{{ miPostulacion.informeFinalNombreArchivo || 'Descargar' }}
                   </button>
                   <span *ngIf="!requiereInformeFinal" class="text-muted">No requerido</span>
@@ -259,6 +358,21 @@
                 <div class="small text-muted">Motivo registrado</div>
                 <div>{{ miPostulacion.motivoRenuncia }}</div>
               </div>
+              <div class="col-12">
+                <div class="small text-muted mb-1">Oficio formal de baja</div>
+                <div *ngIf="miPostulacion.renunciaDocumentoId" class="d-flex align-items-center gap-2 flex-wrap">
+                  <span class="fw-semibold small text-truncate">
+                    <i class="fas fa-file-pdf text-borgona me-1"></i>{{ miPostulacion.renunciaNombreArchivo || 'oficio_baja.pdf' }}
+                  </span>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="visualizarDocumento(miPostulacion.renunciaDocumentoId, miPostulacion.renunciaNombreArchivo || 'oficio_baja.pdf')">
+                    <i class="fas fa-eye me-1"></i>Visualizar
+                  </button>
+                  <button type="button" class="btn btn-outline-primary btn-sm" (click)="descargarDocumento(miPostulacion.renunciaDocumentoId, miPostulacion.renunciaNombreArchivo || 'oficio_baja.pdf')">
+                    <i class="fas fa-download me-1"></i>Descargar
+                  </button>
+                </div>
+                <span *ngIf="!miPostulacion.renunciaDocumentoId" class="text-muted small">Sin oficio cargado</span>
+              </div>
               <div class="col-12" *ngIf="miPostulacion.observacionesRenuncia">
                 <div class="small text-muted">Observaciones administrativas</div>
                 <div>{{ miPostulacion.observacionesRenuncia }}</div>
@@ -291,18 +405,27 @@
                 Los campos marcados con <span class="text-danger">*</span> son obligatorios.
               </div>
 
-              <div *ngIf="reglasConfigurables.length" class="alert alert-light border mb-4">
-                <div class="fw-semibold mb-2">
-                  <i class="fas fa-sliders-h me-2 text-muted"></i>Reglas configuradas para esta convocatoria
+              <div *ngIf="estadoBorradorPostulacion" class="alert alert-warning border-0 shadow-sm d-flex align-items-start justify-content-between gap-3 flex-wrap mb-4" role="status">
+                <div>
+                  <div class="fw-semibold">
+                    <i class="fas fa-clock-rotate-left me-2"></i>Borrador recuperado
+                  </div>
+                  <div class="small">
+                    Se restauró información guardada el {{ formatearFechaBorrador(estadoBorradorPostulacion.fecha) }}.
+                    <span *ngIf="estadoBorradorPostulacion.archivos.length">Por seguridad, vuelve a seleccionar los archivos antes de enviar.</span>
+                  </div>
                 </div>
-                <ul class="mb-0 ps-3">
-                  <li *ngFor="let r of reglasConfigurables">
-                    <strong>{{ r.clave }}:</strong> {{ r.valor }}
-                    <span *ngIf="r.descripcion"> - {{ r.descripcion }}</span>
-                  </li>
-                </ul>
+                <button type="button" class="btn btn-outline-secondary btn-sm" (click)="descartarBorradorPostulacion()">
+                  Descartar borrador
+                </button>
               </div>
 
+              <div *ngIf="formularioPostulacionBloqueado" class="alert alert-secondary border-0 shadow-sm mb-4" role="status">
+                <div class="fw-semibold mb-1"><i class="fas fa-lock me-2"></i>Formulario bloqueado</div>
+                <div class="small">Tu postulación ya fue enviada. Los datos y documentos solo se habilitan cuando COMECYT genera observaciones y abre el periodo de corrección.</div>
+              </div>
+
+              <fieldset [disabled]="formularioPostulacionBloqueado" [class.formulario-bloqueado]="formularioPostulacionBloqueado">
               <!-- Sección identificación -->
               <section class="form-section mb-5">
                 <h5 class="section-title">
@@ -454,7 +577,7 @@
                   Clasificación de solicitud
                 </h5>
                 <div class="row g-4">
-                  <div class="col-md-6">
+                  <div class="col-md-6" *ngIf="tipoSolicitudActivo">
                     <label for="tipoSolicitud" class="form-label">
                       Tipo de solicitud <span class="text-danger">*</span>
                     </label>
@@ -479,7 +602,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-md-6" *ngIf="fechaEventoActivo">
                     <label for="fechaEvento" class="form-label">
                       Fecha del evento <span class="text-danger">*</span>
                     </label>
@@ -499,12 +622,12 @@
                       <div class="invalid-feedback">
                         Captura la fecha del evento.
                       </div>
-                      <div class="form-text muted-small mt-1">Solo se permiten eventos entre {{ diasMinAnticipacion }} y {{ diasMaxAnticipacion }} días a partir de hoy.</div>
+                      <div class="form-text muted-small mt-1">{{ mensajeRangoFechaEvento() }}</div>
                     </div>
                   </div>
                   <div class="col-md-8">
                     <label for="tipoApoyo" class="form-label">
-                      Clasificación de tu solicitud <span class="text-danger">*</span>
+                      Tipo de apoyo <span class="text-danger">*</span>
                     </label>
                     <div class="input-wrapper">
                       <div class="input-group has-icon">
@@ -523,7 +646,7 @@
                         <span class="validation-icon"></span>
                       </div>
                       <div class="invalid-feedback">
-                        Selecciona el tipo de apoyo para clasificar tu solicitud.
+                        Selecciona el tipo de apoyo.
                       </div>
                       <div *ngIf="!tiposApoyoDisponibles.length" class="form-text text-danger mt-1">
                         Esta convocatoria no tiene tipos de apoyo configurados por el administrador.
@@ -534,7 +657,7 @@
               </section>
 
               <!-- Sección información del proyecto -->
-              <section class="form-section mb-5">
+              <section class="form-section mb-5" *ngIf="informacionProyectoActiva">
                 <h5 class="section-title">
                   <i class="fas fa-diagram-project me-2"></i>
                   Información del proyecto
@@ -594,7 +717,7 @@
                       </select>
                     </div>
                     <div *ngIf="isCheckbox(c)" class="form-check">
-                      <input type="checkbox" [id]="'criterio_' + c.clave" [name]="getInputName(c)" class="form-check-input" />
+                      <input type="checkbox" [id]="'criterio_' + c.clave" [name]="getInputName(c)" class="form-check-input" [required]="c.requerido" />
                       <label class="form-check-label" [for]="'criterio_' + c.clave">Sí</label>
                     </div>
                     <div *ngIf="isTextarea(c)" class="input-wrapper">
@@ -637,7 +760,7 @@
                 </div>
 
                 <div *ngIf="requisitosDocs.length" class="mb-4">
-                  <p class="text-muted small mb-3">Documentos requeridos por esta convocatoria. Formatos permitidos: PDF, Word y Excel. Máx. 10 MB cada uno.</p>
+                  <p class="text-muted small mb-3">Documentos requeridos por esta convocatoria. Formatos permitidos: PDF, Word y Excel. Máx. {{ getPdfLimitMb('postulacion.documentos') }} MB cada uno.</p>
                   <div class="row g-4">
                     <div *ngFor="let r of requisitosDocs" class="col-12">
                       <label [for]="'doc_' + r.clave" class="form-label">
@@ -650,8 +773,45 @@
                         class="form-control input-custom file-input"
                         accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         [required]="r.requerido && !modoEdicion"
-                        [attr.aria-describedby]="'docHelp_' + r.clave" />
+                        [attr.aria-describedby]="'docHelp_' + r.clave"
+                        (change)="onDocumentoRequeridoSeleccionado($event, r)" />
                       <div [id]="'docHelp_' + r.clave" class="form-text muted-small mt-1">PDF, Word o Excel</div>
+                      <div *ngIf="getArchivoSeleccionado('doc_' + r.clave) as archivo" class="selected-file-card mt-2">
+                        <div class="selected-file-info">
+                          <i class="fas fa-file-circle-check"></i>
+                          <div>
+                            <div class="selected-file-name">{{ archivo.file.name }}</div>
+                            <div class="selected-file-meta">{{ formatearPeso(archivo.file.size) }} · Listo para enviar</div>
+                          </div>
+                        </div>
+                        <div class="selected-file-actions">
+                          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="visualizarArchivoSeleccionado('doc_' + r.clave)">
+                            <i class="fas fa-eye me-1"></i>Previsualizar
+                          </button>
+                          <button type="button" class="btn btn-outline-danger btn-sm" (click)="quitarArchivoSeleccionado('doc_' + r.clave, 'doc_' + r.clave)">
+                            <i class="fas fa-trash-alt me-1"></i>Quitar
+                          </button>
+                        </div>
+                      </div>
+                      <ng-container *ngIf="modoEdicion && !getArchivoSeleccionado('doc_' + r.clave)">
+                        <div *ngIf="getDocumentoAdjuntoExistente(r.clave) as documento" class="selected-file-card existing-file-card mt-2">
+                          <div class="selected-file-info">
+                            <i class="fas fa-file-alt"></i>
+                            <div>
+                              <div class="selected-file-name">{{ getDocumentoAdjuntoNombre(documento, r.etiqueta) }}</div>
+                              <div class="selected-file-meta">Cargado previamente. Selecciona otro archivo si deseas reemplazarlo.</div>
+                            </div>
+                          </div>
+                          <div class="selected-file-actions">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="visualizarDocumento(getDocumentoAdjuntoId(documento), getDocumentoAdjuntoNombre(documento, r.etiqueta))">
+                              <i class="fas fa-eye me-1"></i>Visualizar
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" (click)="descargarDocumento(getDocumentoAdjuntoId(documento), getDocumentoAdjuntoNombre(documento, r.etiqueta))">
+                              <i class="fas fa-download me-1"></i>Descargar
+                            </button>
+                          </div>
+                        </div>
+                      </ng-container>
                     </div>
                   </div>
                 </div>
@@ -670,14 +830,49 @@
                         class="form-control input-custom file-input" 
                         accept=".pdf,application/pdf" 
                         [required]="!modoEdicion"
-                        aria-describedby="cvHelp">
+                        aria-describedby="cvHelp"
+                        (change)="onCurriculumSeleccionado($event)">
                       <div class="invalid-feedback">{{ modoEdicion ? 'Si deseas reemplazar CV, adjunta un PDF válido.' : 'Adjunta tu currículum en formato PDF.' }}</div>
                     </div>
                     <div id="cvHelp" class="form-text muted-small mt-2">
                       <i class="fas fa-info-circle me-1"></i>
-                      {{ modoEdicion ? 'Opcional al editar. Máx. 5 MB. Nombre del archivo sin caracteres especiales.' : 'Máx. 5 MB. Nombre del archivo sin caracteres especiales.' }}
+                      {{ modoEdicion ? 'Opcional al editar. Máx. ' + getPdfLimitMb('postulacion.curriculum') + ' MB. Nombre del archivo sin caracteres especiales.' : 'Máx. ' + getPdfLimitMb('postulacion.curriculum') + ' MB. Nombre del archivo sin caracteres especiales.' }}
                     </div>
                     <div id="cvAlert" class="alert alert-danger mt-2" style="display:none;" role="alert"></div>
+                    <div *ngIf="getArchivoSeleccionado('cv') as archivo" class="selected-file-card mt-2">
+                      <div class="selected-file-info">
+                        <i class="fas fa-file-pdf"></i>
+                        <div>
+                          <div class="selected-file-name">{{ archivo.file.name }}</div>
+                          <div class="selected-file-meta">{{ formatearPeso(archivo.file.size) }} · Listo para enviar</div>
+                        </div>
+                      </div>
+                      <div class="selected-file-actions">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="visualizarArchivoSeleccionado('cv')">
+                          <i class="fas fa-eye me-1"></i>Previsualizar
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" (click)="quitarArchivoSeleccionado('cv', 'cv')">
+                          <i class="fas fa-trash-alt me-1"></i>Quitar
+                        </button>
+                      </div>
+                    </div>
+                    <div *ngIf="modoEdicion && !getArchivoSeleccionado('cv') && curriculumExistenteId" class="selected-file-card existing-file-card mt-2">
+                      <div class="selected-file-info">
+                        <i class="fas fa-file-pdf"></i>
+                        <div>
+                          <div class="selected-file-name">{{ curriculumExistenteNombre }}</div>
+                          <div class="selected-file-meta">Cargado previamente. Selecciona otro PDF si deseas reemplazarlo.</div>
+                        </div>
+                      </div>
+                      <div class="selected-file-actions">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="visualizarDocumento(curriculumExistenteId, curriculumExistenteNombre)">
+                          <i class="fas fa-eye me-1"></i>Visualizar
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" (click)="descargarDocumento(curriculumExistenteId, curriculumExistenteNombre)">
+                          <i class="fas fa-download me-1"></i>Descargar
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -725,6 +920,8 @@
                 </div>
               </section>
 
+              </fieldset>
+
               <!-- Acciones -->
               <div class="form-actions">
                 <button 
@@ -759,5 +956,19 @@
     </div>
   </div>
 </main>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

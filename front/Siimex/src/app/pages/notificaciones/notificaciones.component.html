@@ -23,10 +23,10 @@
         Sin leer <span class="notif-filter-count">{{ countNoLeidas }}</span>
       </button>
       <button class="notif-filter-btn" [class.active]="filtroActivo === 'leidas'" (click)="setFiltro('leidas')">
-        Leídas
+        Leídas <span class="notif-filter-count">{{ countLeidas }}</span>
       </button>
     </div>
-      <button class="notif-mark-all-btn" (click)="marcarTodasLeidas()" *ngIf="countNoLeidas > 0">
+    <button class="notif-mark-all-btn" (click)="marcarTodasLeidas()" *ngIf="countNoLeidas > 0">
       <i class="fa-solid fa-check-double me-1"></i>
       Marcar todas como leídas
     </button>
@@ -34,6 +34,38 @@
       <i class="fa-solid fa-rotate-right me-1" [class.fa-spin]="refreshing"></i>
       {{ refreshing ? 'Actualizando...' : 'Actualizar' }}
     </button>
+  </div>
+
+  <div class="notif-search-panel" *ngIf="!loading || notificaciones.length > 0">
+    <div class="notif-search-field">
+      <label for="notifSearch">Buscar notificación</label>
+      <div class="notif-search-input-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input
+          id="notifSearch"
+          type="search"
+          class="form-control"
+          placeholder="Buscar por título, mensaje o tipo..."
+          [(ngModel)]="filtroTexto"
+          (ngModelChange)="aplicarFiltro()" />
+      </div>
+    </div>
+
+    <div class="notif-type-field">
+      <label for="notifTipo">Tipo</label>
+      <select id="notifTipo" class="form-select" [(ngModel)]="filtroTipo" (ngModelChange)="aplicarFiltro()">
+        <option value="">Todos los tipos</option>
+        <option *ngFor="let tipo of tiposDisponibles" [value]="tipo">{{ getTipoLabel(tipo) }}</option>
+      </select>
+    </div>
+
+    <button class="notif-clear-btn" type="button" (click)="limpiarFiltrosBusqueda()" [disabled]="!hayFiltrosBusqueda">
+      <i class="fa-solid fa-eraser me-1"></i>Limpiar filtros
+    </button>
+  </div>
+
+  <div class="notif-results-hint" *ngIf="!loading && hayFiltrosBusqueda">
+    Mostrando <strong>{{ filtradas.length }}</strong> de <strong>{{ notificaciones.length }}</strong> notificación(es).
   </div>
 
   <!-- Loading -->
@@ -48,10 +80,12 @@
     <div class="notif-empty-icon">
       <i class="fa-regular fa-bell-slash"></i>
     </div>
-    <h4 *ngIf="filtroActivo === 'todas'">No tienes notificaciones</h4>
-    <h4 *ngIf="filtroActivo === 'no-leidas'">No tienes notificaciones sin leer</h4>
-    <h4 *ngIf="filtroActivo === 'leidas'">No tienes notificaciones leídas</h4>
-    <p class="text-muted">Las nuevas notificaciones aparecerán aquí.</p>
+    <h4 *ngIf="hayFiltrosBusqueda">No hay coincidencias con los filtros</h4>
+    <h4 *ngIf="!hayFiltrosBusqueda && filtroActivo === 'todas'">No tienes notificaciones</h4>
+    <h4 *ngIf="!hayFiltrosBusqueda && filtroActivo === 'no-leidas'">No tienes notificaciones sin leer</h4>
+    <h4 *ngIf="!hayFiltrosBusqueda && filtroActivo === 'leidas'">No tienes notificaciones leídas</h4>
+    <p class="text-muted" *ngIf="hayFiltrosBusqueda">Prueba con otro texto, tipo o estado.</p>
+    <p class="text-muted" *ngIf="!hayFiltrosBusqueda">Las nuevas notificaciones aparecerán aquí.</p>
   </div>
 
   <!-- Notification list -->
