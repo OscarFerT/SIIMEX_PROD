@@ -191,7 +191,7 @@ CREATE TABLE `auth_users` (
 
 LOCK TABLES `auth_users` WRITE;
 /*!40000 ALTER TABLE `auth_users` DISABLE KEYS */;
-INSERT INTO `auth_users` VALUES (1,'oscartrujano@teschi.edu.mx',_binary '','2026-09-09 21:32:00.505212',_binary '\0','$2a$10$iaakR.ZfZ8PpXPLCIMlDKudiMtpp0Va38QHsM878dqxviug/dR7HS',NULL,NULL,'oscartrujano@teschi.edu.mx'),(2,'asierras951011@gmail.com',_binary '',NULL,_binary '\0','$2y$10$F2g7fT4NbWNP3b4qcYHRdO4s8dD.SSOn0/F8ptppbi9eep67pqc02',NULL,NULL,'asierras951011@gmail.com');
+INSERT INTO `auth_users` VALUES (1,'oscartrujano@teschi.edu.mx',_binary '','2026-09-09 21:32:00.505212',_binary '\0','$2y$10$8ty4E.gniOFlPDQ3hiEueOsFp1.OYZ9sCTmMBQNPt1se2z2PvbPWK',NULL,NULL,'oscartrujano@teschi.edu.mx'),(2,'asierras951011@gmail.com',_binary '',NULL,_binary '\0','$2y$10$F2g7fT4NbWNP3b4qcYHRdO4s8dD.SSOn0/F8ptppbi9eep67pqc02',NULL,NULL,'asierras951011@gmail.com');
 /*!40000 ALTER TABLE `auth_users` ENABLE KEYS */;
 UNLOCK TABLES;
 

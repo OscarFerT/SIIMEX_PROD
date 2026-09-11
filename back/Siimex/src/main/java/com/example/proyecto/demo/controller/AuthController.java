@@ -16,6 +16,7 @@ import com.example.proyecto.demo.dto.LoginStep2Request;
 import com.example.proyecto.demo.dto.LoginStep2Response;
 import com.example.proyecto.demo.dto.RegisterRequest;
 import com.example.proyecto.demo.dto.RegisterResponse;
+import com.example.proyecto.demo.exception.ApiException;
 
 import com.example.proyecto.demo.Service.AuditLogService;
 
@@ -123,11 +124,11 @@ public class AuthController {
                 "success", true,
                 "message", "Contraseña actualizada correctamente"
             ));
-        } catch (org.springframework.web.server.ResponseStatusException e) {
-            auditLogService.registrarAuth("RESET_PASSWORD_FALLIDO", "Intento fallido de restablecer contraseña: " + e.getReason(), request.email(), getIp(http));
-            return ResponseEntity.status(e.getStatusCode()).body(java.util.Map.of(
+        } catch (ApiException e) {
+            auditLogService.registrarAuth("RESET_PASSWORD_FALLIDO", "Intento fallido de restablecer contraseña: " + e.getMessage(), request.email(), getIp(http));
+            return ResponseEntity.status(e.getStatus()).body(java.util.Map.of(
                 "success", false,
-                "message", e.getReason()
+                "message", e.getMessage()
             ));
         } catch (Exception e) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of(
@@ -167,3 +168,4 @@ public class AuthController {
                 .body(body);
     }
 }
+
