@@ -173,7 +173,7 @@ public class AuthService {
 
         // 6) Guardar AuthUser (Hibernate hará cascade de Usuario y Registro1)
         authUserRepo.save(au);
-        String folioRegistro = generarFolioRegistro(tipoPerfil, au.getId());
+        String folioRegistro = generarFolioRegistro(tipoPerfil, u.getId());
 
         // 7) Generar token de verificación y enviar correo
         String verificationToken = UUID.randomUUID().toString().replace("-", "");
@@ -205,10 +205,10 @@ public class AuthService {
                 "Revisa tu correo electrónico para activar tu cuenta. Te enviamos un enlace de verificación.", folioRegistro);
     }
 
-    private String generarFolioRegistro(Registro1.TipoPerfil tipoPerfil, Long authUserId) {
+    private String generarFolioRegistro(Registro1.TipoPerfil tipoPerfil, Long usuarioId) {
         Registro1.TipoPerfil perfil = tipoPerfil != null ? tipoPerfil : Registro1.TipoPerfil.INVESTIGADOR;
         String limpio = configuracionSistemaService.resolverPrefijoRegistro(perfil);
-        long numero = authUserId != null ? authUserId : 0L;
+        long numero = usuarioId != null ? usuarioId : 0L;
         return limpio + "-" + String.format("%03d", numero);
     }
 
@@ -529,3 +529,4 @@ public class AuthService {
         }
     }
 }
+
