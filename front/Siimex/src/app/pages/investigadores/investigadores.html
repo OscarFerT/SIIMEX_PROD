@@ -41,7 +41,7 @@
         <div class="input-group">
           <span class="input-group-text"><i class="fas fa-user"></i></span>
           <input type="text" id="searchInput" class="form-control" placeholder="Nombre..."
-            [(ngModel)]="searchTerm" (input)="aplicarFiltros()" autocomplete="off">
+            [(ngModel)]="searchTerm" (input)="onBuscarNombre()" autocomplete="off">
           <button *ngIf="searchTerm" class="btn btn-outline-secondary" type="button" (click)="limpiarBusqueda()" title="Limpiar">
             <i class="fas fa-times"></i>
           </button>
@@ -134,6 +134,30 @@
       </div>
     </div>
   </section>
+
+  <nav *ngIf="!loading && !error && totalPaginas > 1" class="directorio-paginacion" aria-label="Paginación del directorio">
+    <div class="directorio-paginacion-info">
+      Página {{ paginaActual + 1 }} de {{ totalPaginas }}
+      <span>Mostrando {{ investigadoresFiltrados.length }} de {{ totalElementos }} perfil(es)</span>
+    </div>
+    <div class="directorio-paginacion-controles">
+      <button type="button" class="btn-page" (click)="paginaAnterior()" [disabled]="paginaActual === 0 || loading">
+        <i class="fas fa-chevron-left me-1"></i>Anterior
+      </button>
+      <button
+        type="button"
+        class="btn-page btn-page-number"
+        *ngFor="let pagina of paginasDirectorio"
+        [class.active]="pagina === paginaActual"
+        [attr.aria-current]="pagina === paginaActual ? 'page' : null"
+        (click)="cambiarPagina(pagina)">
+        {{ pagina + 1 }}
+      </button>
+      <button type="button" class="btn-page" (click)="paginaSiguiente()" [disabled]="paginaActual + 1 >= totalPaginas || loading">
+        Siguiente<i class="fas fa-chevron-right ms-1"></i>
+      </button>
+    </div>
+  </nav>
 </main>
 
 <!-- Modales -->
@@ -292,4 +316,3 @@
     </div>
   </div>
 </div>
-

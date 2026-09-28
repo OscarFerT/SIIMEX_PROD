@@ -63,6 +63,18 @@ export interface Investigador {
   curriculumUrl?: string | null;
 }
 
+interface DirectorioPaginadoResponse {
+  content: Investigador[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+  totalInvestigadores: number;
+  totalInnovadores: number;
+}
+
 /** Cabeceras para evitar caché del navegador en la lista de investigadores */
 const NO_CACHE_HEADERS = new HttpHeaders({
   'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -97,12 +109,21 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
   filtroPalabrasClave: string = '';
   gradosDisponibles: string[] = [];
   areasConocimientoDisponibles: string[] = [];
+
+  // Paginacion del directorio publico
+  paginaActual = 0;
+  tamanoPagina = 8;
+  totalElementos = 0;
+  totalPaginas = 0;
+  totalInvestigadoresDirectorio = 0;
+  totalInnovadoresDirectorio = 0;
   
   // Ruta del avatar por defecto
   readonly DEFAULT_AVATAR = '/assets/img/default-avatar.png';
   
   private modalListeners: Array<() => void> = [];
   private routerSub?: Subscription;
+  private busquedaTimer?: ReturnType<typeof setTimeout>;
   private visibilityHandler = () => this.onVisibilityChange();
 
   ngOnInit(): void {
@@ -136,6 +157,13 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
     if (typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
     }
+    this.limpiarModalListeners();
+    if (this.busquedaTimer) {
+      clearTimeout(this.busquedaTimer);
+    }
+  }
+
+  private limpiarModalListeners(): void {
     this.modalListeners.forEach(cleanup => cleanup());
     this.modalListeners = [];
   }
@@ -158,11 +186,6 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
             if (modalElement.parentElement !== document.body) {
               document.body.appendChild(modalElement);
             }
-            const idStr = modalElement.id.replace('modalInvest', '');
-            const id = parseInt(idStr, 10);
-            if (!isNaN(id)) {
-              this.refrescarDatosInvestigador(id);
-            }
           };
           
           modalElement.addEventListener('show.bs.modal', showHandler);
@@ -176,13 +199,36 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
     }, 100);
   }
 
-  cargarInvestigadores(): void {
+  cargarInvestigadores(pagina = this.paginaActual): void {
     this.loading = true;
     this.error = null;
-    const url = `${environment.apiBaseUrl}/usuarios/investigadores?_t=${Date.now()}`;
-    this.http.get<Investigador[]>(url, { headers: NO_CACHE_HEADERS }).subscribe({
+    this.limpiarModalListeners();
+    if (this.busquedaTimer) {
+      clearTimeout(this.busquedaTimer);
+    }
+
+    const paginaSegura = Math.max(0, pagina);
+    const params = new URLSearchParams({
+      page: String(paginaSegura),
+      size: String(this.tamanoPagina),
+      tipo: this.tabActivo,
+      _t: String(Date.now())
+    });
+    const busqueda = this.searchTerm?.trim();
+    if (busqueda) {
+      params.set('busqueda', busqueda);
+    }
+    const url = `${environment.apiBaseUrl}/usuarios/investigadores/paginado?${params.toString()}`;
+
+    this.http.get<DirectorioPaginadoResponse>(url, { headers: NO_CACHE_HEADERS }).subscribe({
       next: (data) => {
-        this.investigadores = data.map(inv => ({
+        this.paginaActual = data.page ?? paginaSegura;
+        this.tamanoPagina = data.size ?? this.tamanoPagina;
+        this.totalElementos = data.totalElements ?? 0;
+        this.totalPaginas = data.totalPages ?? 0;
+        this.totalInvestigadoresDirectorio = data.totalInvestigadores ?? 0;
+        this.totalInnovadoresDirectorio = data.totalInnovadores ?? 0;
+        this.investigadores = (data.content ?? []).map(inv => ({
           ...inv,
           cursos: inv.cursos ?? [],
           idiomas: inv.idiomas ?? [],
@@ -191,33 +237,31 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
           articulos: inv.articulos ?? [],
           propiedadIntelectual: inv.propiedadIntelectual ?? []
         }));
-        
-        // Extraer opciones para filtros visibles en directorio (grado, área de conocimiento)
+
+        // Extraer opciones para filtros visibles en la pagina actual.
         this.extraerOpcionesFiltros();
-        
-        // Cargar fotos y currículums para cada investigador
+
+        // Cargar fotos y curriculums para los perfiles visibles de la pagina.
         this.investigadores.forEach(investigador => {
           if (investigador.fotoDocumentoId) {
             this.cargarFoto(investigador);
           } else {
             investigador.fotoUrl = null;
           }
-          
+
           if (investigador.curriculumDocumentoId) {
             this.cargarCurriculum(investigador);
           } else {
             investigador.curriculumUrl = null;
           }
         });
-        
-        // Aplicar filtros iniciales (mostrar todos)
+
         this.aplicarFiltros();
-        
-        // Mover modales al body después de que se rendericen
+
         setTimeout(() => {
           this.setupModalListeners();
         }, 200);
-        
+
         this.loading = false;
       },
       error: () => {
@@ -226,7 +270,6 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
       }
     });
   }
-
   cargarFoto(investigador: Investigador): void {
     if (!investigador.fotoDocumentoId) {
       investigador.fotoUrl = null;
@@ -400,16 +443,18 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
   // ============================================
 
   get totalInvestigadores(): number {
-    return this.investigadores.filter(i => this.esPerfilInvestigador(i)).length;
+    return this.totalInvestigadoresDirectorio;
   }
 
   get totalInnovadores(): number {
-    return this.investigadores.filter(i => this.esPerfilInnovador(i)).length;
+    return this.totalInnovadoresDirectorio;
   }
 
   cambiarTab(tab: 'INVESTIGADOR' | 'INNOVADOR'): void {
+    if (this.tabActivo === tab) return;
     this.tabActivo = tab;
-    this.limpiarFiltros();
+    this.limpiarFiltros(false);
+    this.cargarInvestigadores(0);
   }
 
   extraerOpcionesFiltros(): void {
@@ -506,17 +551,60 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
       .toLowerCase();
   }
 
-  limpiarBusqueda(): void {
-    this.searchTerm = '';
+  onBuscarNombre(): void {
     this.aplicarFiltros();
+    if (this.busquedaTimer) {
+      clearTimeout(this.busquedaTimer);
+    }
+    this.busquedaTimer = setTimeout(() => this.cargarInvestigadores(0), 350);
   }
 
-  limpiarFiltros(): void {
+  limpiarBusqueda(): void {
+    this.searchTerm = '';
+    this.cargarInvestigadores(0);
+  }
+
+  limpiarFiltros(recargar = true): void {
     this.searchTerm = '';
     this.filtroGrado = '';
     this.filtroAreaConocimiento = '';
     this.filtroPalabrasClave = '';
     this.extraerOpcionesFiltros();
     this.aplicarFiltros();
+    if (recargar) {
+      this.cargarInvestigadores(0);
+    }
+  }
+
+  get paginasDirectorio(): number[] {
+    const total = Math.max(0, this.totalPaginas);
+    if (total <= 1) return [];
+    const ventana = 5;
+    let inicio = Math.max(0, this.paginaActual - Math.floor(ventana / 2));
+    let fin = Math.min(total - 1, inicio + ventana - 1);
+    inicio = Math.max(0, fin - ventana + 1);
+    const paginas: number[] = [];
+    for (let i = inicio; i <= fin; i++) {
+      paginas.push(i);
+    }
+    return paginas;
+  }
+
+  cambiarPagina(pagina: number): void {
+    if (this.loading || pagina < 0 || pagina >= this.totalPaginas || pagina === this.paginaActual) {
+      return;
+    }
+    this.cargarInvestigadores(pagina);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  paginaAnterior(): void {
+    this.cambiarPagina(this.paginaActual - 1);
+  }
+
+  paginaSiguiente(): void {
+    this.cambiarPagina(this.paginaActual + 1);
   }
 }
