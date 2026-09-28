@@ -1407,15 +1407,21 @@ public class UsuarioController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "8") int size,
             @RequestParam(required = false) String tipo,
-            @RequestParam(required = false) String busqueda) {
+            @RequestParam(required = false) String busqueda,
+            @RequestParam(required = false) String grado,
+            @RequestParam(required = false) String area,
+            @RequestParam(required = false) String palabrasClave) {
         try {
             int paginaSegura = Math.max(0, page);
             int tamanoSeguro = Math.min(Math.max(1, size), 48);
             String busquedaNormalizada = busqueda != null ? busqueda.trim() : null;
+            String gradoNormalizado = grado != null ? grado.trim() : null;
+            String areaNormalizada = area != null ? area.trim() : null;
+            String palabrasClaveNormalizadas = palabrasClave != null ? palabrasClave.trim() : null;
             List<Registro1.TipoPerfil> tipos = resolverTiposDirectorio(tipo);
             Pageable pageable = PageRequest.of(paginaSegura, tamanoSeguro, Sort.by("id").ascending());
 
-            Page<Usuario> paginaUsuarios = usuarioRepo.findDirectorioPage(tipos, busquedaNormalizada, pageable);
+            Page<Usuario> paginaUsuarios = usuarioRepo.findDirectorioPage(tipos, busquedaNormalizada, gradoNormalizado, areaNormalizada, palabrasClaveNormalizadas, pageable);
             List<InvestigadorDTO> contenido = paginaUsuarios.getContent().stream()
                     .map(this::construirInvestigadorDirectorio)
                     .collect(Collectors.toList());
@@ -1430,6 +1436,8 @@ public class UsuarioController {
             response.put("last", paginaUsuarios.isLast());
             response.put("totalInvestigadores", usuarioRepo.countDirectorioByTipos(List.of(Registro1.TipoPerfil.INVESTIGADOR, Registro1.TipoPerfil.HIBRIDO)));
             response.put("totalInnovadores", usuarioRepo.countDirectorioByTipos(List.of(Registro1.TipoPerfil.INNOVADOR, Registro1.TipoPerfil.HIBRIDO)));
+            response.put("opcionesGrado", normalizarOpcionesDirectorio(usuarioRepo.findDirectorioGradosByTipos(tipos)));
+            response.put("opcionesArea", normalizarOpcionesDirectorio(usuarioRepo.findDirectorioAreasByTipos(tipos)));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error al listar investigadores paginados: {}", e.getMessage(), e);
@@ -1437,6 +1445,14 @@ public class UsuarioController {
         }
     }
 
+    private List<String> normalizarOpcionesDirectorio(List<String> valores) {
+        return valores.stream()
+                .filter(v -> v != null && !v.isBlank())
+                .map(String::trim)
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .collect(Collectors.toList());
+    }
     private List<Registro1.TipoPerfil> resolverTiposDirectorio(String tipo) {
         String normalizado = tipo != null ? tipo.trim().toUpperCase(Locale.ROOT) : "INVESTIGADOR";
         return switch (normalizado) {

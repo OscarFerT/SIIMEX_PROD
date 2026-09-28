@@ -73,6 +73,8 @@ interface DirectorioPaginadoResponse {
   last: boolean;
   totalInvestigadores: number;
   totalInnovadores: number;
+  opcionesGrado?: string[];
+  opcionesArea?: string[];
 }
 
 /** Cabeceras para evitar caché del navegador en la lista de investigadores */
@@ -218,6 +220,16 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
     if (busqueda) {
       params.set('busqueda', busqueda);
     }
+    if (this.filtroGrado) {
+      params.set('grado', this.filtroGrado);
+    }
+    if (this.filtroAreaConocimiento) {
+      params.set('area', this.filtroAreaConocimiento);
+    }
+    const palabrasClave = this.filtroPalabrasClave?.trim();
+    if (palabrasClave) {
+      params.set('palabrasClave', palabrasClave);
+    }
     const url = `${environment.apiBaseUrl}/usuarios/investigadores/paginado?${params.toString()}`;
 
     this.http.get<DirectorioPaginadoResponse>(url, { headers: NO_CACHE_HEADERS }).subscribe({
@@ -238,8 +250,8 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
           propiedadIntelectual: inv.propiedadIntelectual ?? []
         }));
 
-        // Extraer opciones para filtros visibles en la pagina actual.
-        this.extraerOpcionesFiltros();
+        this.gradosDisponibles = [...(data.opcionesGrado ?? [])].sort((a, b) => a.localeCompare(b));
+        this.areasConocimientoDisponibles = [...(data.opcionesArea ?? [])].sort((a, b) => a.localeCompare(b));
 
         // Cargar fotos y curriculums para los perfiles visibles de la pagina.
         this.investigadores.forEach(investigador => {
@@ -564,13 +576,16 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
     this.cargarInvestigadores(0);
   }
 
+  onCambiarFiltroDirectorio(): void {
+    this.cargarInvestigadores(0);
+  }
+
   limpiarFiltros(recargar = true): void {
     this.searchTerm = '';
     this.filtroGrado = '';
     this.filtroAreaConocimiento = '';
     this.filtroPalabrasClave = '';
-    this.extraerOpcionesFiltros();
-    this.aplicarFiltros();
+    this.investigadoresFiltrados = this.investigadores;
     if (recargar) {
       this.cargarInvestigadores(0);
     }
