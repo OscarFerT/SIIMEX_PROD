@@ -132,6 +132,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/instituciones-educativas/activas").permitAll()
                         .requestMatchers(HttpMethod.GET, "/usuarios/investigadores").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/investigadores").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/usuarios/investigadores/paginado").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios/investigadores/paginado").permitAll()
                         .requestMatchers(HttpMethod.GET, "/convocatorias-imagenes/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/convocatorias-imagenes/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/usuarios/me").authenticated()

@@ -49,6 +49,10 @@ import com.example.proyecto.demo.dto.PerfilCompletoDTO;
 import com.example.proyecto.demo.dto.UsuarioUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -1396,6 +1400,186 @@ public class UsuarioController {
         }
     }
 
+
+    @GetMapping("/investigadores/paginado")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> listarInvestigadoresPaginado(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size,
+            @RequestParam(required = false) String tipo,
+            @RequestParam(required = false) String busqueda) {
+        try {
+            int paginaSegura = Math.max(0, page);
+            int tamanoSeguro = Math.min(Math.max(1, size), 48);
+            String busquedaNormalizada = busqueda != null ? busqueda.trim() : null;
+            List<Registro1.TipoPerfil> tipos = resolverTiposDirectorio(tipo);
+            Pageable pageable = PageRequest.of(paginaSegura, tamanoSeguro, Sort.by("id").ascending());
+
+            Page<Usuario> paginaUsuarios = usuarioRepo.findDirectorioPage(tipos, busquedaNormalizada, pageable);
+            List<InvestigadorDTO> contenido = paginaUsuarios.getContent().stream()
+                    .map(this::construirInvestigadorDirectorio)
+                    .collect(Collectors.toList());
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("content", contenido);
+            response.put("page", paginaUsuarios.getNumber());
+            response.put("size", paginaUsuarios.getSize());
+            response.put("totalElements", paginaUsuarios.getTotalElements());
+            response.put("totalPages", paginaUsuarios.getTotalPages());
+            response.put("first", paginaUsuarios.isFirst());
+            response.put("last", paginaUsuarios.isLast());
+            response.put("totalInvestigadores", usuarioRepo.countDirectorioByTipos(List.of(Registro1.TipoPerfil.INVESTIGADOR, Registro1.TipoPerfil.HIBRIDO)));
+            response.put("totalInnovadores", usuarioRepo.countDirectorioByTipos(List.of(Registro1.TipoPerfil.INNOVADOR, Registro1.TipoPerfil.HIBRIDO)));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error al listar investigadores paginados: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private List<Registro1.TipoPerfil> resolverTiposDirectorio(String tipo) {
+        String normalizado = tipo != null ? tipo.trim().toUpperCase(Locale.ROOT) : "INVESTIGADOR";
+        return switch (normalizado) {
+            case "INNOVADOR" -> List.of(Registro1.TipoPerfil.INNOVADOR, Registro1.TipoPerfil.HIBRIDO);
+            case "HIBRIDO" -> List.of(Registro1.TipoPerfil.HIBRIDO);
+            case "TODOS", "ALL" -> List.of(Registro1.TipoPerfil.INVESTIGADOR, Registro1.TipoPerfil.INNOVADOR, Registro1.TipoPerfil.HIBRIDO);
+            default -> List.of(Registro1.TipoPerfil.INVESTIGADOR, Registro1.TipoPerfil.HIBRIDO);
+        };
+    }
+
+    private InvestigadorDTO construirInvestigadorDirectorio(Usuario u) {
+        String email = u.getAuthUser() != null ? u.getAuthUser().getEmail() : null;
+        String telefono = null;
+        String tipoPerfil = null;
+        try {
+            if (u.getRegistro1() != null) {
+                telefono = u.getRegistro1().getTelefono();
+                tipoPerfil = u.getRegistro1().getTipoPerfil() != null
+                        ? u.getRegistro1().getTipoPerfil().name() : null;
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener el teléfono para usuario {}: {}", u.getId(), e.getMessage());
+        }
+
+        String gradoAcademico = null;
+        try {
+            gradoAcademico = resolverGradoAcademicoMasAlto(u.getId());
+        } catch (Exception e) {
+            log.warn("No se pudo obtener el grado académico para usuario {}: {}", u.getId(), e.getMessage());
+        }
+
+        String areaConocimiento = null;
+        try {
+            areaConocimiento = areaConocimientoRepository.findByUsuarioId(u.getId())
+                    .stream()
+                    .findFirst()
+                    .map(area -> {
+                        if (area.getAreaNombre() != null && !area.getAreaNombre().isBlank()) return area.getAreaNombre();
+                        if (area.getCampoNombre() != null && !area.getCampoNombre().isBlank()) return area.getCampoNombre();
+                        if (area.getDisciplinaNombre() != null && !area.getDisciplinaNombre().isBlank()) return area.getDisciplinaNombre();
+                        if (area.getSubdisciplinaNombre() != null && !area.getSubdisciplinaNombre().isBlank()) return area.getSubdisciplinaNombre();
+                        return null;
+                    })
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("No se pudo obtener área de conocimiento para usuario {}: {}", u.getId(), e.getMessage());
+        }
+
+        String semblanza = resolverSemblanza(u);
+        Long fotoId = null;
+        try {
+            fotoId = documentoService.obtenerDocumentoPorUsuarioYTipo(u.getId(), Documento.TipoDocumento.FOTO_PERFIL)
+                    .map(Documento::getId)
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("Error al obtener foto para usuario {}: {}", u.getId(), e.getMessage());
+        }
+
+        Long curriculumId = null;
+        try {
+            curriculumId = documentoService.obtenerDocumentoPorUsuarioYTipo(u.getId(), Documento.TipoDocumento.CURRICULUM)
+                    .map(Documento::getId)
+                    .orElseGet(() -> documentoService.obtenerDocumentoPorUsuarioYTipo(u.getId(), Documento.TipoDocumento.CV)
+                            .map(Documento::getId)
+                            .orElse(null));
+        } catch (Exception e) {
+            log.warn("Error al obtener currículum para usuario {}: {}", u.getId(), e.getMessage());
+        }
+
+        List<CursoItemDTO> cursos = new ArrayList<>();
+        List<IdiomaItemDTO> idiomas = new ArrayList<>();
+        List<LogroItemDTO> logros = new ArrayList<>();
+        List<String> herramientas = new ArrayList<>();
+        List<ArticuloItemDTO> articulos = new ArrayList<>();
+        List<PropiedadIntelectualItemDTO> propiedadIntelectual = new ArrayList<>();
+        try {
+            cursos = cursoRepository.findByUsuarioId(u.getId()).stream()
+                    .map(c -> new CursoItemDTO(c.getNombre(), c.getPrograma(), c.getHorasTotales(), c.getInstitucion()))
+                    .collect(Collectors.toList());
+            idiomas = idiomaRepository.findByUsuarioId(u.getId()).stream()
+                    .map(i -> new IdiomaItemDTO(i.getNombre(), i.getDominioNombre() != null ? i.getDominioNombre() : (i.getConversacion() != null ? i.getConversacion() : "")))
+                    .collect(Collectors.toList());
+            logros = logroRepository.findByUsuarioId(u.getId()).stream()
+                    .map(l -> new LogroItemDTO(l.getTipo(), l.getNombre(), l.getAnio()))
+                    .collect(Collectors.toList());
+            herramientas = herramientaRepository.findByUsuarioId(u.getId()).stream()
+                    .map(Herramienta::getNombre)
+                    .collect(Collectors.toList());
+            articulos = articuloRepository.findByUsuarioId(u.getId()).stream()
+                    .map(a -> new ArticuloItemDTO(a.getTitulo(), a.getNombreRevista(), a.getAnio(), a.getDoi()))
+                    .collect(Collectors.toList());
+            propiedadIntelectual = propiedadIntelectualRepository.findByUsuarioId(u.getId()).stream()
+                    .map(pi -> new PropiedadIntelectualItemDTO(pi.getTipo().name(), pi.getTitulo(), pi.getNumeroRegistro(),
+                            pi.getInstitucionOficina(), pi.getPais(), pi.getFechaRegistro(), pi.getAnio(), pi.getDescripcion()))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("Error al cargar trayectoria para usuario {}: {}", u.getId(), e.getMessage());
+        }
+
+        String visibilidad = u.getVisibilidadPerfil() != null ? u.getVisibilidadPerfil() : "ESTANDAR";
+        if ("MINIMA".equals(visibilidad)) {
+            email = null;
+            telefono = null;
+            semblanza = null;
+            fotoId = null;
+            curriculumId = null;
+            cursos = new ArrayList<>();
+            idiomas = new ArrayList<>();
+            logros = new ArrayList<>();
+            herramientas = new ArrayList<>();
+            articulos = new ArrayList<>();
+            propiedadIntelectual = new ArrayList<>();
+        } else if ("ESTANDAR".equals(visibilidad)) {
+            telefono = null;
+            curriculumId = null;
+            cursos = new ArrayList<>();
+            logros = new ArrayList<>();
+            articulos = new ArrayList<>();
+            propiedadIntelectual = new ArrayList<>();
+        }
+
+        return new InvestigadorDTO(
+                u.getId(),
+                u.getNombre(),
+                u.getApellidoPaterno(),
+                u.getApellidoMaterno(),
+                email,
+                telefono,
+                gradoAcademico,
+                areaConocimiento,
+                semblanza,
+                tipoPerfil,
+                fotoId,
+                curriculumId,
+                cursos,
+                idiomas,
+                logros,
+                herramientas,
+                articulos,
+                propiedadIntelectual
+        );
+    }
+
     private String resolverGradoAcademicoMasAlto(Long usuarioId) {
         return trayectoriaAcademicaRepository.findByUsuarioId(usuarioId).stream()
                 .max(Comparator
@@ -1418,5 +1602,3 @@ public class UsuarioController {
     }
 
 }
-
-

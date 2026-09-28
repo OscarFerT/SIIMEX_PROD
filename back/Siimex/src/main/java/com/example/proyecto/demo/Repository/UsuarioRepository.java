@@ -2,6 +2,8 @@ package com.example.proyecto.demo.Repository;
 
 import com.example.proyecto.demo.Entity.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -26,6 +28,48 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     // Variante para dashboard/admin: incluye también usuarios importados sin authUser.
     @Query("SELECT DISTINCT u FROM Usuario u LEFT JOIN FETCH u.authUser LEFT JOIN FETCH u.registro1 LEFT JOIN FETCH u.perfilMigracion")
     List<Usuario> findAllWithRelationsIncludingSinAuth();
+
+    @Query(value = """
+            SELECT DISTINCT u FROM Usuario u
+            JOIN u.authUser au
+            LEFT JOIN u.registro1 r
+            LEFT JOIN u.perfilMigracion pm
+            WHERE au.enabled = true
+              AND r.tipoPerfil IN :tipos
+              AND (
+                :busqueda IS NULL OR :busqueda = '' OR
+                LOWER(COALESCE(u.nombre, '')) LIKE LOWER(CONCAT('%', :busqueda, '%')) OR
+                LOWER(COALESCE(u.apellidoPaterno, '')) LIKE LOWER(CONCAT('%', :busqueda, '%')) OR
+                LOWER(COALESCE(u.apellidoMaterno, '')) LIKE LOWER(CONCAT('%', :busqueda, '%'))
+              )
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT u) FROM Usuario u
+            JOIN u.authUser au
+            LEFT JOIN u.registro1 r
+            WHERE au IS NOT NULL
+              AND au.enabled = true
+              AND r.tipoPerfil IN :tipos
+              AND (
+                :busqueda IS NULL OR :busqueda = '' OR
+                LOWER(COALESCE(u.nombre, '')) LIKE LOWER(CONCAT('%', :busqueda, '%')) OR
+                LOWER(COALESCE(u.apellidoPaterno, '')) LIKE LOWER(CONCAT('%', :busqueda, '%')) OR
+                LOWER(COALESCE(u.apellidoMaterno, '')) LIKE LOWER(CONCAT('%', :busqueda, '%'))
+              )
+            """)
+    Page<Usuario> findDirectorioPage(@Param("tipos") List<com.example.proyecto.demo.Entity.Registro1.TipoPerfil> tipos,
+                                     @Param("busqueda") String busqueda,
+                                     Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(DISTINCT u) FROM Usuario u
+            JOIN u.authUser au
+            LEFT JOIN u.registro1 r
+            WHERE au IS NOT NULL
+              AND au.enabled = true
+              AND r.tipoPerfil IN :tipos
+            """)
+    long countDirectorioByTipos(@Param("tipos") List<com.example.proyecto.demo.Entity.Registro1.TipoPerfil> tipos);
 
     @Query("SELECT DISTINCT u FROM Usuario u JOIN FETCH u.authUser")
     List<Usuario> findAllWithAuthUser();
