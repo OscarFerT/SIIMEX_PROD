@@ -69,12 +69,13 @@
             class="form-control"
             placeholder="Buscar por nombre, email, CURP..."
             [(ngModel)]="filtroTexto"
+            (ngModelChange)="reiniciarPaginacion()"
             autocomplete="off"
           />
         </div>
         <div class="filtro-select-wrap">
           <label class="filtro-label">Perfil</label>
-          <select class="form-select form-select-sm" [(ngModel)]="filtroPerfil">
+          <select class="form-select form-select-sm" [(ngModel)]="filtroPerfil" (ngModelChange)="reiniciarPaginacion()">
             <option value="">Todos</option>
             <option value="INVESTIGADOR">Personas investigadoras</option>
             <option value="INNOVADOR">Personas innovadoras</option>
@@ -83,21 +84,21 @@
         </div>
         <div class="filtro-select-wrap">
           <label class="filtro-label">Sexo</label>
-          <select class="form-select form-select-sm" [(ngModel)]="filtroSexo">
+          <select class="form-select form-select-sm" [(ngModel)]="filtroSexo" (ngModelChange)="reiniciarPaginacion()">
             <option value="">Todos</option>
             <option *ngFor="let g of GENEROS" [value]="g.value">{{ g.label }}</option>
           </select>
         </div>
         <div class="filtro-select-wrap">
           <label class="filtro-label">Entidad</label>
-          <select class="form-select form-select-sm" [(ngModel)]="filtroEntidad">
+          <select class="form-select form-select-sm" [(ngModel)]="filtroEntidad" (ngModelChange)="reiniciarPaginacion()">
             <option value="">Todas</option>
             <option *ngFor="let e of entidadesUnicas" [value]="e">{{ e }}</option>
           </select>
         </div>
         <div class="filtro-select-wrap">
           <label class="filtro-label">Municipio</label>
-          <select class="form-select form-select-sm" [(ngModel)]="filtroMunicipio">
+          <select class="form-select form-select-sm" [(ngModel)]="filtroMunicipio" (ngModelChange)="reiniciarPaginacion()">
             <option value="">Todos</option>
             <option *ngFor="let m of municipiosUnicos" [value]="m">{{ m }}</option>
           </select>
@@ -108,7 +109,7 @@
       </div>
       <div class="filtros-meta">
         <span class="registros-count">
-          <strong>{{ registrosFiltrados.length }}</strong> de {{ registros.length }} usuario(s)
+          Mostrando <strong>{{ registroInicioVisible }}-{{ registroFinVisible }}</strong> de <strong>{{ registrosFiltrados.length }}</strong> usuario(s) filtrado(s). Total: {{ registros.length }}
         </span>
       </div>
     </div>
@@ -130,7 +131,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let r of registrosFiltrados" (click)="seleccionarUsuario(r)" class="registro-row" [class.is-selected]="estaSeleccionado(r)">
+            <tr *ngFor="let r of registrosPaginados" (click)="seleccionarUsuario(r)" class="registro-row" [class.is-selected]="estaSeleccionado(r)">
               <td class="text-center">
                 <input
                   type="radio"
@@ -169,6 +170,24 @@
           </tbody>
         </table>
       </div>
+      <nav *ngIf="registrosFiltrados.length > registrosPorPagina" class="registros-pagination" aria-label="Paginación de registros">
+        <button type="button" class="registros-page-btn" (click)="paginaAnterior()" [disabled]="paginaActual === 0">
+          <i class="fas fa-chevron-left me-1"></i>Anterior
+        </button>
+        <button
+          type="button"
+          class="registros-page-btn registros-page-number"
+          *ngFor="let pagina of paginasRegistros"
+          [class.active]="pagina === paginaActual"
+          [attr.aria-current]="pagina === paginaActual ? 'page' : null"
+          (click)="cambiarPagina(pagina)">
+          {{ pagina + 1 }}
+        </button>
+        <button type="button" class="registros-page-btn" (click)="paginaSiguiente()" [disabled]="paginaActual + 1 >= totalPaginasRegistros">
+          Siguiente<i class="fas fa-chevron-right ms-1"></i>
+        </button>
+        <span class="registros-page-summary">Página {{ paginaActual + 1 }} de {{ totalPaginasRegistros }}</span>
+      </nav>
       <div *ngIf="registros.length === 0" class="registros-empty">
         <i class="fas fa-users fa-2x text-muted mb-2"></i>
         <p class="mb-0 text-muted">No hay registros aún.</p>
@@ -674,5 +693,3 @@
   </div>
   <div class="modal-backdrop fade" [class.show]="modalNuevoVisible" (click)="cerrarModalNuevo()"></div>
 </div>
-
-

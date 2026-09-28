@@ -128,6 +128,8 @@ export class AdminRegistrosComponent implements OnInit {
   filtroSexo = '';
   filtroEntidad = '';
   filtroMunicipio = '';
+  paginaActual = 0;
+  readonly registrosPorPagina = 10;
 
   readonly GENEROS = [
     { value: 'MASCULINO', label: 'Masculino' },
@@ -220,6 +222,37 @@ export class AdminRegistrosComponent implements OnInit {
     return list;
   }
 
+  get registrosPaginados(): RegistroItem[] {
+    const inicio = this.paginaActual * this.registrosPorPagina;
+    return this.registrosFiltrados.slice(inicio, inicio + this.registrosPorPagina);
+  }
+
+  get totalPaginasRegistros(): number {
+    return Math.max(1, Math.ceil(this.registrosFiltrados.length / this.registrosPorPagina));
+  }
+
+  get registroInicioVisible(): number {
+    if (this.registrosFiltrados.length === 0) return 0;
+    return this.paginaActual * this.registrosPorPagina + 1;
+  }
+
+  get registroFinVisible(): number {
+    return Math.min((this.paginaActual + 1) * this.registrosPorPagina, this.registrosFiltrados.length);
+  }
+
+  get paginasRegistros(): number[] {
+    const total = this.totalPaginasRegistros;
+    if (total <= 1) return [];
+    const ventana = 5;
+    let inicio = Math.max(0, this.paginaActual - Math.floor(ventana / 2));
+    let fin = Math.min(total - 1, inicio + ventana - 1);
+    inicio = Math.max(0, fin - ventana + 1);
+    const paginas: number[] = [];
+    for (let i = inicio; i <= fin; i++) {
+      paginas.push(i);
+    }
+    return paginas;
+  }
   get usuarioSeleccionado(): RegistroItem | null {
     if (this.usuarioSeleccionadoId == null) return null;
     return this.registros.find((r) => r.id === this.usuarioSeleccionadoId) || null;
@@ -243,6 +276,30 @@ export class AdminRegistrosComponent implements OnInit {
     this.filtroSexo = '';
     this.filtroEntidad = '';
     this.filtroMunicipio = '';
+    this.reiniciarPaginacion();
+  }
+
+  reiniciarPaginacion(): void {
+    this.paginaActual = 0;
+    this.usuarioSeleccionadoId = null;
+    this.detalle = null;
+    this.cargarFotosPaginaActual();
+  }
+
+  cambiarPagina(pagina: number): void {
+    if (pagina < 0 || pagina >= this.totalPaginasRegistros || pagina === this.paginaActual) return;
+    this.paginaActual = pagina;
+    this.usuarioSeleccionadoId = null;
+    this.detalle = null;
+    this.cargarFotosPaginaActual();
+  }
+
+  paginaAnterior(): void {
+    this.cambiarPagina(this.paginaActual - 1);
+  }
+
+  paginaSiguiente(): void {
+    this.cambiarPagina(this.paginaActual + 1);
   }
 
   private getNuevoUsuarioInicial() {
@@ -328,8 +385,9 @@ export class AdminRegistrosComponent implements OnInit {
         if (this.usuarioSeleccionadoId != null && !data.some((r) => r.id === this.usuarioSeleccionadoId)) {
           this.usuarioSeleccionadoId = null;
         }
+        this.ajustarPaginaActual();
         this.loading = false;
-        data.filter(r => r.fotoDocumentoId).forEach(r => this.cargarFotoRegistro(r));
+        this.cargarFotosPaginaActual();
       },
       error: (err: { error?: { message?: string } }) => {
         this.error = err?.error?.message || 'No se pudo cargar el listado';
@@ -355,6 +413,20 @@ export class AdminRegistrosComponent implements OnInit {
   getFotoUrlRegistro(r: RegistroItem): string | SafeResourceUrl {
     if (r.fotoUrl) return r.fotoUrl;
     return '';
+  }
+
+  private ajustarPaginaActual(): void {
+    const ultimaPagina = this.totalPaginasRegistros - 1;
+    if (this.paginaActual > ultimaPagina) {
+      this.paginaActual = Math.max(0, ultimaPagina);
+    }
+  }
+
+  private cargarFotosPaginaActual(): void {
+    this.ajustarPaginaActual();
+    this.registrosPaginados
+      .filter(r => r.fotoDocumentoId && !r.fotoUrl)
+      .forEach(r => this.cargarFotoRegistro(r));
   }
 
   getGeneroDisplay(genero: string | undefined): string {

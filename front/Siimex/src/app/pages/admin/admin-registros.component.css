@@ -206,6 +206,54 @@
   border-radius: 4px;
 }
 
+
+/* Paginacion de registros */
+.registros-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding: 0.9rem 1rem;
+  border-top: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.registros-page-btn {
+  border: 1px solid rgba(106, 0, 50, 0.22);
+  background: #fff;
+  color: #6a0032;
+  border-radius: 999px;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: all 0.18s ease;
+}
+
+.registros-page-btn:hover:not(:disabled),
+.registros-page-btn.active {
+  background: #6a0032;
+  border-color: #6a0032;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(106, 0, 50, 0.14);
+}
+
+.registros-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.registros-page-number {
+  min-width: 2.15rem;
+  padding-inline: 0.55rem;
+}
+
+.registros-page-summary {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-left: 0.35rem;
+}
 /* Avatar con foto o inicial */
 .admin-tabla-avatar {
   width: 40px;
@@ -516,6 +564,16 @@
 }
 
 @media (max-width: 576px) {
+  .registros-pagination {
+    justify-content: center;
+  }
+
+  .registros-page-summary {
+    width: 100%;
+    margin-left: 0;
+    text-align: center;
+  }
+
   .registros-title {
     font-size: 1.35rem;
   }
