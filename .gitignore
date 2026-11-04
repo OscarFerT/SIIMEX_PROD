@@ -19,6 +19,9 @@ back/Siimex/target/
 back/Siimex/usuarios/
 back/Siimex/uploads/
 back/Siimex/logs/
+back/Siimex/backups/
+**/bd_siimex_pre_*.sql
+**/*.dump
 
 # Frontend
 front/Siimex/node_modules/
@@ -38,6 +41,7 @@ front/Siimex/.angular/
 **/*.iws
 
 # Temporales
+/tmp_logs_review/
 **/.tmp_*
 **/tmp_test_write.txt
 **/tmp_root_file.txt

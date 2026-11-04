@@ -1236,7 +1236,7 @@ public class UsuarioController {
             List<Usuario> usuarios = usuarioRepo.findAllWithRelations();
             
             List<InvestigadorDTO> investigadores = usuarios.stream()
-                    .filter(u -> u.getAuthUser() != null && u.getAuthUser().isEnabled()) // Solo cuentas con correo validado
+                    .filter(com.example.proyecto.demo.security.PublicProfilePolicy::canPublish)
                     .map(u -> {
                         // Obtener email
                         String email = u.getAuthUser() != null ? u.getAuthUser().getEmail() : null;
@@ -1346,7 +1346,7 @@ public class UsuarioController {
                         }
 
                         // Aplicar visibilidad: qué se muestra en el módulo público
-                        String visibilidad = u.getVisibilidadPerfil() != null ? u.getVisibilidadPerfil() : "ESTANDAR";
+                        String visibilidad = com.example.proyecto.demo.security.PublicProfilePolicy.visibility(u);
                         if ("MINIMA".equals(visibilidad)) {
                             email = null;
                             telefono = null;
@@ -1552,7 +1552,7 @@ public class UsuarioController {
             log.warn("Error al cargar trayectoria para usuario {}: {}", u.getId(), e.getMessage());
         }
 
-        String visibilidad = u.getVisibilidadPerfil() != null ? u.getVisibilidadPerfil() : "ESTANDAR";
+        String visibilidad = com.example.proyecto.demo.security.PublicProfilePolicy.visibility(u);
         if ("MINIMA".equals(visibilidad)) {
             email = null;
             telefono = null;

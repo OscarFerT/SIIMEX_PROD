@@ -93,11 +93,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
         return path;
     }
 
-    private String clientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+private String clientIp(HttpServletRequest request) {
+        return com.example.proyecto.demo.security.ClientAddress.remote(request);
     }
 }

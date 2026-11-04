@@ -25,7 +25,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth.service';
 import { RegisterRequest, Registro1Request } from '../../core/auth.service';
-import Swal from 'sweetalert2';
+import Swal from '../../core/safe-swal';
 
 /* =======================
    Validadores personalizados
@@ -236,7 +236,7 @@ export class RegisterComponent implements OnInit {
 
   /** Textos de ayuda por sección */
   readonly sectionHelpTexts: Record<string, string> = {
-    personal: 'Completa tus datos personales tal como aparecen en tus documentos oficiales. La entidad de nacimiento se obtiene automáticamente de tu CURP.',
+    personal: 'Completa tus datos personales tal como aparecen en tus documentos oficiales. Conserva los apellidos compuestos completos, por ejemplo De la Rosa o Del Río; no quites palabras para hacerlos coincidir con la CURP. La entidad de nacimiento se obtiene automáticamente de tu CURP.',
     tipoPerfil: 'Elige si te registras como personas investigadoras, como personas innovadoras o como perfil mixto (personas investigadoras e innovadoras).',
     identificacion: 'Ingresa tu CURP (18 caracteres) y RFC (13 caracteres) exactamente como en tus documentos oficiales. El teléfono debe tener al menos 10 dígitos. La fecha de nacimiento contenida en ambos documentos debe coincidir.',
     contacto: 'Registra tu correo electrónico y repítelo para confirmar. Este correo será tu usuario o usuaria para iniciar sesión y recibir notificaciones.',

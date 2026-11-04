@@ -4,7 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/auth.service';
 import { BRANDING } from '../../core/branding.constants';
-import Swal from 'sweetalert2';
+import Swal from '../../core/safe-swal';
 
 @Component({
   selector: 'app-login',

@@ -2,7 +2,7 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import Swal from 'sweetalert2';
+import Swal from '../../core/safe-swal';
 import { environment } from '../../../environments/environment';
 import { PdfLimiteService } from "../../core/pdf-limite.service";
 

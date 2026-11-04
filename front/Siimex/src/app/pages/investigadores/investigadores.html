@@ -98,7 +98,7 @@
            tabindex="0" role="button"
            [attr.aria-label]="'Ver perfil de ' + getNombreCompleto(investigador)">
         <div class="dir-card-img">
-          <img [src]="getFotoUrl(investigador)" [alt]="getNombreCompleto(investigador)" (error)="onImageError($event)" />
+          <img [src]="getFotoUrl(investigador)" [class.dir-imagen-institucional]="!investigador.fotoUrl" [alt]="getNombreCompleto(investigador)" (error)="onImageError($event)" />
           <div class="dir-card-overlay">
             <span class="dir-card-overlay-btn"><i class="fas fa-eye me-1"></i>Ver perfil</span>
           </div>
@@ -174,7 +174,7 @@
       <div class="modal-header modal-header-investigador">
         <div class="modal-header-profile d-flex align-items-center gap-3 flex-grow-1">
           <div class="investigador-photo-wrapper investigador-photo-modal-thumb">
-            <img [src]="getFotoUrl(investigador)" alt="" (error)="onImageError($event)">
+            <img [src]="getFotoUrl(investigador)" [class.dir-imagen-institucional]="!investigador.fotoUrl" alt="" (error)="onImageError($event)">
           </div>
           <div class="modal-identidad">
             <h5 class="modal-title mb-0" [id]="'modalInvest' + investigador.id + 'Label'">

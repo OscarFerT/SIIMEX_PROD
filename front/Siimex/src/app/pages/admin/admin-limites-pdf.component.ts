@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import Swal from 'sweetalert2';
+import Swal from '../../core/safe-swal';
 import { PdfLimiteItem, PdfLimiteService } from '../../core/pdf-limite.service';
 
 @Component({

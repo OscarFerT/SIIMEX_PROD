@@ -1,14 +1,21 @@
 package com.example.proyecto.demo.util;
 
 import java.time.LocalDate;
+import java.text.Normalizer;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Utilidad para validar el formato y la coincidencia de datos del CURP
  */
 public class CurpValidator {
+
+    private static final Set<String> PARTICULAS_APELLIDO = Set.of(
+            "DA", "DAS", "DE", "DEL", "DER", "DI", "DIE", "DD", "EL", "LA",
+            "LOS", "LAS", "LE", "LES", "MAC", "MC", "VAN", "VON", "Y");
 
     // Mapeo de códigos de entidad federativa (primeras 2 letras del CURP posiciones 12-13)
     private static final Map<String, String> ENTIDADES_FEDERATIVAS = new HashMap<>();
@@ -128,8 +135,8 @@ public class CurpValidator {
         }
         
         curp = curp.trim().toUpperCase();
-        apellidoPaterno = limpiarTexto(apellidoPaterno.trim().toUpperCase());
-        apellidoMaterno = limpiarTexto(apellidoMaterno.trim().toUpperCase());
+        apellidoPaterno = apellidoParaCompararCurp(apellidoPaterno);
+        apellidoMaterno = apellidoParaCompararCurp(apellidoMaterno);
         String nombreConEspacios = nombre.trim().toUpperCase(); // conservar espacios para validar cada nombre
         nombre = limpiarTexto(nombreConEspacios);
         
@@ -138,13 +145,7 @@ public class CurpValidator {
             return false;
         }
         
-        // Permitir X en las primeras 4 posiciones (cuando no hay suficiente información)
-        // Si el CURP tiene X en alguna de las primeras 4 posiciones, se considera válido
-        boolean tieneXEnPrimeros4 = curp.charAt(0) == 'X' || curp.charAt(1) == 'X' || 
-                                     curp.charAt(2) == 'X' || curp.charAt(3) == 'X';
-        
-        if (!tieneXEnPrimeros4) {
-            // Solo validar coincidencia si no hay X en los primeros 4 caracteres
+        { // X is checked only at its own position, never as a wildcard for the whole name.
             
             // Posición 0: Primera letra del primer apellido (puede ser vocal o consonante)
             char primeraLetraApellidoPaterno = apellidoPaterno.isEmpty() ? 'X' : limpiarTexto(apellidoPaterno).charAt(0);
@@ -175,7 +176,6 @@ public class CurpValidator {
                 return false;
             }
         }
-        // Si tiene X en los primeros 4 caracteres, se considera válido sin verificar coincidencia
         
         // Posiciones 4-9: Fecha de nacimiento (AAMMDD)
         String fechaCurp = curp.substring(4, 10);
@@ -238,17 +238,16 @@ public class CurpValidator {
             return Optional.of("Faltan datos requeridos.");
         }
         curp = curp.trim().toUpperCase();
-        String apP = limpiarTexto(apellidoPaterno.trim().toUpperCase());
-        String apM = limpiarTexto(apellidoMaterno.trim().toUpperCase());
+        String apP = apellidoParaCompararCurp(apellidoPaterno);
+        String apM = apellidoParaCompararCurp(apellidoMaterno);
         String nom = limpiarTexto(nombre.trim().toUpperCase());
         if (curp.length() != 18) {
             return Optional.of("El CURP debe tener 18 caracteres.");
         }
-        boolean tieneX = curp.charAt(0) == 'X' || curp.charAt(1) == 'X' || curp.charAt(2) == 'X' || curp.charAt(3) == 'X';
-        if (!tieneX) {
+        {
             char c0 = apP.isEmpty() ? 'X' : apP.charAt(0);
             if (curp.charAt(0) != c0) {
-                return Optional.of(String.format("El primer apellido debe iniciar con '%c' (CURP posición 1).", curp.charAt(0)));
+                return Optional.of(mensajeApellido("primer", 1, apP, curp.charAt(0)));
             }
             char vocal1 = obtenerPrimeraVocalInternaCorrecta(apP);
             if (vocal1 == 'X' || vocal1 == 0) {
@@ -260,7 +259,7 @@ public class CurpValidator {
             }
             char c2 = apM.isEmpty() ? 'X' : apM.charAt(0);
             if (curp.charAt(2) != c2) {
-                return Optional.of(String.format("El segundo apellido debe iniciar con '%c' (CURP posición 3).", curp.charAt(2)));
+                return Optional.of(mensajeApellido("segundo", 3, apM, curp.charAt(2)));
             }
             char letraCurpNombre = curp.charAt(3);
             if (!nombreContieneLetraInicial(nombre.trim().toUpperCase(), letraCurpNombre)) {
@@ -290,6 +289,26 @@ public class CurpValidator {
                     entCurp != null ? entCurp : "código " + codEnt));
         }
         return Optional.empty();
+    }
+
+    /** Compare the first significant surname word, without changing the name stored in the profile. */
+    private static String apellidoParaCompararCurp(String apellido) {
+        String normalizado = Normalizer.normalize(apellido, Normalizer.Form.NFC)
+                .toUpperCase(Locale.ROOT).replaceAll("(?U)\\s+", " ").trim();
+        if (normalizado.isEmpty()) return "";
+        String[] palabras = normalizado.split(" ");
+        for (String palabra : palabras) {
+            if (!PARTICULAS_APELLIDO.contains(palabra)) return limpiarTexto(palabra);
+        }
+        // A surname consisting of a single particle is not silently turned into a missing surname.
+        return limpiarTexto(palabras[0]);
+    }
+
+    private static String mensajeApellido(String cual, int posicion, String palabra, char letraCurp) {
+        return String.format("El %s apellido no coincide con la CURP (posición %d, letra '%c'). " +
+                        "Para comparar se toma '%s', omitiendo partículas iniciales como DE, LA o DEL. " +
+                        "Captura el apellido completo como aparece en tu documento oficial, sin quitar palabras.",
+                cual, posicion, letraCurp, palabra);
     }
 
     private static String formatearFechaLegible(LocalDate f) {

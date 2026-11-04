@@ -22,6 +22,7 @@ import com.example.proyecto.demo.Service.AuditLogService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import lombok.RequiredArgsConstructor;
 import java.util.Map;
 
@@ -70,14 +71,14 @@ public class AuthController {
     public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest req, HttpServletRequest http) {
         String token = authService.login(req);
         auditLogService.registrarAuth("LOGIN", "Inicio de sesión exitoso", req.email(), getIp(http));
-        return withAuthCookie(new JwtResponse(token), token);
+        return withAuthCookie(new JwtResponse(token), token, http);
     }
 
     @PostMapping("/login-admin")
     public ResponseEntity<JwtResponse> loginAdmin(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         String token = authService.loginAdmin(request);
         auditLogService.registrarAuth("LOGIN_ADMIN", "Inicio de sesión de administrador", request.email(), getIp(http));
-        return withAuthCookie(new JwtResponse(token), token);
+        return withAuthCookie(new JwtResponse(token), token, http);
     }
 
     @PostMapping("/login/request-code")
@@ -89,7 +90,7 @@ public class AuthController {
             auditLogService.registrarAuth("LOGIN_2FA_CODIGO", "Código 2FA solicitado", request.getEmail(), getIp(http));
         }
         if (response.getToken() != null) {
-            return withAuthCookie(response, response.getToken());
+            return withAuthCookie(response, response.getToken(), http);
         }
         return ResponseEntity.ok(response);
     }
@@ -98,14 +99,17 @@ public class AuthController {
     public ResponseEntity<LoginStep2Response> loginVerifyCode(@Valid @RequestBody LoginStep2Request request, HttpServletRequest http) {
         LoginStep2Response resp = authService.loginStep2VerifyCode(request);
         auditLogService.registrarAuth("LOGIN_2FA_OK", "Verificación 2FA exitosa", request.getEmail(), getIp(http));
-        return withAuthCookie(resp, resp.token());
+        return withAuthCookie(resp, resp.token(), http);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout() {
+    public ResponseEntity<?> logout(Authentication authentication, HttpServletRequest http) {
+        if (authentication != null && authentication.getPrincipal() instanceof Long id) {
+            authService.logout(id);
+        }
         ResponseCookie cookie = ResponseCookie.from("COMECYT_AUTH", "")
                 .httpOnly(true)
-                .secure(secureCookies)
+                .secure(secureCookies || http.isSecure())
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(0)
@@ -113,6 +117,13 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(Map.of("success", true));
+    }
+
+    @PostMapping("/reset-password/request-code")
+    public ResponseEntity<?> requestResetCode(@Valid @RequestBody com.example.proyecto.demo.dto.PasswordResetCodeRequest request) {
+        authService.requestPasswordResetCode(request.email());
+        return ResponseEntity.ok(Map.of("success", true,
+                "message", "Si la cuenta esta activa, recibiras un codigo en el correo registrado."));
     }
 
     @PostMapping("/reset-password")
@@ -150,15 +161,13 @@ public class AuthController {
     }
 
     private String getIp(HttpServletRequest req) {
-        String xff = req.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
-        return req.getRemoteAddr();
+        return com.example.proyecto.demo.security.ClientAddress.remote(req);
     }
 
-    private <T> ResponseEntity<T> withAuthCookie(T body, String token) {
+    private <T> ResponseEntity<T> withAuthCookie(T body, String token, HttpServletRequest http) {
         ResponseCookie cookie = ResponseCookie.from("COMECYT_AUTH", token)
                 .httpOnly(true)
-                .secure(secureCookies)
+                .secure(secureCookies || http.isSecure())
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(Math.max(1, jwtExpirationMs / 1000))

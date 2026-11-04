@@ -34,6 +34,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
             JOIN u.authUser au
             LEFT JOIN u.registro1 r
             WHERE au.enabled = true
+              AND au.locked = false
+              AND u.consentimientoDirectorioPublico = true
+              AND 'ROLE_ADMIN' NOT MEMBER OF au.roles
               AND r.tipoPerfil IN :tipos
               AND (
                 :busqueda IS NULL OR :busqueda = '' OR
@@ -68,7 +71,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
                   COALESCE(u.nombre, ''), ' ',
                   COALESCE(u.apellidoPaterno, ''), ' ',
                   COALESCE(u.apellidoMaterno, ''), ' ',
-                  COALESCE(u.semblanza, '')
+                  CASE WHEN u.visibilidadPerfil IN ('ESTANDAR', 'COMPLETA') THEN COALESCE(u.semblanza, '') ELSE '' END
                 )) LIKE LOWER(CONCAT('%', :palabrasClave, '%')) OR
                 EXISTS (
                   SELECT ac2.id FROM AreaConocimiento ac2
@@ -82,12 +85,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
                 ) OR
                 EXISTS (
                   SELECT h.id FROM Herramienta h
-                  WHERE h.usuario = u
+                  WHERE h.usuario = u AND u.visibilidadPerfil IN ('ESTANDAR', 'COMPLETA')
                     AND LOWER(COALESCE(h.nombre, '')) LIKE LOWER(CONCAT('%', :palabrasClave, '%'))
                 ) OR
                 EXISTS (
                   SELECT i.id FROM Idioma i
-                  WHERE i.usuario = u
+                  WHERE i.usuario = u AND u.visibilidadPerfil IN ('ESTANDAR', 'COMPLETA')
                     AND LOWER(CONCAT(COALESCE(i.nombre, ''), ' ', COALESCE(i.dominioNombre, ''), ' ', COALESCE(i.conversacion, ''))) LIKE LOWER(CONCAT('%', :palabrasClave, '%'))
                 )
               )
@@ -98,6 +101,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
             LEFT JOIN u.registro1 r
             WHERE au IS NOT NULL
               AND au.enabled = true
+              AND au.locked = false
+              AND u.consentimientoDirectorioPublico = true
+              AND 'ROLE_ADMIN' NOT MEMBER OF au.roles
               AND r.tipoPerfil IN :tipos
               AND (
                 :busqueda IS NULL OR :busqueda = '' OR
@@ -132,7 +138,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
                   COALESCE(u.nombre, ''), ' ',
                   COALESCE(u.apellidoPaterno, ''), ' ',
                   COALESCE(u.apellidoMaterno, ''), ' ',
-                  COALESCE(u.semblanza, '')
+                  CASE WHEN u.visibilidadPerfil IN ('ESTANDAR', 'COMPLETA') THEN COALESCE(u.semblanza, '') ELSE '' END
                 )) LIKE LOWER(CONCAT('%', :palabrasClave, '%')) OR
                 EXISTS (
                   SELECT ac2.id FROM AreaConocimiento ac2
@@ -146,12 +152,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
                 ) OR
                 EXISTS (
                   SELECT h.id FROM Herramienta h
-                  WHERE h.usuario = u
+                  WHERE h.usuario = u AND u.visibilidadPerfil IN ('ESTANDAR', 'COMPLETA')
                     AND LOWER(COALESCE(h.nombre, '')) LIKE LOWER(CONCAT('%', :palabrasClave, '%'))
                 ) OR
                 EXISTS (
                   SELECT i.id FROM Idioma i
-                  WHERE i.usuario = u
+                  WHERE i.usuario = u AND u.visibilidadPerfil IN ('ESTANDAR', 'COMPLETA')
                     AND LOWER(CONCAT(COALESCE(i.nombre, ''), ' ', COALESCE(i.dominioNombre, ''), ' ', COALESCE(i.conversacion, ''))) LIKE LOWER(CONCAT('%', :palabrasClave, '%'))
                 )
               )
@@ -170,6 +176,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
             LEFT JOIN u.registro1 r
             WHERE au IS NOT NULL
               AND au.enabled = true
+              AND au.locked = false
+              AND u.consentimientoDirectorioPublico = true
+              AND 'ROLE_ADMIN' NOT MEMBER OF au.roles
               AND r.tipoPerfil IN :tipos
               AND ta.nivelNombre IS NOT NULL
               AND ta.nivelNombre <> ''
@@ -184,6 +193,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
             LEFT JOIN u.registro1 r
             WHERE au IS NOT NULL
               AND au.enabled = true
+              AND au.locked = false
+              AND u.consentimientoDirectorioPublico = true
+              AND 'ROLE_ADMIN' NOT MEMBER OF au.roles
               AND r.tipoPerfil IN :tipos
               AND ac.areaNombre IS NOT NULL
               AND ac.areaNombre <> ''
@@ -197,6 +209,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
             LEFT JOIN u.registro1 r
             WHERE au IS NOT NULL
               AND au.enabled = true
+              AND au.locked = false
+              AND u.consentimientoDirectorioPublico = true
+              AND 'ROLE_ADMIN' NOT MEMBER OF au.roles
               AND r.tipoPerfil IN :tipos
             """)
     long countDirectorioByTipos(@Param("tipos") List<com.example.proyecto.demo.Entity.Registro1.TipoPerfil> tipos);

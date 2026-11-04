@@ -49,6 +49,13 @@ public class MicrosoftGraphEmailService {
     @Value("${azure.save-to-sent-items}")
     private boolean saveToSentItems;
 
+    public void sendPasswordResetCode(String toEmail, String code) {
+        sendGenericEmail(toEmail, "Recuperacion de contrasena - SIIMEX",
+                "<h2>Recuperacion de contrasena SIIMEX</h2><p>Tu codigo es: <strong>" + code
+                        + "</strong></p><p>Vence en 5 minutos y solo puede usarse una vez. "
+                        + "No lo compartas. Si no solicitaste el cambio, ignora este correo.</p>");
+    }
+
     public void sendVerificationCode(String toEmail, String code) {
         String sender = senderEmail != null && !senderEmail.isBlank() ? senderEmail.trim() : null;
         if (sender == null) {

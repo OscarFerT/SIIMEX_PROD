@@ -1,13 +1,14 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { jsPDF } from 'jspdf';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription, timer, exhaustMap, takeWhile } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import Swal from 'sweetalert2';
+import Swal, { sanitizeHtml } from '../../core/safe-swal';
 import { exportRowsAsXlsx } from '../../shared/utils/xlsx.utils';
+import { AdminExpedientesService, ExportacionExpedientes, SolicitudExpedientes } from './admin-expedientes.service';
 
 interface RegistroItem {
   id: number;
@@ -27,6 +28,17 @@ interface RegistroItem {
   fotoDocumentoId?: number | null;
   fotoUrl?: string | SafeResourceUrl | null;
   roles?: string[];
+}
+
+interface RegistrosPagina {
+  content: RegistroItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  totalRegistros: number;
+  entidades?: string[];
+  municipios?: string[];
 }
 
 /** Detalle completo del usuario (respuesta de GET /admin/registros/:id) */
@@ -115,10 +127,11 @@ interface PostulacionEvaluadorOption {
   templateUrl: './admin-registros.component.html',
   styleUrls: ['./admin-registros.component.css']
 })
-export class AdminRegistrosComponent implements OnInit {
+export class AdminRegistrosComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private cdr = inject(ChangeDetectorRef);
+  private expedientes = inject(AdminExpedientesService);
   loading = true;
   error: string | null = null;
   registros: RegistroItem[] = [];
@@ -130,6 +143,29 @@ export class AdminRegistrosComponent implements OnInit {
   filtroMunicipio = '';
   paginaActual = 0;
   readonly registrosPorPagina = 10;
+  totalFiltrados = 0;
+  totalRegistros = 0;
+  entidadesUnicas: string[] = [];
+  municipiosUnicos: string[] = [];
+  exportando = false;
+  private opcionesCargadas = false;
+  private cargaRegistros?: Subscription;
+  private fotosRegistros: Subscription[] = [];
+  private urlsFotos: string[] = [];
+  private busquedaTimer?: ReturnType<typeof setTimeout>;
+  private destruido = false;
+  readonly usuariosZip = new Set<number>();
+  zipEstado: ExportacionExpedientes | null = null;
+  zipIniciando = false;
+  zipCancelando = false;
+  zipDescargando = false;
+  zipError: string | null = null;
+  zipAviso: string | null = null;
+  zipPausado = false;
+  private zipPolling?: Subscription;
+  private zipSolicitud?: Subscription;
+  private zipFrame?: HTMLIFrameElement;
+  private readonly zipStorageKey = 'siimex_admin_exportacion';
 
   readonly GENEROS = [
     { value: 'MASCULINO', label: 'Masculino' },
@@ -166,78 +202,21 @@ export class AdminRegistrosComponent implements OnInit {
     rol: string;
   } = this.getNuevoUsuarioInicial();
 
-  /** Entidades federativas únicas de los registros (para el dropdown). */
-  get entidadesUnicas(): string[] {
-    const set = new Set<string>();
-    this.registros.forEach(r => {
-      const e = (r.entidadFederativa || '').trim();
-      if (e) set.add(e);
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }
-
-  /** Municipios únicos de los registros (para el dropdown). */
-  get municipiosUnicos(): string[] {
-    const set = new Set<string>();
-    this.registros.forEach(r => {
-      const m = (r.municipio || '').trim();
-      if (m) set.add(m);
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }
-
-  /** Lista de registros filtrada por todos los criterios. */
-  get registrosFiltrados(): RegistroItem[] {
-    let list = this.registros;
-
-    if (this.filtroPerfil) {
-      list = list.filter(r => (r.tipoPerfil || '') === this.filtroPerfil);
-    }
-    if (this.filtroSexo) {
-      list = list.filter(r => (r.genero || '') === this.filtroSexo);
-    }
-    if (this.filtroEntidad) {
-      list = list.filter(r => (r.entidadFederativa || '').trim() === this.filtroEntidad);
-    }
-    if (this.filtroMunicipio) {
-      list = list.filter(r => (r.municipio || '').trim() === this.filtroMunicipio);
-    }
-
-    const q = (this.filtroTexto || '').trim().toLowerCase();
-    if (q) {
-      list = list.filter(r => {
-        const nombre = this.getNombreCompleto(r).toLowerCase();
-        const email = (r.email || '').toLowerCase();
-        const curp = (r.curp || '').toLowerCase();
-        const telefono = (r.telefono || '').replace(/\s/g, '');
-        const tipoPerfil = (r.tipoPerfil || '').toLowerCase();
-        const genero = (r.genero || '').toLowerCase();
-        const entidad = (r.entidadFederativa || '').toLowerCase();
-        const municipio = (r.municipio || '').toLowerCase();
-        return nombre.includes(q) || email.includes(q) || curp.includes(q) ||
-               telefono.includes(q.replace(/\s/g, '')) || tipoPerfil.includes(q) ||
-               genero.includes(q) || entidad.includes(q) || municipio.includes(q);
-      });
-    }
-    return list;
-  }
-
   get registrosPaginados(): RegistroItem[] {
-    const inicio = this.paginaActual * this.registrosPorPagina;
-    return this.registrosFiltrados.slice(inicio, inicio + this.registrosPorPagina);
+    return this.registros;
   }
 
   get totalPaginasRegistros(): number {
-    return Math.max(1, Math.ceil(this.registrosFiltrados.length / this.registrosPorPagina));
+    return Math.max(1, Math.ceil(this.totalFiltrados / this.registrosPorPagina));
   }
 
   get registroInicioVisible(): number {
-    if (this.registrosFiltrados.length === 0) return 0;
+    if (this.totalFiltrados === 0) return 0;
     return this.paginaActual * this.registrosPorPagina + 1;
   }
 
   get registroFinVisible(): number {
-    return Math.min((this.paginaActual + 1) * this.registrosPorPagina, this.registrosFiltrados.length);
+    return Math.min((this.paginaActual + 1) * this.registrosPorPagina, this.totalFiltrados);
   }
 
   get paginasRegistros(): number[] {
@@ -279,19 +258,28 @@ export class AdminRegistrosComponent implements OnInit {
     this.reiniciarPaginacion();
   }
 
-  reiniciarPaginacion(): void {
+  reiniciarPaginacion(conDemora = false): void {
+    this.usuariosZip.clear();
+    clearTimeout(this.busquedaTimer);
+    this.cargaRegistros?.unsubscribe();
+    this.liberarFotosRegistros();
     this.paginaActual = 0;
     this.usuarioSeleccionadoId = null;
     this.detalle = null;
-    this.cargarFotosPaginaActual();
+    if (conDemora) {
+      this.loading = true;
+      this.busquedaTimer = setTimeout(() => this.cargarRegistros(), 350);
+    } else {
+      this.cargarRegistros();
+    }
   }
 
   cambiarPagina(pagina: number): void {
-    if (pagina < 0 || pagina >= this.totalPaginasRegistros || pagina === this.paginaActual) return;
+    if (this.loading || pagina < 0 || pagina >= this.totalPaginasRegistros || pagina === this.paginaActual) return;
     this.paginaActual = pagina;
     this.usuarioSeleccionadoId = null;
     this.detalle = null;
-    this.cargarFotosPaginaActual();
+    this.cargarRegistros();
   }
 
   paginaAnterior(): void {
@@ -326,6 +314,21 @@ export class AdminRegistrosComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarRegistros();
+    try {
+      const id = sessionStorage.getItem(this.zipStorageKey);
+      if (id && /^[0-9a-f-]{36}$/i.test(id)) this.seguirExportacion(id);
+    } catch { /* Session storage may be disabled by the browser. */ }
+  }
+
+  ngOnDestroy(): void {
+    this.destruido = true;
+    clearTimeout(this.busquedaTimer);
+    this.cargaRegistros?.unsubscribe();
+    this.liberarFotosRegistros();
+    this.zipPolling?.unsubscribe();
+    this.zipSolicitud?.unsubscribe();
+    this.zipFrame?.remove();
+    if (this.fotoUrl) URL.revokeObjectURL(this.fotoUrl);
   }
 
   abrirModalNuevo(): void {
@@ -368,6 +371,7 @@ export class AdminRegistrosComponent implements OnInit {
       next: (res) => {
         this.creando = false;
         this.cerrarModalNuevo();
+        this.opcionesCargadas = false;
         this.cargarRegistros();
         alert(`Usuario creado: ${res.email}`);
       },
@@ -379,21 +383,48 @@ export class AdminRegistrosComponent implements OnInit {
   }
 
   cargarRegistros(): void {
-    this.http.get<RegistroItem[]>(`${environment.apiBaseUrl}/admin/registros`).subscribe({
+    clearTimeout(this.busquedaTimer);
+    this.cargaRegistros?.unsubscribe();
+    this.liberarFotosRegistros();
+    this.loading = true;
+    this.error = null;
+    this.usuarioSeleccionadoId = null;
+    this.detalle = null;
+    const params = this.parametrosListado(this.paginaActual, this.registrosPorPagina)
+      .set('incluirOpciones', !this.opcionesCargadas);
+    this.cargaRegistros = this.http.get<RegistrosPagina>(`${environment.apiBaseUrl}/admin/registros/paginado`, { params }).subscribe({
       next: (data) => {
-        this.registros = data;
-        if (this.usuarioSeleccionadoId != null && !data.some((r) => r.id === this.usuarioSeleccionadoId)) {
-          this.usuarioSeleccionadoId = null;
+        this.registros = data.content;
+        this.totalFiltrados = data.totalElements;
+        this.totalRegistros = data.totalRegistros;
+        this.paginaActual = data.page;
+        if (data.entidades && data.municipios) {
+          this.entidadesUnicas = data.entidades;
+          this.municipiosUnicos = data.municipios;
+          this.opcionesCargadas = true;
         }
-        this.ajustarPaginaActual();
+        // A deletion in the last page can leave the requested page outside the new range.
+        if (this.paginaActual >= this.totalPaginasRegistros && this.paginaActual > 0) {
+          this.paginaActual = this.totalPaginasRegistros - 1;
+          this.cargarRegistros();
+          return;
+        }
         this.loading = false;
         this.cargarFotosPaginaActual();
+        this.cdr.markForCheck();
       },
       error: (err: { error?: { message?: string } }) => {
         this.error = err?.error?.message || 'No se pudo cargar el listado';
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
+  }
+
+  private parametrosListado(page: number, size: number): HttpParams {
+    return new HttpParams().set('page', page).set('size', size)
+      .set('busqueda', this.filtroTexto.trim()).set('perfil', this.filtroPerfil)
+      .set('sexo', this.filtroSexo).set('entidad', this.filtroEntidad).set('municipio', this.filtroMunicipio);
   }
 
   getNombreCompleto(r: RegistroItem | UsuarioDetalle): string {
@@ -415,18 +446,201 @@ export class AdminRegistrosComponent implements OnInit {
     return '';
   }
 
-  private ajustarPaginaActual(): void {
-    const ultimaPagina = this.totalPaginasRegistros - 1;
-    if (this.paginaActual > ultimaPagina) {
-      this.paginaActual = Math.max(0, ultimaPagina);
-    }
-  }
-
   private cargarFotosPaginaActual(): void {
-    this.ajustarPaginaActual();
     this.registrosPaginados
       .filter(r => r.fotoDocumentoId && !r.fotoUrl)
       .forEach(r => this.cargarFotoRegistro(r));
+  }
+
+  private liberarFotosRegistros(): void {
+    this.fotosRegistros.forEach(s => s.unsubscribe());
+    this.fotosRegistros = [];
+    this.urlsFotos.forEach(url => URL.revokeObjectURL(url));
+    this.urlsFotos = [];
+  }
+
+  trackRegistro(_index: number, registro: RegistroItem): number {
+    return registro.id;
+  }
+
+  get zipActivo(): boolean {
+    return this.zipIniciando || this.zipCancelando || this.zipEstado?.estado === 'EN_COLA' || this.zipEstado?.estado === 'PREPARANDO';
+  }
+
+  get paginaIncluidaEnZip(): boolean {
+    return this.registros.length > 0 && this.registros.every(r => this.usuariosZip.has(r.id));
+  }
+
+  get paginaParcialEnZip(): boolean {
+    return !this.paginaIncluidaEnZip && this.registros.some(r => this.usuariosZip.has(r.id));
+  }
+
+  incluirEnZip(id: number): void {
+    if (this.usuariosZip.has(id)) this.usuariosZip.delete(id);
+    else this.usuariosZip.add(id);
+  }
+
+  incluirPaginaEnZip(): void {
+    const quitar = this.paginaIncluidaEnZip;
+    this.registros.forEach(r => quitar ? this.usuariosZip.delete(r.id) : this.usuariosZip.add(r.id));
+  }
+
+  async prepararExpedientes(tipo: 'usuario' | 'seleccion' | 'filtrados'): Promise<void> {
+    if (this.zipActivo || this.loading || this.zipDescargando) return;
+    let solicitud: SolicitudExpedientes;
+    let cantidad: number;
+    if (tipo === 'usuario') {
+      if (!this.usuarioSeleccionado) return;
+      solicitud = { ids: [this.usuarioSeleccionado.id] };
+      cantidad = 1;
+    } else if (tipo === 'seleccion') {
+      if (!this.usuariosZip.size) return;
+      solicitud = { ids: Array.from(this.usuariosZip).sort((a, b) => a - b) };
+      cantidad = this.usuariosZip.size;
+    } else {
+      if (!this.totalFiltrados) return;
+      solicitud = { busqueda: this.filtroTexto.trim(), perfil: this.filtroPerfil, sexo: this.filtroSexo,
+        entidad: this.filtroEntidad, municipio: this.filtroMunicipio };
+      cantidad = this.totalFiltrados;
+    }
+    const confirmacion = await Swal.fire({
+      title: `Preparar ${cantidad} expediente(s)`,
+      text: 'El ZIP contendra informacion personal y documentos originales. Resguarda el archivo. Se incluiran todos los seleccionados, no solo esta pagina.' +
+        (this.zipEstado?.estado === 'LISTO' ? ' El ZIP temporal anterior sera reemplazado.' : ''),
+      icon: 'warning', showCancelButton: true, confirmButtonText: 'Preparar ZIP', cancelButtonText: 'Cancelar', confirmButtonColor: '#6a0032'
+    });
+    if (!confirmacion.isConfirmed || this.destruido || this.zipActivo) return;
+    this.zipPolling?.unsubscribe();
+    this.zipIniciando = true;
+    this.zipEstado = null;
+    this.zipPausado = false;
+    this.olvidarExportacion();
+    this.zipError = null;
+    this.zipAviso = null;
+    this.zipSolicitud = this.expedientes.iniciar(solicitud).subscribe({
+      next: estado => {
+        this.zipIniciando = false;
+        this.zipEstado = estado;
+        try { sessionStorage.setItem(this.zipStorageKey, estado.id); } catch { /* Optional resume support. */ }
+        this.seguirExportacion(estado.id);
+        this.cdr.markForCheck();
+      },
+      error: error => {
+        this.zipIniciando = false;
+        this.zipError = error?.error?.message || 'No se pudo iniciar la exportacion. Intenta nuevamente.';
+        if (error?.status === 409) this.recuperarExportacionZip();
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private recuperarExportacionZip(): void {
+    this.zipSolicitud = this.expedientes.actual().subscribe({
+      next: estado => {
+        if (!estado) return;
+        this.zipEstado = estado;
+        try { sessionStorage.setItem(this.zipStorageKey, estado.id); } catch { /* Optional resume support. */ }
+        this.seguirExportacion(estado.id);
+        this.cdr.markForCheck();
+      },
+      error: () => { this.cdr.markForCheck(); }
+    });
+  }
+
+  private seguirExportacion(id: string): void {
+    this.zipPolling?.unsubscribe();
+    this.zipPausado = false;
+    this.zipError = null;
+    this.zipPolling = timer(0, 1200).pipe(
+      exhaustMap(() => this.expedientes.consultar(id)),
+      takeWhile(estado => estado.estado === 'EN_COLA' || estado.estado === 'PREPARANDO', true)
+    ).subscribe({
+      next: estado => {
+        this.zipEstado = estado;
+        if (estado.estado === 'ERROR' || estado.estado === 'CANCELADO') this.olvidarExportacion();
+        this.cdr.markForCheck();
+      },
+      error: error => {
+        if ([401, 403, 404, 410].includes(error?.status)) {
+          this.olvidarExportacion();
+          this.zipEstado = null;
+          this.zipError = 'La exportacion ya no esta disponible. Puedes generar un ZIP nuevo.';
+        } else {
+          this.zipPausado = true;
+          this.zipError = 'Se interrumpio la consulta de progreso. La preparacion continua en el servidor.';
+        }
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  reanudarProgresoZip(): void {
+    if (this.zipEstado) this.seguirExportacion(this.zipEstado.id);
+    else {
+      try {
+        const id = sessionStorage.getItem(this.zipStorageKey);
+        if (id) this.seguirExportacion(id);
+      } catch { /* No stored export. */ }
+    }
+  }
+
+  cancelarExportacionZip(): void {
+    if (!this.zipEstado || this.zipCancelando) return;
+    this.zipCancelando = true;
+    this.zipSolicitud = this.expedientes.cancelar(this.zipEstado.id).subscribe({
+      next: estado => {
+        this.zipPolling?.unsubscribe();
+        this.zipEstado = estado;
+        this.zipCancelando = false;
+        this.zipPausado = false;
+        this.zipError = null;
+        this.olvidarExportacion();
+        this.cdr.markForCheck();
+      },
+      error: error => {
+        this.zipCancelando = false;
+        this.zipError = error?.error?.message || 'No se pudo cancelar; intenta nuevamente.';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  descargarExpedientesZip(): void {
+    if (this.zipEstado?.estado !== 'LISTO' || this.zipDescargando) return;
+    const estado = this.zipEstado;
+    this.zipDescargando = true;
+    this.zipError = null;
+    this.zipSolicitud = this.expedientes.autorizarDescarga(estado.id).subscribe({
+      next: () => {
+        // Native download streams to the browser's download manager, not into a giant JavaScript Blob.
+        if (!this.zipFrame) {
+          this.zipFrame = document.createElement('iframe');
+          this.zipFrame.name = 'siimex-descarga-expedientes';
+          this.zipFrame.title = 'Descarga de expedientes';
+          this.zipFrame.style.display = 'none';
+          document.body.appendChild(this.zipFrame);
+        }
+        const link = document.createElement('a');
+        link.href = this.expedientes.urlDescarga(estado.id);
+        link.target = this.zipFrame.name;
+        link.download = estado.nombreArchivo;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        this.zipDescargando = false;
+        this.zipAviso = 'Descarga iniciada. Consulta el avance de transferencia en las descargas del navegador. El 100% indica que el ZIP esta preparado.';
+        this.cdr.markForCheck();
+      },
+      error: error => {
+        this.zipDescargando = false;
+        this.zipError = error?.error?.message || 'No se pudo autorizar la descarga. Vuelve a intentarlo.';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private olvidarExportacion(): void {
+    try { sessionStorage.removeItem(this.zipStorageKey); } catch { /* Optional resume support. */ }
   }
 
   getGeneroDisplay(genero: string | undefined): string {
@@ -437,13 +651,15 @@ export class AdminRegistrosComponent implements OnInit {
 
   private cargarFotoRegistro(r: RegistroItem): void {
     if (!r.fotoDocumentoId) return;
-    this.http.get(`${environment.apiBaseUrl}/documentos/${r.fotoDocumentoId}`, { responseType: 'blob' }).subscribe({
+    this.fotosRegistros.push(this.http.get(`${environment.apiBaseUrl}/documentos/${r.fotoDocumentoId}`, { responseType: 'blob' }).subscribe({
       next: (blob) => {
-        r.fotoUrl = this.sanitizer.bypassSecurityTrustResourceUrl(URL.createObjectURL(blob));
+        const url = URL.createObjectURL(blob);
+        this.urlsFotos.push(url);
+        r.fotoUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
         this.cdr.detectChanges();
       },
       error: () => { r.fotoUrl = null; this.cdr.detectChanges(); }
-    });
+    }));
   }
 
   /** Formatea fecha ISO al formato legible (fecha y hora local). */
@@ -1067,29 +1283,43 @@ export class AdminRegistrosComponent implements OnInit {
   }
 
   /** Exportar reporte de registros a Excel. */
-  exportarExcel(): void {
-    const items = this.registrosFiltrados;
-    const headers = ['ID', 'Nombre', 'Email', 'Perfil', 'Sexo', 'Entidad federativa', 'Municipio', 'CURP', 'RFC', 'Teléfono', 'Último acceso'];
-    const rows = items.map(r => [
-      r.id,
-      this.getNombreCompleto(r),
-      r.email || '',
-      r.tipoPerfil || '',
-      this.getGeneroDisplay(r.genero),
-      r.entidadFederativa || '',
-      r.municipio || '',
-      r.curp || '',
-      r.rfc || '',
-      r.telefono || '',
-      this.formatearFecha(r.lastLoginAt)
-    ]);
-    exportRowsAsXlsx(headers, rows, `reporte_registros_${this.timestamp()}.xlsx`, 'Registros');
+  async exportarExcel(): Promise<void> {
+    if (this.exportando) return;
+    this.exportando = true;
+    try {
+      const items = await this.cargarRegistrosParaExportar();
+      const headers = ['ID', 'Nombre', 'Email', 'Perfil', 'Sexo', 'Entidad federativa', 'Municipio', 'CURP', 'RFC', 'Teléfono', 'Último acceso'];
+      const rows = items.map(r => [
+        r.id,
+        this.getNombreCompleto(r),
+        r.email || '',
+        r.tipoPerfil || '',
+        this.getGeneroDisplay(r.genero),
+        r.entidadFederativa || '',
+        r.municipio || '',
+        r.curp || '',
+        r.rfc || '',
+        r.telefono || '',
+        this.formatearFecha(r.lastLoginAt)
+      ]);
+      await exportRowsAsXlsx(headers, rows, `reporte_registros_${this.timestamp()}.xlsx`, 'Registros');
+    } catch {
+      alert('No se pudo completar la exportacion. Intenta nuevamente.');
+    } finally {
+      this.exportando = false;
+      this.cdr.markForCheck();
+    }
   }
 
   /** Exportar reporte para imprimir / guardar como PDF. */
-  exportarPdf(): void {
-    const items = this.registrosFiltrados;
-    const rows = items.map(r => `
+  async exportarPdf(): Promise<void> {
+    if (this.exportando) return;
+    const win = window.open('', '_blank', 'width=1200,height=800');
+    if (!win) return;
+    this.exportando = true;
+    try {
+      const items = await this.cargarRegistrosParaExportar();
+      const rows = items.map(r => `
       <tr>
         <td>${r.id}</td>
         <td>${this.html(this.getNombreCompleto(r))}</td>
@@ -1104,7 +1334,7 @@ export class AdminRegistrosComponent implements OnInit {
       </tr>
     `).join('');
 
-    const html = `<!doctype html>
+      const html = `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"/><title>Reporte de Registros</title>
 <style>body{font-family:system-ui,-apple-system,sans-serif;margin:24px;color:#1a1a1a}
@@ -1125,12 +1355,34 @@ th{background:#f8fafc;font-weight:600}</style>
 </body>
 </html>`;
 
-    const win = window.open('', '_blank', 'width=1200,height=800');
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 300);
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => win.print(), 300);
+    } catch {
+      win.close();
+      alert('No se pudo completar la exportacion. Intenta nuevamente.');
+    } finally {
+      this.exportando = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private async cargarRegistrosParaExportar(): Promise<RegistroItem[]> {
+    // Capture filters once; exporting must not fall back to the expensive legacy endpoint.
+    const params = this.parametrosListado(0, 100);
+    const items: RegistroItem[] = [];
+    let page = 0;
+    let totalPages = 1;
+    while (page < totalPages) {
+      if (this.destruido) throw new Error('Vista cerrada');
+      const data = await firstValueFrom(this.http.get<RegistrosPagina>(
+        `${environment.apiBaseUrl}/admin/registros/paginado`, { params: params.set('page', page) }));
+      items.push(...data.content);
+      totalPages = data.totalPages;
+      page++;
+    }
+    return items;
   }
 
   private html(v: string): string {
@@ -1386,7 +1638,7 @@ th{background:#f8fafc;font-weight:600}</style>
         searchInput.focus();
         searchInput.addEventListener('input', () => {
           const prevSelected = selectEl.value;
-          selectEl.innerHTML = renderOptionTags(searchInput.value);
+          selectEl.innerHTML = sanitizeHtml(renderOptionTags(searchInput.value));
           if (prevSelected && Array.from(selectEl.options).some(opt => opt.value === prevSelected)) {
             selectEl.value = prevSelected;
           }
@@ -1447,7 +1699,7 @@ th{background:#f8fafc;font-weight:600}</style>
         searchInput.focus();
         searchInput.addEventListener('input', () => {
           const prevSelected = selectEl.value;
-          selectEl.innerHTML = renderOptionTags(searchInput.value);
+          selectEl.innerHTML = sanitizeHtml(renderOptionTags(searchInput.value));
           if (prevSelected && Array.from(selectEl.options).some(opt => opt.value === prevSelected)) {
             selectEl.value = prevSelected;
           }
@@ -1504,10 +1756,9 @@ th{background:#f8fafc;font-weight:600}</style>
       next: () => {
         this.accionEnProceso = false;
         this.cerrarModal();
-        this.registros = this.registros.filter(r => r.id !== id);
-        if (this.usuarioSeleccionadoId === id) {
-          this.usuarioSeleccionadoId = null;
-        }
+        this.usuariosZip.delete(id);
+        this.opcionesCargadas = false;
+        this.cargarRegistros();
       },
       error: (err: { error?: { message?: string } }) => {
         this.accionEnProceso = false;

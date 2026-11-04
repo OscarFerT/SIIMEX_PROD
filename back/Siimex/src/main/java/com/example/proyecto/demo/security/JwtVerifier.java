@@ -11,14 +11,19 @@ import javax.crypto.SecretKey;
 import java.security.Key;
 import java.util.List;
 import java.util.Set;
+import java.security.MessageDigest;
+import java.nio.charset.StandardCharsets;
+import com.example.proyecto.demo.Repository.AuthUserRepository;
 
 @Component
 public class JwtVerifier {
 
     private final SecretKey key;
+    private final AuthUserRepository accounts;
 
-    public JwtVerifier(SecretKey key) {
+    public JwtVerifier(SecretKey key, AuthUserRepository accounts) {
         this.key = key;
+        this.accounts = accounts;
     }
 
     public JwtPayload verifyAndParse(String token) {
@@ -34,6 +39,16 @@ public class JwtVerifier {
         @SuppressWarnings("unchecked")
         List<String> rolesList = (List<String>) claims.get("roles");
         Set<String> roles = Set.copyOf(rolesList);
+
+        var account = accounts.findById(authUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Sesion no valida"));
+        SessionSecurity.requireActive(account);
+        String stamp = claims.get("session", String.class);
+        if (stamp == null || !MessageDigest.isEqual(stamp.getBytes(StandardCharsets.UTF_8),
+                SessionSecurity.stamp(account, key).getBytes(StandardCharsets.UTF_8))
+                || !roles.equals(account.getRoles())) {
+            throw new IllegalArgumentException("La sesion ha sido revocada");
+        }
 
         return new JwtPayload(authUserId, username, roles);
     }

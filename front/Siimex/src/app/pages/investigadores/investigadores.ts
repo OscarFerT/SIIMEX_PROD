@@ -121,7 +121,7 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
   totalInnovadoresDirectorio = 0;
   
   // Ruta del avatar por defecto
-  readonly DEFAULT_AVATAR = '/assets/img/default-avatar.png';
+  readonly DEFAULT_AVATAR = 'assets/img/siimex-directorio-oficial.jpeg';
   
   private modalListeners: Array<() => void> = [];
   private routerSub?: Subscription;
@@ -361,7 +361,7 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
     if (investigador.fotoUrl) {
       return investigador.fotoUrl;
     }
-    // Si no hay foto, usar imagen por defecto (ruta absoluta desde la raíz)
+    // Si no hay foto visible, usar la imagen institucional autorizada.
     return this.DEFAULT_AVATAR;
   }
 
@@ -440,14 +440,12 @@ export class InvestigadoresComponent implements OnInit, AfterViewInit, OnDestroy
 
   onImageError(event: Event): void {
     const img = event.target as HTMLImageElement;
-    if (img && img.src !== this.DEFAULT_AVATAR) {
-      // Solo cambiar si no es ya la imagen por defecto (evitar loop infinito)
-      img.src = this.DEFAULT_AVATAR;
-      // Si aún falla, usar un placeholder base64 como último recurso
-      img.onerror = () => {
-        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5Vc3VhcmlvPC90ZXh0Pjwvc3ZnPg==';
-      };
-    }
+    if (!img) return;
+    img.classList.add('dir-imagen-institucional');
+    // Never retry a failed institutional image indefinitely.
+    if (img.src === new URL(this.DEFAULT_AVATAR, document.baseURI).href || img.dataset['siimexFallback']) return;
+    img.dataset['siimexFallback'] = 'true';
+    img.src = this.DEFAULT_AVATAR;
   }
 
   // ============================================

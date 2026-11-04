@@ -15,7 +15,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
 import { PdfLimiteService } from '../../core/pdf-limite.service';
-import Swal from 'sweetalert2';
+import Swal from '../../core/safe-swal';
 
 /* ===== Validadores de archivos ===== */
 function fileRequired(ctrl: AbstractControl): ValidationErrors | null {

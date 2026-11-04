@@ -34,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final com.example.proyecto.demo.security.CookieRequestGuard cookieRequestGuard;
     private final RateLimitFilter rateLimitFilter;
     private final SecurityAuditFilter securityAuditFilter;
     private final RedirectUnauthorizedEntryPoint redirectUnauthorizedEntryPoint;
@@ -104,7 +105,9 @@ public class SecurityConfig {
                                 "/auth/logout",
                                 "/api/auth/logout",
                                 "/auth/reset-password",
-                                "/api/auth/reset-password"
+                                "/api/auth/reset-password",
+                                "/auth/reset-password/request-code",
+                                "/api/auth/reset-password/request-code"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/info", "/api/actuator/health", "/api/actuator/info").permitAll()
                         .requestMatchers(HttpMethod.POST, "/registro1").permitAll()
@@ -140,6 +143,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/me").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/usuarios/me").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/usuarios/me").authenticated()
+                        // Only this download route accepts the single-use, server-validated HttpOnly export ticket.
+                        .requestMatchers(HttpMethod.GET, "/admin/registros/exportaciones/*/archivo", "/api/admin/registros/exportaciones/*/archivo").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
@@ -148,6 +153,7 @@ public class SecurityConfig {
                 // Filtro JWT antes del filtro de usuario/clave
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(cookieRequestGuard, JwtFilter.class)
                 .addFilterAfter(securityAuditFilter, JwtFilter.class)
 
                 // 401: redirigir al login del frontend (evita Whitelabel Error Page)

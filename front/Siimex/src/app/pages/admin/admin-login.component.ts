@@ -3,7 +3,7 @@ import { FormBuilder, Validators, ReactiveFormsModule, FormGroup } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/auth.service';
-import Swal from 'sweetalert2';
+import Swal from '../../core/safe-swal';
 
 @Component({
   selector: 'app-admin-login',

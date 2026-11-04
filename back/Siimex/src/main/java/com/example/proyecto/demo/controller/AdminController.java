@@ -3,6 +3,7 @@ package com.example.proyecto.demo.controller;
 import com.example.proyecto.demo.Entity.*;
 import com.example.proyecto.demo.Repository.*;
 import com.example.proyecto.demo.Service.AdminService;
+import com.example.proyecto.demo.Service.AdminRegistroListadoService;
 import com.example.proyecto.demo.Service.AuditLogService;
 import com.example.proyecto.demo.Service.DocumentoService;
 import com.example.proyecto.demo.Service.ListaNegraService;
@@ -32,6 +33,7 @@ public class AdminController {
     private final AuthUserRepository authUserRepository;
     private final DocumentoService documentoService;
     private final AdminService adminService;
+    private final AdminRegistroListadoService adminRegistroListadoService;
     private final PasswordEncoder passwordEncoder;
     private final TrayectoriaAcademicaRepository trayectoriaAcademicaRepository;
     private final TrayectoriaProfesionalRepository trayectoriaProfesionalRepository;
@@ -281,8 +283,22 @@ public class AdminController {
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(resp);
     }
 
+    @GetMapping("/registros/paginado")
+    public ResponseEntity<Map<String, Object>> getRegistrosPaginados(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String busqueda,
+            @RequestParam(defaultValue = "") String perfil,
+            @RequestParam(defaultValue = "") String sexo,
+            @RequestParam(defaultValue = "") String entidad,
+            @RequestParam(defaultValue = "") String municipio,
+            @RequestParam(defaultValue = "false") boolean incluirOpciones) {
+        return ResponseEntity.ok(adminRegistroListadoService.listar(page, size, busqueda, perfil, sexo,
+                entidad, municipio, incluirOpciones));
+    }
+
     /**
-     * Listado de registros (usuarios) para revisión.
+     * Listado completo para consumidores existentes. El panel usa /registros/paginado.
      */
     @GetMapping("/registros")
     public ResponseEntity<List<Map<String, Object>>> getRegistros(Authentication auth) {
@@ -645,6 +661,7 @@ public class AdminController {
         }
         u.getAuthUser().setEnabled(false);
         u.getAuthUser().setLocked(true);
+        u.getAuthUser().revokeSessions();
         authUserRepository.save(u.getAuthUser());
         auditLogService.registrarAdmin("SUSPENDER_USUARIO", "Cuenta suspendida: " + u.getAuthUser().getEmail(), getAdminId(auth), getAdminEmail(auth), "Usuario", id, getIp(http));
         return ResponseEntity.ok(Map.of("status", "ok", "message", "Usuario suspendido"));
@@ -685,6 +702,7 @@ public class AdminController {
                 ? body.get("nuevaPassword")
                 : "Temp" + (int) (Math.random() * 9000 + 1000) + "!";
         u.getAuthUser().setPasswordHash(passwordEncoder.encode(nuevaPassword));
+        u.getAuthUser().revokeSessions();
         authUserRepository.save(u.getAuthUser());
         auditLogService.registrarAdmin("RESET_PASSWORD_ADMIN", "Contraseña restablecida por admin para: " + u.getAuthUser().getEmail(), getAdminId(auth), getAdminEmail(auth), "Usuario", id, getIp(http));
         return ResponseEntity.ok(Map.of("status", "ok", "message", "Contraseña actualizada", "nuevaPassword", nuevaPassword));
@@ -708,6 +726,7 @@ public class AdminController {
         } else {
             u.getAuthUser().getRoles().remove("ROLE_ADMIN");
         }
+        u.getAuthUser().revokeSessions();
         authUserRepository.save(u.getAuthUser());
         String accion = hacerAdmin ? "OTORGAR_ADMIN" : "REVOCAR_ADMIN";
         auditLogService.registrarAdmin(accion, (hacerAdmin ? "Rol admin otorgado a: " : "Rol admin revocado a: ") + u.getAuthUser().getEmail(), getAdminId(auth), getAdminEmail(auth), "Usuario", id, getIp(http));
@@ -732,6 +751,7 @@ public class AdminController {
         } else {
             u.getAuthUser().getRoles().remove("ROLE_EVALUADOR");
         }
+        u.getAuthUser().revokeSessions();
         authUserRepository.save(u.getAuthUser());
         String accion = hacerEvaluador ? "OTORGAR_EVALUADOR" : "REVOCAR_EVALUADOR";
         auditLogService.registrarAdmin(accion, (hacerEvaluador ? "Rol evaluador otorgado a: " : "Rol evaluador revocado a: ") + u.getAuthUser().getEmail(), getAdminId(auth), getAdminEmail(auth), "Usuario", id, getIp(http));
@@ -839,10 +859,8 @@ public class AdminController {
         return partes[2];
     }
 
-    private String getIp(HttpServletRequest req) {
-        String xff = req.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
-        return req.getRemoteAddr();
+private String getIp(HttpServletRequest req) {
+        return com.example.proyecto.demo.security.ClientAddress.remote(req);
     }
 
     private Long getAdminId(Authentication auth) {

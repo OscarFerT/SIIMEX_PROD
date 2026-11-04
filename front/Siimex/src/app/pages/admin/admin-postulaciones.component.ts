@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../environments/environment';
-import Swal from 'sweetalert2';
+import Swal, { sanitizeHtml } from '../../core/safe-swal';
 import { exportRowsAsXlsx } from '../../shared/utils/xlsx.utils';
 
 export interface PostulacionItem {
@@ -573,7 +573,7 @@ export class AdminPostulacionesComponent implements OnInit {
     Swal.fire({
       icon: 'question',
       title: '¿Marcar como revisada?',
-      html: `La solicitud de <strong>${p.nombre || p.correo}</strong> pasará a estado <strong>REVISADA</strong>.`,
+      html: `La solicitud de <strong>${this.escapeHtml(p.nombre || p.correo)}</strong> pasará a estado <strong>REVISADA</strong>.`,
       showCancelButton: true,
       confirmButtonColor: '#800020',
       cancelButtonText: 'Cancelar'
@@ -595,7 +595,7 @@ export class AdminPostulacionesComponent implements OnInit {
     Swal.fire({
       icon: 'question',
       title: '¿Aprobar postulación?',
-      html: `La solicitud de <strong>${p.nombre || p.correo}</strong> pasará a estado <strong>ACEPTADA</strong>.`,
+      html: `La solicitud de <strong>${this.escapeHtml(p.nombre || p.correo)}</strong> pasará a estado <strong>ACEPTADA</strong>.`,
       showCancelButton: true,
       confirmButtonColor: '#198754',
       confirmButtonText: 'Aprobar',
@@ -705,7 +705,7 @@ export class AdminPostulacionesComponent implements OnInit {
     Swal.fire({
       icon: 'question',
       title: '¿Regresar a pendiente?',
-      html: `La solicitud de <strong>${p.nombre || p.correo}</strong> pasará a estado <strong>PENDIENTE</strong>.`,
+      html: `La solicitud de <strong>${this.escapeHtml(p.nombre || p.correo)}</strong> pasará a estado <strong>PENDIENTE</strong>.`,
       showCancelButton: true,
       confirmButtonColor: '#6c757d',
       confirmButtonText: 'Sí, regresar',
@@ -740,7 +740,7 @@ export class AdminPostulacionesComponent implements OnInit {
     Swal.fire({
       icon: 'warning',
       title: '¿Rechazar postulación?',
-      html: `Se rechazará la solicitud de <strong>${p.nombre || p.correo}</strong>. Puedes agregar motivo de rechazo.`,
+      html: `Se rechazará la solicitud de <strong>${this.escapeHtml(p.nombre || p.correo)}</strong>. Puedes agregar motivo de rechazo.`,
       input: 'textarea',
       inputLabel: 'Motivo (opcional)',
       inputValue: p.observacionesRevision || '',
@@ -767,7 +767,7 @@ export class AdminPostulacionesComponent implements OnInit {
     Swal.fire({
       icon: 'warning',
       title: '¿Eliminar postulación?',
-      html: `Se eliminará permanentemente la postulación de <strong>${p.nombre || p.correo}</strong>, sus módulos operativos y documentos asociados a esta solicitud. Esta acción no se puede deshacer.`,
+      html: `Se eliminará permanentemente la postulación de <strong>${this.escapeHtml(p.nombre || p.correo)}</strong>, sus módulos operativos y documentos asociados a esta solicitud. Esta acción no se puede deshacer.`,
       showCancelButton: true,
       confirmButtonColor: '#dc3545',
       confirmButtonText: 'Sí, eliminar',
@@ -884,7 +884,7 @@ export class AdminPostulacionesComponent implements OnInit {
         searchInput.focus();
         searchInput.addEventListener('input', () => {
           const prevSelected = selectEl.value;
-          selectEl.innerHTML = renderOptionTags(searchInput.value);
+          selectEl.innerHTML = sanitizeHtml(renderOptionTags(searchInput.value));
           if (prevSelected && Array.from(selectEl.options).some(opt => opt.value === prevSelected)) {
             selectEl.value = prevSelected;
           }

@@ -4,7 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../environments/environment';
-import Swal from 'sweetalert2';
+import Swal, { sanitizeHtml } from '../../core/safe-swal';
 import { jsPDF } from 'jspdf';
 import { AuthService } from '../../core/auth.service';
 import { PdfLimiteService } from '../../core/pdf-limite.service';
@@ -1434,7 +1434,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-start';
       const escapeHtml = (str: string) => str ? str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <div class="fw-bold mb-1">
             <i class="fas fa-book text-borgona me-2"></i>${escapeHtml(curso.nombre || 'Sin título')}
@@ -1453,7 +1453,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
             <i class="fas fa-trash-alt"></i> <span class="d-none d-md-inline">Eliminar</span>
           </button>
         </div>
-      `;
+      `);
       list.appendChild(li);
     });
   }
@@ -1583,7 +1583,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
         'avanzado': 'bg-primary',
         'nativo': 'bg-success'
       }[idioma.dominioNombre.toLowerCase()] || 'bg-secondary' : 'bg-secondary';
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <div class="fw-bold mb-1">
             <i class="fas fa-language text-borgona me-2"></i>${escapeHtml(idioma.nombre || 'Sin nombre')}
@@ -1598,7 +1598,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
             <i class="fas fa-trash-alt"></i> <span class="d-none d-md-inline">Eliminar</span>
           </button>
         </div>
-      `;
+      `);
       list.appendChild(li);
     });
   }
@@ -1743,7 +1743,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
         fechaFormateada = logro.anio.toString();
       }
       
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <div class="fw-bold mb-1">
             <i class="fas fa-trophy text-warning me-2"></i>${escapeHtml(logro.nombre || 'Sin título')}
@@ -1761,7 +1761,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
             <i class="fas fa-trash-alt"></i> <span class="d-none d-md-inline">Eliminar</span>
           </button>
         </div>
-      `;
+      `);
       list.appendChild(li);
     });
   }
@@ -2025,7 +2025,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
       const nombreJsEscapado = escapeJs(cert.nombre || '');
       const contentTypeJsEscapado = escapeJs(cert.contentType || '');
       
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <i class="fas ${icono} ${colorIcono} me-2"></i>
           <span class="fw-bold">${nombreEscapado}</span>
@@ -2041,7 +2041,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
             <i class="fas fa-trash-alt"></i> Eliminar
           </button>
         </div>
-      `;
+      `);
       list.appendChild(li);
     });
   }
@@ -2140,10 +2140,10 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
     this.herramientas.forEach(h => {
       const badge = document.createElement('span');
       badge.className = 'badge bg-borgona me-2 mb-2 d-inline-flex align-items-center';
-      badge.innerHTML = `
+      badge.innerHTML = sanitizeHtml(`
         ${this.escapeHtml(h.nombre)}
         <button class="btn-close btn-close-white ms-2" onclick="window.trayectoriaComponent.eliminarHerramienta(${h.id})" aria-label="Eliminar"></button>
-      `;
+      `);
       list.appendChild(badge);
     });
   }
@@ -2261,7 +2261,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
         urlDOI = articulo.doi.startsWith('http') ? articulo.doi : `https://doi.org/${articulo.doi}`;
       }
       
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <div class="fw-bold mb-1">
             <i class="fas fa-file-alt text-borgona me-2"></i>${escapeHtml(articulo.titulo || 'Sin título')}
@@ -2281,7 +2281,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
             <i class="fas fa-trash-alt"></i> <span class="d-none d-md-inline">Eliminar</span>
           </button>
         </div>
-      `;
+      `);
       list.appendChild(li);
     });
   }
@@ -2471,7 +2471,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
       li.className = 'list-group-item d-flex justify-content-between align-items-start';
       const tipoLabel = tipoLabels[pi.tipo || ''] || pi.tipo || 'Otro';
       const fecha = pi.fechaRegistro || (pi.anio ? String(pi.anio) : '');
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <div class="fw-bold mb-1"><i class="fas fa-copyright text-borgona me-2"></i>${this.escapeHtml(pi.titulo || 'Sin título')}</div>
           <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -2487,7 +2487,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
           <button class="btn btn-sm btn-outline-primary" onclick="window.trayectoriaComponent.editarPropiedadIntelectual(${pi.id})" title="Editar"><i class="fas fa-edit"></i></button>
           <button class="btn btn-sm btn-outline-danger" onclick="window.trayectoriaComponent.eliminarPropiedadIntelectual(${pi.id})" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
         </div>
-      `;
+      `);
       list.appendChild(li);
     });
   }
@@ -2631,7 +2631,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
       const ubi = inc.ubicacion ? this.escapeHtml(inc.ubicacion) : '';
       const desc = inc.descripcion ? this.escapeHtml(inc.descripcion.slice(0, 150)) + (inc.descripcion.length > 150 ? '...' : '') : '';
       const fecha = inc.fecha || (inc.anio ? String(inc.anio) : '');
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <div class="fw-bold mb-1"><i class="fas fa-handshake-angle text-borgona me-2"></i>${tit}</div>
           ${ubi ? `<div class="small text-muted mb-1"><i class="fas fa-map-marker-alt me-1"></i>${ubi}</div>` : ''}
@@ -2642,7 +2642,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
           <button class="btn btn-sm btn-outline-primary" onclick="window.trayectoriaComponent.editarIncidenciaSocial(${inc.id})" title="Editar"><i class="fas fa-edit"></i></button>
           <button class="btn btn-sm btn-outline-danger" onclick="window.trayectoriaComponent.eliminarIncidenciaSocial(${inc.id})" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
         </div>
-      `;
+      `);
       list.appendChild(li);
     });
   }
@@ -2734,7 +2734,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
     this.trayAcademica.forEach(t => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-start';
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <div class="fw-bold mb-1"><i class="fas fa-graduation-cap text-borgona me-2"></i>${this.escapeHtml(t.titulo || 'Sin título')}</div>
           <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -2747,7 +2747,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
         <div class="btn-group ms-2">
           <button class="btn btn-sm btn-outline-primary" onclick="window.trayectoriaComponent.editarTrayAcademica(${t.id})" title="Editar"><i class="fas fa-edit"></i></button>
           <button class="btn btn-sm btn-outline-danger" onclick="window.trayectoriaComponent.eliminarTrayAcademica(${t.id})" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
-        </div>`;
+        </div>`);
       list.appendChild(li);
     });
   }
@@ -2840,7 +2840,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
     this.trayProfesional.forEach(t => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-start';
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <div class="fw-bold mb-1"><i class="fas fa-briefcase text-borgona me-2"></i>${this.escapeHtml(t.nombramiento || 'Sin puesto')}</div>
           <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -2852,7 +2852,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
         <div class="btn-group ms-2">
           <button class="btn btn-sm btn-outline-primary" onclick="window.trayectoriaComponent.editarTrayProfesional(${t.id})" title="Editar"><i class="fas fa-edit"></i></button>
           <button class="btn btn-sm btn-outline-danger" onclick="window.trayectoriaComponent.eliminarTrayProfesional(${t.id})" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
-        </div>`;
+        </div>`);
       list.appendChild(li);
     });
   }
@@ -2934,7 +2934,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
     this.estancias.forEach(e => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-start';
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <div class="fw-bold mb-1"><i class="fas fa-plane text-borgona me-2"></i>${this.escapeHtml(e.nombreProyecto || 'Sin nombre')}</div>
           <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -2946,7 +2946,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
         <div class="btn-group ms-2">
           <button class="btn btn-sm btn-outline-primary" onclick="window.trayectoriaComponent.editarEstancia(${e.id})" title="Editar"><i class="fas fa-edit"></i></button>
           <button class="btn btn-sm btn-outline-danger" onclick="window.trayectoriaComponent.eliminarEstancia(${e.id})" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
-        </div>`;
+        </div>`);
       list.appendChild(li);
     });
   }
@@ -3107,7 +3107,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
     this.divulgaciones.forEach(d => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-start';
-      li.innerHTML = `
+      li.innerHTML = sanitizeHtml(`
         <div class="flex-grow-1">
           <div class="fw-bold mb-1"><i class="fas fa-bullhorn text-borgona me-2"></i>${this.escapeHtml(d.titulo || 'Sin título')}</div>
           <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -3119,7 +3119,7 @@ export class TrayectoriaComponent implements OnInit, AfterViewInit {
         <div class="btn-group ms-2">
           <button class="btn btn-sm btn-outline-primary" onclick="window.trayectoriaComponent.editarDivulgacion(${d.id})" title="Editar"><i class="fas fa-edit"></i></button>
           <button class="btn btn-sm btn-outline-danger" onclick="window.trayectoriaComponent.eliminarDivulgacion(${d.id})" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
-        </div>`;
+        </div>`);
       list.appendChild(li);
     });
   }

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import Swal from 'sweetalert2';
+import Swal from '../../core/safe-swal';
 import { environment } from '../../../environments/environment';
 
 interface CotejoPostulacionItem {

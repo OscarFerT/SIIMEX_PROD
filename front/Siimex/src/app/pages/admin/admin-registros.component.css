@@ -76,6 +76,86 @@
   padding: 4rem 1rem;
 }
 
+.expedientes-panel {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #e5dce1;
+  border-left: 4px solid #6a0032;
+  border-radius: 14px;
+  background: linear-gradient(110deg, #fff 65%, #fbf5ed);
+}
+.expedientes-heading,
+.expedientes-progreso-heading,
+.expedientes-progreso-meta,
+.expedientes-listo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.expedientes-heading h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #6a0032;
+}
+.expedientes-heading p,
+.expedientes-ayuda {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.83rem;
+}
+.expedientes-seleccion {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: #f3e9ef;
+  color: #6a0032;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.expedientes-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1rem 0 0.65rem;
+}
+.expedientes-progreso {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5dce1;
+  font-size: 0.85rem;
+}
+.expedientes-progreso-heading span {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #6a0032;
+}
+.expedientes-barra {
+  height: 12px;
+  margin: 0.75rem 0;
+  border-radius: 999px;
+  background: #eee7eb;
+  overflow: hidden;
+}
+.expedientes-barra-valor {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6a0032, #aa7b44);
+  transition: width 0.35s ease;
+}
+.expedientes-progreso-meta { color: #64748b; }
+.expedientes-listo { margin-top: 1rem; }
+.expedientes-listo span { flex: 1 1 240px; color: #475569; }
+@media (max-width: 575px) {
+  .expedientes-panel { padding: 1rem; }
+  .expedientes-actions > .btn,
+  .expedientes-listo > .btn { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .expedientes-barra-valor { transition: none; }
+}
+
 /* Card principal */
 .registros-card {
   background: #fff;

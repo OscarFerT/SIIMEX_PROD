@@ -254,6 +254,16 @@ export class AuthService {
   }
 
   logout(): void {
+    const token = this.token;
+    if (token) {
+      // Keep the revocation request alive when a menu immediately navigates away.
+      void fetch(`${environment.apiBaseUrl}/auth/logout`, {
+        method: 'POST', credentials: 'include', keepalive: true,
+        headers: { Authorization: `Bearer ${token}`, 'X-SIIMEX-Request': '1', 'Content-Type': 'application/json' },
+        body: '{}'
+      }).catch(() => undefined);
+    }
+    this.clearRememberToken();
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
     sessionStorage.removeItem(this.USER_ID_FALLBACK_KEY);

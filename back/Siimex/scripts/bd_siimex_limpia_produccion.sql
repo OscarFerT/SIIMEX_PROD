@@ -158,7 +158,7 @@ CREATE TABLE `auth_user_roles` (
 
 LOCK TABLES `auth_user_roles` WRITE;
 /*!40000 ALTER TABLE `auth_user_roles` DISABLE KEYS */;
-INSERT INTO `auth_user_roles` VALUES (1,'ROLE_ADMIN'),(2,'ROLE_ADMIN');
+-- Authentication seed omitted: provision administrator credentials outside Git.
 /*!40000 ALTER TABLE `auth_user_roles` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -177,12 +177,13 @@ CREATE TABLE `auth_users` (
   `locked` bit(1) NOT NULL,
   `password_hash` varchar(72) NOT NULL,
   `remember_token_expiry` datetime(6) DEFAULT NULL,
+  `session_version` bigint NOT NULL DEFAULT 0,
   `remember_token_hash` varchar(64) DEFAULT NULL,
   `username` varchar(80) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_auth_users_username` (`username`),
   UNIQUE KEY `idx_auth_users_email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -191,7 +192,7 @@ CREATE TABLE `auth_users` (
 
 LOCK TABLES `auth_users` WRITE;
 /*!40000 ALTER TABLE `auth_users` DISABLE KEYS */;
-INSERT INTO `auth_users` VALUES (1,'oscartrujano@teschi.edu.mx',_binary '','2026-09-09 21:32:00.505212',_binary '\0','$2y$10$8ty4E.gniOFlPDQ3hiEueOsFp1.OYZ9sCTmMBQNPt1se2z2PvbPWK',NULL,NULL,'oscartrujano@teschi.edu.mx'),(2,'asierras951011@gmail.com',_binary '',NULL,_binary '\0','$2y$10$F2g7fT4NbWNP3b4qcYHRdO4s8dD.SSOn0/F8ptppbi9eep67pqc02',NULL,NULL,'asierras951011@gmail.com');
+-- Authentication seed omitted: provision administrator credentials outside Git.
 /*!40000 ALTER TABLE `auth_users` ENABLE KEYS */;
 UNLOCK TABLES;
 

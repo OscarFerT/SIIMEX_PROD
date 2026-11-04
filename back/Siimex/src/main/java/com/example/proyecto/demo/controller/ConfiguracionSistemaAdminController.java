@@ -97,11 +97,8 @@ public class ConfiguracionSistemaAdminController {
         return String.valueOf(map.get(key)).trim();
     }
 
-    private String getIp(HttpServletRequest req) {
-        if (req == null) return null;
-        String xff = req.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
-        return req.getRemoteAddr();
+private String getIp(HttpServletRequest req) {
+        return com.example.proyecto.demo.security.ClientAddress.remote(req);
     }
 
     private Long getAdminId(Authentication auth) {

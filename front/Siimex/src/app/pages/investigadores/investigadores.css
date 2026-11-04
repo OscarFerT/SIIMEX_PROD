@@ -491,6 +491,17 @@
   background: rgba(255, 255, 255, 0.9);
 }
 
+.dir-card-img img.dir-imagen-institucional,
+.investigador-photo-modal-thumb img.dir-imagen-institucional {
+  object-fit: contain;
+  object-position: center;
+  background: #eee8da;
+}
+
+.dir-card:hover .dir-card-img img.dir-imagen-institucional {
+  transform: none;
+}
+
 /* Arena badge for innovadores e híbrido in modal */
 .bg-teal {
   background-color: #b08957 !important;

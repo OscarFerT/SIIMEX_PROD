@@ -7,7 +7,7 @@ import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
 import { PdfLimiteService } from '../../core/pdf-limite.service';
-import Swal from 'sweetalert2';
+import Swal from '../../core/safe-swal';
 
 /** Niveles de visibilidad en el módulo público de personas investigadoras e innovadoras */
 export type VisibilidadPerfil = 'MINIMA' | 'ESTANDAR' | 'COMPLETA';

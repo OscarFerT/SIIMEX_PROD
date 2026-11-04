@@ -1,10 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { AppComponent } from './app.component';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
   });
 
@@ -20,11 +24,13 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('comecyt-portal');
   });
 
-  it('should render title', () => {
+  it('should render the public application shell', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, comecyt-portal');
+    expect(compiled.querySelector('app-header')).not.toBeNull();
+    expect(compiled.querySelector('router-outlet')).not.toBeNull();
+    expect(compiled.querySelector('app-footer')).not.toBeNull();
   });
 
   

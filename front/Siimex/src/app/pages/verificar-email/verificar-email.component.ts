@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
-import Swal from 'sweetalert2';
+import Swal from '../../core/safe-swal';
 
 @Component({
   selector: 'app-verificar-email',

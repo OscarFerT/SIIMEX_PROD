@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { environment } from '../../../environments/environment';
-import Swal from 'sweetalert2';
+import Swal, { sanitizeHtml } from '../../core/safe-swal';
 import { PdfLimiteService } from '../../core/pdf-limite.service';
 
 export interface CriterioFormulario {
@@ -455,7 +455,7 @@ export class PostulacionComponent implements OnInit, AfterViewInit, OnDestroy {
 
         if (!this.tiposApoyoDisponibles.length) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = original;
+          submitBtn.innerHTML = sanitizeHtml(original);
           this.showMessage(formMessage, 'La convocatoria no tiene tipos de apoyo configurados. Solicita al administrador configurarlos.', false);
           return;
         }
@@ -476,19 +476,19 @@ export class PostulacionComponent implements OnInit, AfterViewInit, OnDestroy {
         const cvFile = cvInput?.files?.[0];
         if (!cvFile && !this.modoEdicion) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = original;
+          submitBtn.innerHTML = sanitizeHtml(original);
           this.showMessage(formMessage, 'Debes adjuntar tu currículum en PDF.', false);
           return;
         }
         if (cvFile && !this.isPdfFile(cvFile)) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = original;
+          submitBtn.innerHTML = sanitizeHtml(original);
           this.showMessage(formMessage, 'El currículum debe estar en formato PDF.', false);
           return;
         }
         if (cvFile && !this.validarTamanoPdf(cvFile, 'postulacion.curriculum', 'El currículum', cvInput)) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = original;
+          submitBtn.innerHTML = sanitizeHtml(original);
           return;
         }
 
@@ -496,7 +496,7 @@ export class PostulacionComponent implements OnInit, AfterViewInit, OnDestroy {
         const fechaEvento = this.fechaEventoActivo ? ((form.elements.namedItem('fechaEvento') as HTMLInputElement)?.value || '') : '';
         if (this.fechaEventoActivo && !this.fechaEventoEnRango(fechaEvento)) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = original;
+          submitBtn.innerHTML = sanitizeHtml(original);
           this.showMessage(formMessage, this.mensajeRangoFechaEvento(), false);
           return;
         }
@@ -508,7 +508,7 @@ export class PostulacionComponent implements OnInit, AfterViewInit, OnDestroy {
         const tipoApoyo = (form.elements.namedItem('tipoApoyo') as HTMLSelectElement)?.value || '';
         if (!tipoApoyo) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = original;
+          submitBtn.innerHTML = sanitizeHtml(original);
           this.showMessage(formMessage, 'Debes seleccionar un tipo de apoyo.', false);
           return;
         }
@@ -533,13 +533,13 @@ export class PostulacionComponent implements OnInit, AfterViewInit, OnDestroy {
           if (!file) continue;
           if (!this.isFormatoSolicitudFile(file)) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = original;
+            submitBtn.innerHTML = sanitizeHtml(original);
             this.showMessage(formMessage, `El documento "${r.etiqueta}" debe estar en formato PDF, Word o Excel.`, false);
             return;
           }
           if (!this.validarTamanoPdf(file, 'postulacion.documentos', `El documento "${r.etiqueta}"`, el)) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = original;
+            submitBtn.innerHTML = sanitizeHtml(original);
             return;
           }
           fd.append('doc_' + r.clave, file);
@@ -552,7 +552,7 @@ export class PostulacionComponent implements OnInit, AfterViewInit, OnDestroy {
         request$.subscribe({
           next: (res) => {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = original;
+            submitBtn.innerHTML = sanitizeHtml(original);
             if (!this.modoEdicion) {
               form.reset();
               form.classList.remove('was-validated');
@@ -580,7 +580,7 @@ export class PostulacionComponent implements OnInit, AfterViewInit, OnDestroy {
           },
           error: (err) => {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = original;
+            submitBtn.innerHTML = sanitizeHtml(original);
             const msg = err?.error?.error || err?.error?.message || 'No se pudo enviar. Intenta de nuevo.';
             this.showMessage(formMessage, msg, false);
             formMessage?.scrollIntoView({ behavior:'smooth', block:'center' });

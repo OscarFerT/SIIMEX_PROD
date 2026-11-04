@@ -54,13 +54,14 @@ public class DocumentoController {
         var documento = documentoService.obtenerDocumento(documentoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Documento no encontrado"));
 
-        if (!esTipoPublico(documento.getTipo()) || !permitirPublicacionPorVisibilidad(documento)) {
+        if (!com.example.proyecto.demo.security.PublicProfilePolicy.canPublish(documento.getUsuario())
+                || !esTipoPublico(documento.getTipo()) || !permitirPublicacionPorVisibilidad(documento)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Documento no disponible públicamente");
         }
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + documento.getNombreArchivo() + "\"")
+                        "attachment; filename=\"" + FileSecurityUtils.sanitizeFilename(documento.getNombreArchivo(), "documento") + "\"")
                 .contentType(MediaType.parseMediaType(documento.getContentType()))
                 .body(documento.getContenido());
     }
@@ -99,9 +100,7 @@ public class DocumentoController {
     }
 
     private boolean permitirPublicacionPorVisibilidad(Documento documento) {
-        String visibilidad = normalizarVisibilidad(
-                documento.getUsuario() != null ? documento.getUsuario().getVisibilidadPerfil() : null
-        );
+        String visibilidad = com.example.proyecto.demo.security.PublicProfilePolicy.visibility(documento.getUsuario());
 
         if (documento.getTipo() == Documento.TipoDocumento.FOTO_PERFIL) {
             return !"MINIMA".equals(visibilidad);

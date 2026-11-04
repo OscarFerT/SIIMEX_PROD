@@ -1,6 +1,7 @@
 package com.example.proyecto.demo.Entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -59,8 +60,21 @@ public class AuthUser {
 
     /** Token "recuérdame" hasheado para saltar 2FA en dispositivos de confianza. */
     @Column(name = "remember_token_hash", length = 64)
+    @JsonIgnore
     private String rememberTokenHash;
 
     @Column(name = "remember_token_expiry")
+    @JsonIgnore
     private Instant rememberTokenExpiry;
+
+    @JsonIgnore
+    @Column(name = "session_version", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    @Builder.Default
+    private long sessionVersion = 0;
+
+    public void revokeSessions() {
+        sessionVersion++;
+        rememberTokenHash = null;
+        rememberTokenExpiry = null;
+    }
 }

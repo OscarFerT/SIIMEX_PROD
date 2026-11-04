@@ -38,10 +38,15 @@ public class AuthAttemptService {
 
     public void recordFailure(String scope, String identifier) {
         String key = key(scope, identifier);
+        Instant now = Instant.now();
+        attempts.entrySet().removeIf(entry -> entry.getValue().lastAttempt.plus(lockDuration).isBefore(now));
+        if (attempts.size() >= 10000 && !attempts.containsKey(key)) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "Demasiadas solicitudes. Intenta mas tarde.");
+        }
         attempts.compute(key, (ignored, current) -> {
             int failures = current == null ? 1 : current.failures + 1;
             Instant lockedUntil = failures >= maxFailures ? Instant.now().plus(lockDuration) : null;
-            return new AttemptEntry(failures, lockedUntil);
+            return new AttemptEntry(failures, lockedUntil, now);
         });
     }
 
@@ -54,6 +59,6 @@ public class AuthAttemptService {
         return scope + ":" + cleanIdentifier;
     }
 
-    private record AttemptEntry(int failures, Instant lockedUntil) {
+    private record AttemptEntry(int failures, Instant lockedUntil, Instant lastAttempt) {
     }
 }

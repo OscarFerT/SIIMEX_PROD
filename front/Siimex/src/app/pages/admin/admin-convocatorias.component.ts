@@ -5,7 +5,7 @@ import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators, For
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
-import Swal from 'sweetalert2';
+import Swal from '../../core/safe-swal';
 import { forkJoin, of } from 'rxjs';
 
 export interface Aceptado {

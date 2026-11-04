@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record ResetPasswordRequest(
+        @NotBlank
         @Email(message = "Email inválido")
         String email,
         
@@ -16,8 +17,12 @@ public record ResetPasswordRequest(
         String rfc,
         
         @NotBlank(message = "La nueva contraseña no puede estar vacía")
-        @Size(min = 8, message = "La contraseña debe tener al menos 8 caracteres")
-        String newPassword
+        @Size(min = 8, max = 72, message = "La contraseña debe tener entre 8 y 72 caracteres")
+        String newPassword,
+
+        @NotBlank
+        @Pattern(regexp = "[0-9]{6}", message = "El codigo debe contener seis digitos")
+        String code
 ) {
     // Validación personalizada: al menos 2 identificadores deben estar presentes
     public boolean hasEnoughIdentifiers() {

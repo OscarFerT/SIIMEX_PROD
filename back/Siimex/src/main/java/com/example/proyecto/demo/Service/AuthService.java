@@ -228,6 +228,9 @@ public class AuthService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El enlace de verificación ha expirado. Solicita un nuevo correo de verificación desde la pantalla de inicio de sesión.");
         }
         AuthUser au = evt.getAuthUser();
+        if (au.isLocked()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "La cuenta esta suspendida. Contacta al administrador.");
+        }
         au.setEnabled(true);
         authUserRepo.save(au);
         emailVerificationTokenRepo.delete(evt);
@@ -273,25 +276,8 @@ public class AuthService {
     }
 
     public String login(LoginRequest req) {
-        String email = req.email().trim().toLowerCase();
-        authAttemptService.assertNotLocked("login", email);
-        AuthUser au = authUserRepo.findByEmail(email)
-                .orElseThrow(() -> {
-                    authAttemptService.recordFailure("login", email);
-                    return new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
-                });
-        if (!encoder.matches(req.password(), au.getPasswordHash())) {
-            authAttemptService.recordFailure("login", email);
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
-        }
-        if (!au.isEnabled()) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "Debes verificar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.");
-        }
-        authAttemptService.recordSuccess("login", email);
-        au.setLastLoginAt(Instant.now());
-        authUserRepo.save(au);
-
-        return buildJwt(au);
+        throw new ApiException(HttpStatus.GONE,
+                "El acceso directo ya no esta disponible. Solicita el codigo de verificacion.");
     }
 
     /**
@@ -311,9 +297,7 @@ public class AuthService {
             authAttemptService.recordFailure("login", email);
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
-        if (!au.isEnabled()) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "Debes verificar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.");
-        }
+        com.example.proyecto.demo.security.SessionSecurity.requireActive(au);
         boolean adminOnly = Boolean.TRUE.equals(req.getAdminOnly());
         if (adminOnly && !au.getRoles().contains("ROLE_ADMIN")) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Acceso solo para administradores");
@@ -321,7 +305,7 @@ public class AuthService {
         authAttemptService.recordSuccess("login", email);
 
         // Si envía rememberToken válido -> login directo sin 2FA
-        if (req.getRememberToken() != null && !req.getRememberToken().isBlank()) {
+        if (!au.getRoles().contains("ROLE_ADMIN") && req.getRememberToken() != null && !req.getRememberToken().isBlank()) {
             if (isRememberTokenValid(au, req.getRememberToken())) {
                 au.setLastLoginAt(Instant.now());
                 // Renovar el token de confianza
@@ -337,8 +321,14 @@ public class AuthService {
             }
         }
 
-        String code = verificationCodeService.generateAndStore(email);
-        microsoftGraphEmailService.sendVerificationCode(email, code);
+        String challenge = challengeKey("login", au);
+        String code = verificationCodeService.generateAndStore(challenge);
+        try {
+            microsoftGraphEmailService.sendVerificationCode(email, code);
+        } catch (RuntimeException e) {
+            verificationCodeService.invalidate(challenge);
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "No fue posible enviar el codigo. Intenta mas tarde.");
+        }
         return new LoginStep1Response(true, email);
     }
 
@@ -351,7 +341,7 @@ public class AuthService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Email requerido");
         }
         String normalized = email.trim().toLowerCase();
-        String code = verificationCodeService.generateAndStore(normalized);
+        String code = verificationCodeService.generateAndStore("diagnostic:" + normalized);
         microsoftGraphEmailService.sendVerificationCode(normalized, code);
     }
 
@@ -362,13 +352,14 @@ public class AuthService {
     public LoginStep2Response loginStep2VerifyCode(LoginStep2Request req) {
         String email = req.getEmail().trim().toLowerCase();
         authAttemptService.assertNotLocked("2fa", email);
-        if (!verificationCodeService.verify(email, req.getCode())) {
+        AuthUser au = authUserRepo.findByEmail(email)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
+        com.example.proyecto.demo.security.SessionSecurity.requireActive(au);
+        if (!verificationCodeService.verify(challengeKey("login", au), req.getCode())) {
             authAttemptService.recordFailure("2fa", email);
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Código inválido o expirado. Solicita uno nuevo.");
         }
         authAttemptService.recordSuccess("2fa", email);
-        AuthUser au = authUserRepo.findByEmail(email)
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
         boolean adminOnly = Boolean.TRUE.equals(req.getAdminOnly());
         if (adminOnly && !au.getRoles().contains("ROLE_ADMIN")) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Acceso solo para administradores");
@@ -376,7 +367,7 @@ public class AuthService {
         au.setLastLoginAt(Instant.now());
 
         String rememberToken = null;
-        if (req.isRemember()) {
+        if (req.isRemember() && !au.getRoles().contains("ROLE_ADMIN")) {
             rememberToken = generateRememberToken(au);
         }
         authUserRepo.save(au);
@@ -388,99 +379,56 @@ public class AuthService {
      * Login exclusivo para administradores. Valida credenciales y que el usuario tenga ROLE_ADMIN.
      */
     public String loginAdmin(LoginRequest req) {
-        String email = req.email().trim().toLowerCase();
-        authAttemptService.assertNotLocked("admin-login", email);
-        AuthUser au = authUserRepo.findByEmail(email)
-                .orElseThrow(() -> {
-                    authAttemptService.recordFailure("admin-login", email);
-                    return new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
-                });
-        if (!encoder.matches(req.password(), au.getPasswordHash())) {
-            authAttemptService.recordFailure("admin-login", email);
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        return login(req);
+    }
+
+    public void requestPasswordResetCode(String email) {
+        String normalized = email.trim().toLowerCase(java.util.Locale.ROOT);
+        authAttemptService.assertNotLocked("reset-request", normalized);
+        authAttemptService.recordFailure("reset-request", normalized);
+        // Throttle identically even when the account does not exist.
+        String code = verificationCodeService.generateAndStore("reset-request:" + normalized);
+        var optional = authUserRepo.findByEmail(normalized);
+        if (optional.isEmpty() || !optional.get().isEnabled() || optional.get().isLocked()) return;
+        AuthUser account = optional.get();
+        String challenge = challengeKey("reset", account);
+        verificationCodeService.store(challenge, code);
+        try {
+            microsoftGraphEmailService.sendPasswordResetCode(normalized, code);
+        } catch (RuntimeException e) {
+            verificationCodeService.invalidate(challenge);
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "No fue posible enviar el codigo. Intenta mas tarde.");
         }
-        if (!au.getRoles().contains("ROLE_ADMIN")) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "Acceso solo para administradores");
-        }
-        authAttemptService.recordSuccess("admin-login", email);
-        au.setLastLoginAt(Instant.now());
-        authUserRepo.save(au);
-        return buildJwt(au);
     }
 
     @Transactional
     public void resetPassword(com.example.proyecto.demo.dto.ResetPasswordRequest req) {
-        // Validar que tenga al menos 2 identificadores
-        if (!req.hasEnoughIdentifiers()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, 
-                "Debe proporcionar al menos 2 identificadores válidos (email, CURP o RFC)");
+        String email = req.email() == null ? "" : req.email().trim().toLowerCase(java.util.Locale.ROOT);
+        authAttemptService.assertNotLocked("reset-verify", email);
+        AuthUser account = authUserRepo.findByEmail(email).orElse(null);
+        if (account == null || !account.isEnabled() || account.isLocked()
+                || req.code() == null || !req.code().matches("[0-9]{6}")
+                || !verificationCodeService.verify(challengeKey("reset", account), req.code())) {
+            authAttemptService.recordFailure("reset-verify", email);
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Codigo invalido o expirado.");
         }
-
-        // Buscar usuario por los identificadores proporcionados
-        Usuario usuario = null;
-        int matches = 0;
-        ArrayList<Usuario> candidatos = new ArrayList<>();
-
-        // Buscar por email
-        if (req.email() != null && !req.email().trim().isEmpty()) {
-            Optional<Usuario> usuarioPorEmail = usuarioRepo.findByAuthUser_Email(req.email().trim().toLowerCase());
-            if (usuarioPorEmail.isPresent()) {
-                candidatos.add(usuarioPorEmail.get());
-            }
+        if (req.newPassword() == null || req.newPassword().length() < 8
+                || req.newPassword().getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "La contrasena debe tener entre 8 caracteres y 72 bytes.");
         }
+        account.setPasswordHash(encoder.encode(req.newPassword()));
+        account.revokeSessions();
+        authUserRepo.save(account);
+        authAttemptService.recordSuccess("reset-verify", email);
+    }
 
-        // Buscar por CURP
-        if (req.curp() != null && !req.curp().trim().isEmpty()) {
-            Optional<com.example.proyecto.demo.Entity.Registro1> registroPorCurp = 
-                registro1Repo.findByCurp(req.curp().trim().toUpperCase());
-            if (registroPorCurp.isPresent()) {
-                candidatos.add(registroPorCurp.get().getUsuario());
-            }
-        }
+    public void logout(Long accountId) {
+        if (accountId != null) authUserRepo.revokeSessions(accountId);
+    }
 
-        // Buscar por RFC
-        if (req.rfc() != null && !req.rfc().trim().isEmpty()) {
-            Optional<com.example.proyecto.demo.Entity.Registro1> registroPorRfc = 
-                registro1Repo.findByRfc(req.rfc().trim().toUpperCase());
-            if (registroPorRfc.isPresent()) {
-                candidatos.add(registroPorRfc.get().getUsuario());
-            }
-        }
-
-        // Verificar que todos los candidatos sean el mismo usuario
-        if (candidatos.isEmpty()) {
-            throw new ApiException(HttpStatus.NOT_FOUND, 
-                "No se encontró un usuario con los identificadores proporcionados");
-        }
-
-        // Verificar que todos los candidatos sean el mismo usuario
-        Long usuarioId = candidatos.get(0).getId();
-        boolean todosIguales = candidatos.stream().allMatch(u -> u.getId().equals(usuarioId));
-        
-        if (!todosIguales) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, 
-                "Los identificadores proporcionados no corresponden al mismo usuario");
-        }
-
-        // Contar cuántos identificadores coincidieron
-        matches = candidatos.size();
-        if (matches < 2) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, 
-                "Debe proporcionar al menos 2 identificadores válidos que coincidan con el mismo usuario");
-        }
-
-        usuario = candidatos.get(0);
-
-        // Validar que el usuario tenga AuthUser
-        if (usuario.getAuthUser() == null) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, 
-                "El usuario no tiene una cuenta de autenticación asociada");
-        }
-
-        // Actualizar la contraseña
-        AuthUser authUser = usuario.getAuthUser();
-        authUser.setPasswordHash(encoder.encode(req.newPassword()));
-        authUserRepo.save(authUser);
+    private String challengeKey(String purpose, AuthUser account) {
+        return purpose + ":" + account.getId() + ":" + com.example.proyecto.demo.security.SessionSecurity.stamp(account, key);
     }
 
     // ===== Helpers para JWT y Remember Token =====
@@ -490,6 +438,7 @@ public class AuthService {
                 .subject(String.valueOf(au.getId()))
                 .claim("username", au.getUsername())
                 .claim("roles", au.getRoles())
+                .claim("session", com.example.proyecto.demo.security.SessionSecurity.stamp(au, key))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(key, Jwts.SIG.HS256)
