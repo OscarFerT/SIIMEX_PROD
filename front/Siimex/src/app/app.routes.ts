@@ -9,14 +9,9 @@ import { meResolver } from './core/resolvers/me.resolver';
 
 import { LandingComponent } from './pages/landing/landing.component';
 import { HomeComponent } from './pages/home/home.component';
-import { PerfilComponent } from './pages/acerca/perfil.component';
 import { ConvocatoriasComponent } from './pages/convocatorias/convocatorias';
-import { PostulacionComponent } from './pages/postulacion/postulacion';
 import { ContactoComponent } from './pages/contacto/contacto';
 import { InvestigadoresComponent } from './pages/investigadores/investigadores';
-import { RegistroStep2Component } from './pages/registro-step2/registro-step2';
-import { TrayectoriaComponent } from './pages/trayectoria/trayectoria';
-import { PersonaComponent } from './pages/personal-principal/persona.component';
 
 
 export const routes: Routes = [
@@ -202,7 +197,7 @@ export const routes: Routes = [
     children: [
        {
       path: 'perfil',
-      component: PerfilComponent
+      loadComponent: () => import('./pages/acerca/perfil.component').then(m => m.PerfilComponent)
       },
       {
         path: 'dashboard',
@@ -219,19 +214,19 @@ export const routes: Routes = [
       },
       {
         path: 'postulacion/:convocatoriaId',
-        component: PostulacionComponent
+        loadComponent: () => import('./pages/postulacion/postulacion').then(m => m.PostulacionComponent)
       },
       {
         path: 'postulacion',
-        component: PostulacionComponent
+        loadComponent: () => import('./pages/postulacion/postulacion').then(m => m.PostulacionComponent)
       },
       {
         path: 'registro2',
-        component: RegistroStep2Component
+        loadComponent: () => import('./pages/registro-step2/registro-step2').then(m => m.RegistroStep2Component)
       },
       {
         path: 'trayectoria',
-        component: TrayectoriaComponent
+        loadComponent: () => import('./pages/trayectoria/trayectoria').then(m => m.TrayectoriaComponent)
       },
       {
         path: 'notificaciones',
