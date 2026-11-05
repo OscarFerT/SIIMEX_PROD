@@ -6,6 +6,10 @@
       <p class="text-muted small mb-0">SIIMEX · Panel de control con verificación por código</p>
     </div>
 
+    <div class="alert alert-danger py-2 small" *ngIf="errorMsg" role="alert">
+      <i class="fas fa-exclamation-circle me-1"></i>{{ errorMsg }}
+    </div>
+
     <form *ngIf="step === 1" [formGroup]="form" (ngSubmit)="submitStep1()" class="admin-login-form">
       <div class="mb-3">
         <label for="adminEmail" class="form-label">Correo electrónico</label>
@@ -22,10 +26,6 @@
         <div class="invalid-feedback d-block" *ngIf="form.get('password')?.touched && form.get('password')?.invalid">
           Contraseña requerida
         </div>
-      </div>
-
-      <div class="alert alert-danger py-2 small" *ngIf="errorMsg" role="alert">
-        <i class="fas fa-exclamation-circle me-1"></i>{{ errorMsg }}
       </div>
 
       <button type="submit" class="btn btn-borgona w-100" [disabled]="loading || form.invalid">

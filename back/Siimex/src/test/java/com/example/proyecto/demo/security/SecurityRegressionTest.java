@@ -142,7 +142,7 @@ class SecurityRegressionTest {
         assertThatThrownBy(() -> codes.generateAndStore("cooldown-test")).isInstanceOf(ApiException.class);
     }
 
-    @Test void publicCvRequiresConsentActiveNonAdminProfileAndCompleteVisibility() {
+    @Test void publicCvRequiresActiveNonAdminProfileAndCompleteVisibility() {
         account.getRoles().clear();
         account.getRoles().add("ROLE_USER");
         Usuario user = Usuario.builder().id(7L).authUser(account).visibilidadPerfil("COMPLETA").consentimientoDirectorioPublico(true).build();
@@ -159,7 +159,9 @@ class SecurityRegressionTest {
         }
         user.setVisibilidadPerfil("COMPLETA");
         user.setConsentimientoDirectorioPublico(false);
-        assertThatThrownBy(() -> controller.descargarDocumentoPublico(8L)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        assertThat(controller.descargarDocumentoPublico(8L).getStatusCode().value()).isEqualTo(200);
+        user.setConsentimientoDirectorioPublico(null);
+        assertThat(controller.descargarDocumentoPublico(8L).getStatusCode().value()).isEqualTo(200);
         user.setConsentimientoDirectorioPublico(true);
         account.setLocked(true);
         assertThat(PublicProfilePolicy.canPublish(user)).isFalse();

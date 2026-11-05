@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/auth.service';
 import Swal from '../../core/safe-swal';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-admin-login',
@@ -37,7 +38,7 @@ export class AdminLoginComponent implements OnInit {
   ngOnInit(): void {
     if (this.auth.isLoggedIn()) {
       if (this.auth.isAdmin()) {
-        this.router.navigateByUrl('/admin/dashboard');
+        this.abrirPanelAdmin();
       } else {
         this.router.navigateByUrl('/landing');
       }
@@ -45,6 +46,7 @@ export class AdminLoginComponent implements OnInit {
   }
 
   submitStep1(): void {
+    if (this.loading) return;
     this.errorMsg = '';
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -72,14 +74,15 @@ export class AdminLoginComponent implements OnInit {
           showConfirmButton: false
         });
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: HttpErrorResponse) => {
         this.loading = false;
-        this.errorMsg = err?.error?.message || 'Credenciales inválidas o sin permisos de administrador.';
+        this.errorMsg = this.mensajeError(err, false);
       }
     });
   }
 
   submitStep2(): void {
+    if (this.loading) return;
     this.errorMsg = '';
     if (!this.pendingEmail || this.codeForm.invalid) {
       this.codeForm.markAllAsTouched();
@@ -89,9 +92,9 @@ export class AdminLoginComponent implements OnInit {
     const code = this.codeForm.value.code.trim();
     this.auth.loginAdminVerifyCode(this.pendingEmail, code).subscribe({
       next: () => this.finalizarAccesoAdmin(),
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: HttpErrorResponse) => {
         this.loading = false;
-        this.errorMsg = err?.error?.message || 'Código inválido o expirado.';
+        this.errorMsg = this.mensajeError(err, true);
       }
     });
   }
@@ -123,6 +126,21 @@ export class AdminLoginComponent implements OnInit {
       text: 'Bienvenido al panel de administración',
       timer: 1400,
       showConfirmButton: false
-    }).then(() => this.router.navigateByUrl('/admin/dashboard'));
+    }).then(() => this.abrirPanelAdmin());
+  }
+
+  private abrirPanelAdmin(): void {
+    this.router.navigateByUrl('/admin/dashboard').then(entro => {
+      if (!entro) this.errorMsg = 'No se pudo abrir el panel. Recarga la pagina e intenta nuevamente.';
+    }).catch(() => {
+      this.errorMsg = 'No se pudieron cargar los archivos del panel. Recarga con Ctrl+F5 para obtener la version actualizada.';
+    });
+  }
+
+  private mensajeError(error: HttpErrorResponse, codigo: boolean): string {
+    if (error.status === 0) return 'No se pudo conectar con el servidor. Revisa la conexion e intenta nuevamente.';
+    if (error.status >= 500) return `El servidor devolvio un error (${error.status}). No indica una contrasena o codigo incorrectos; intenta nuevamente y reporta la hora del fallo si persiste.`;
+    const mensaje = typeof error.error?.message === 'string' ? error.error.message : null;
+    return mensaje || (codigo ? 'Codigo invalido o expirado. Solicita uno nuevo.' : 'Credenciales invalidas o sin permisos de administrador.');
   }
 }

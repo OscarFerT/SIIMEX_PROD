@@ -39,7 +39,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
             LEFT JOIN u.registro1 r
             WHERE au.enabled = true
               AND au.locked = false
-              AND u.consentimientoDirectorioPublico = true
               AND 'ROLE_ADMIN' NOT MEMBER OF au.roles
               AND r.tipoPerfil IN :tipos
               AND (
@@ -106,7 +105,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
             WHERE au IS NOT NULL
               AND au.enabled = true
               AND au.locked = false
-              AND u.consentimientoDirectorioPublico = true
               AND 'ROLE_ADMIN' NOT MEMBER OF au.roles
               AND r.tipoPerfil IN :tipos
               AND (
@@ -181,7 +179,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
             WHERE au IS NOT NULL
               AND au.enabled = true
               AND au.locked = false
-              AND u.consentimientoDirectorioPublico = true
               AND 'ROLE_ADMIN' NOT MEMBER OF au.roles
               AND r.tipoPerfil IN :tipos
               AND ta.nivelNombre IS NOT NULL
@@ -198,7 +195,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
             WHERE au IS NOT NULL
               AND au.enabled = true
               AND au.locked = false
-              AND u.consentimientoDirectorioPublico = true
               AND 'ROLE_ADMIN' NOT MEMBER OF au.roles
               AND r.tipoPerfil IN :tipos
               AND ac.areaNombre IS NOT NULL
@@ -214,7 +210,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
             WHERE au IS NOT NULL
               AND au.enabled = true
               AND au.locked = false
-              AND u.consentimientoDirectorioPublico = true
               AND 'ROLE_ADMIN' NOT MEMBER OF au.roles
               AND r.tipoPerfil IN :tipos
             """)

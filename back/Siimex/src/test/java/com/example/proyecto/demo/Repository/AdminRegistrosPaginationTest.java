@@ -93,7 +93,7 @@ class AdminRegistrosPaginationTest {
     }
 
     @Test
-    void directorioFiltraConsentimientoAntesDePaginarYNoInfiereSemblanzaMinima() {
+    void directorioIncluyeFichasAutorizadasAntesDePaginarYNoInfiereSemblanzaMinima() {
         jdbc.update("UPDATE usuarios SET consentimiento_directorio_publico = true, visibilidad_perfil = 'ESTANDAR' WHERE id BETWEEN 3 AND 18");
         jdbc.update("UPDATE usuarios SET consentimiento_directorio_publico = true WHERE id IN (1, 2, 20)");
         jdbc.update("UPDATE auth_users SET locked = true WHERE id = 20");
@@ -102,10 +102,10 @@ class AdminRegistrosPaginationTest {
                 com.example.proyecto.demo.Entity.Registro1.TipoPerfil.HIBRIDO);
         var first = usuarios.findDirectorioPage(tipos, null, null, null, null, org.springframework.data.domain.PageRequest.of(0, 8));
         var second = usuarios.findDirectorioPage(tipos, null, null, null, null, org.springframework.data.domain.PageRequest.of(1, 8));
-        assertThat(first.getTotalElements()).isEqualTo(16);
+        assertThat(first.getTotalElements()).isEqualTo(1397);
         assertThat(first.getContent()).hasSize(8);
         assertThat(second.getContent()).hasSize(8);
-        assertThat(usuarios.countDirectorioByTipos(tipos)).isEqualTo(16);
+        assertThat(usuarios.countDirectorioByTipos(tipos)).isEqualTo(1397);
         jdbc.update("UPDATE usuarios SET semblanza = 'TextoReservadoAuditoria', visibilidad_perfil = 'MINIMA' WHERE id = 3");
         em.clear();
         assertThat(usuarios.findDirectorioPage(tipos, null, null, null, "TextoReservadoAuditoria", org.springframework.data.domain.PageRequest.of(0, 8)).getTotalElements()).isZero();

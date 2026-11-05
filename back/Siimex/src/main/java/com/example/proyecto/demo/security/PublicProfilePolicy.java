@@ -7,8 +7,7 @@ public final class PublicProfilePolicy {
     private PublicProfilePolicy() {}
 
     public static boolean canPublish(Usuario user) {
-        if (user == null || !Boolean.TRUE.equals(user.getConsentimientoDirectorioPublico())
-                || user.getAuthUser() == null || user.getRegistro1() == null
+        if (user == null || user.getAuthUser() == null || user.getRegistro1() == null
                 || user.getRegistro1().getTipoPerfil() == null) return false;
         var account = user.getAuthUser();
         return account.isEnabled() && !account.isLocked() && !account.getRoles().contains("ROLE_ADMIN");
