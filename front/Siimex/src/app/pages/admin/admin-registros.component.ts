@@ -9,6 +9,7 @@ import { environment } from '../../../environments/environment';
 import Swal, { sanitizeHtml } from '../../core/safe-swal';
 import { exportRowsAsXlsx } from '../../shared/utils/xlsx.utils';
 import { AdminExpedientesService, ExportacionExpedientes, SolicitudExpedientes } from './admin-expedientes.service';
+import { AdminEditarDatosComponent } from './admin-editar-datos.component';
 
 interface RegistroItem {
   id: number;
@@ -123,7 +124,7 @@ interface PostulacionEvaluadorOption {
 @Component({
   selector: 'app-admin-registros',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AdminEditarDatosComponent],
   templateUrl: './admin-registros.component.html',
   styleUrls: ['./admin-registros.component.css']
 })
@@ -179,6 +180,8 @@ export class AdminRegistrosComponent implements OnInit, OnDestroy {
   /** URL de la foto de perfil (blob) para mostrar en el modal */
   fotoUrl: string | null = null;
   accionEnProceso = false;
+  editandoUsuarioId: number | null = null;
+  edicionAviso: string | null = null;
   cvGenerando = false;
   creando = false;
   creandoError: string | null = null;
@@ -738,6 +741,26 @@ export class AdminRegistrosComponent implements OnInit, OnDestroy {
       return;
     }
     this.verDetalle(seleccionado.id);
+  }
+
+  editarDatosSeleccionado(): void {
+    if (!this.usuarioSeleccionado || this.accionEnProceso) return;
+    this.edicionAviso = null;
+    this.editandoUsuarioId = this.usuarioSeleccionado.id;
+    this.accionEnProceso = true;
+  }
+
+  cerrarEdicionDatos(): void {
+    this.editandoUsuarioId = null;
+    this.accionEnProceso = false;
+  }
+
+  datosBasicosGuardados(): void {
+    this.cerrarEdicionDatos();
+    this.edicionAviso = 'Datos actualizados. Los documentos, folios, postulaciones y permisos se conservaron.';
+    this.opcionesCargadas = false;
+    this.usuariosZip.clear();
+    this.cargarRegistros();
   }
 
   async visualizarCvSeleccionado(): Promise<void> {

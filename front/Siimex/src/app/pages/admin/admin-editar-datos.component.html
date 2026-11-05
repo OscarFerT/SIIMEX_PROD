@@ -1,0 +1,76 @@
+<dialog #dialogo class="editar-dialogo" aria-labelledby="editarTitulo" aria-describedby="editarDescripcion" (cancel)="cancelar($event)">
+  <header class="editar-cabecera">
+    <div class="editar-icono" aria-hidden="true"><i class="fas fa-user-edit"></i></div>
+    <div>
+      <p class="editar-etiqueta">ADMINISTRACIÓN / REGISTRO {{ usuarioId }}</p>
+      <h2 id="editarTitulo">Editar datos básicos</h2>
+      <p id="editarDescripcion">Corrige la información de contacto e identidad de esta persona.</p>
+    </div>
+    <button type="button" class="editar-cerrar" aria-label="Cerrar edición" (click)="cancelar()" [disabled]="guardando"><i class="fas fa-times"></i></button>
+  </header>
+  <div *ngIf="cargando" class="editar-carga" role="status"><span class="spinner-border spinner-border-sm me-2"></span>Cargando datos...</div>
+  <form #form="ngForm" (ngSubmit)="guardar(form)" [attr.aria-busy]="guardando">
+    <div class="editar-cuerpo">
+      <div *ngIf="error" class="alert alert-danger" role="alert">{{ error }}</div>
+      <button *ngIf="!cargando && (!datos || conflicto)" type="button" class="btn btn-outline-secondary mb-3" (click)="cargar()">Recargar datos</button>
+      <fieldset *ngIf="datos && !cargando" [disabled]="guardando || conflicto">
+        <legend class="editar-seccion"><i class="fas fa-address-card me-2" aria-hidden="true"></i>Identidad y contacto</legend>
+        <div class="row g-3">
+          <div class="col-12 col-md-4">
+            <label for="editarNombre" class="form-label">Nombre(s) *</label>
+            <input id="editarNombre" class="form-control" name="nombre" [(ngModel)]="datos.nombre" required maxlength="120" autocomplete="off">
+          </div>
+          <div class="col-12 col-md-4">
+            <label for="editarPaterno" class="form-label">Primer apellido *</label>
+            <input id="editarPaterno" class="form-control" name="apellidoPaterno" [(ngModel)]="datos.apellidoPaterno" required maxlength="120" autocomplete="off">
+          </div>
+          <div class="col-12 col-md-4">
+            <label for="editarMaterno" class="form-label">Segundo apellido</label>
+            <input id="editarMaterno" class="form-control" name="apellidoMaterno" [(ngModel)]="datos.apellidoMaterno" maxlength="120" autocomplete="off">
+          </div>
+          <div class="col-12 col-md-8">
+            <label for="editarCorreo" class="form-label">Correo electrónico *</label>
+            <input id="editarCorreo" class="form-control" name="email" [(ngModel)]="datos.email" type="email" email required maxlength="180" autocomplete="off">
+            <small class="text-muted">Este será el correo de acceso y recepción de códigos de seguridad.</small>
+          </div>
+          <div class="col-12 col-md-4">
+            <label for="editarTelefono" class="form-label">Teléfono</label>
+            <input id="editarTelefono" class="form-control" name="telefono" [(ngModel)]="datos.telefono" type="tel" maxlength="20" autocomplete="off">
+          </div>
+          <div class="col-12 col-md-6">
+            <label for="editarCurp" class="form-label">CURP *</label>
+            <input id="editarCurp" class="form-control editar-curp" name="curp" [(ngModel)]="datos.curp" required minlength="18" maxlength="18" pattern="[A-Za-z0-9]{18}" autocomplete="off">
+          </div>
+          <div class="col-12 col-md-6">
+            <label for="editarFecha" class="form-label">Fecha de nacimiento *</label>
+            <input id="editarFecha" class="form-control" name="fechaNacimiento" [(ngModel)]="datos.fechaNacimiento" type="date" required>
+          </div>
+          <div class="col-12 col-md-4">
+            <label for="editarGenero" class="form-label">Género *</label>
+            <select id="editarGenero" class="form-select" name="genero" [(ngModel)]="datos.genero" required>
+              <option value="MASCULINO">Masculino</option><option value="FEMENINO">Femenino</option><option value="OTRO">Otro</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-8">
+            <label for="editarEntidad" class="form-label">Entidad federativa de nacimiento *</label>
+            <input id="editarEntidad" class="form-control" name="entidadFederativa" [(ngModel)]="datos.entidadFederativa" required maxlength="255" autocomplete="off">
+          </div>
+        </div>
+        <p class="editar-ayuda">Si corriges la CURP o los datos de identidad, deben coincidir entre sí. Se admiten apellidos compuestos.</p>
+        <div class="editar-motivo">
+          <label for="editarMotivo" class="form-label">Motivo de la corrección *</label>
+          <textarea id="editarMotivo" class="form-control" name="motivo" [(ngModel)]="motivo" required maxlength="500" rows="2" placeholder="Ej. Corrección solicitada por la persona titular, cotejada con su documentación."></textarea>
+        </div>
+        <div class="editar-aviso"><i class="fas fa-shield-alt" aria-hidden="true"></i><p>Los cambios se registran en la bitácora. Al corregir el correo o la identidad se cerrarán las sesiones anteriores. Los roles, documentos, folios y postulaciones se conservan.</p></div>
+        <label class="editar-confirmacion"><input type="checkbox" name="confirmado" [(ngModel)]="confirmado" required><span>Confirmo que cotejé los datos y autorizo guardar esta corrección.</span></label>
+      </fieldset>
+    </div>
+    <footer class="editar-pie">
+      <span>* Campos obligatorios</span>
+      <button type="button" class="btn btn-outline-secondary" (click)="cancelar()" [disabled]="guardando">Cancelar</button>
+      <button type="submit" class="btn btn-borgona" [disabled]="cargando || !datos || guardando || conflicto || form.invalid || !confirmado || !motivo.trim() || !hayCambios">
+        <i class="fas me-2" [class.fa-save]="!guardando" [class.fa-spinner]="guardando" [class.fa-spin]="guardando" aria-hidden="true"></i>{{ guardando ? 'Guardando...' : 'Guardar corrección' }}
+      </button>
+    </footer>
+  </form>
+</dialog>

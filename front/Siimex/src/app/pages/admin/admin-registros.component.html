@@ -25,6 +25,9 @@
       <button type="button" class="btn btn-outline-secondary btn-sm" (click)="verDetalleSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso">
         <i class="fas fa-eye me-1"></i>Detalle
       </button>
+      <button type="button" class="btn btn-outline-borgona btn-sm" (click)="editarDatosSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso">
+        <i class="fas fa-user-edit me-1"></i>Editar datos básicos
+      </button>
       <button type="button" class="btn btn-outline-primary btn-sm" (click)="visualizarCvSeleccionado()" [disabled]="!usuarioSeleccionado || accionEnProceso || cvGenerando">
         <i class="fas fa-file-pdf me-1"></i>{{ cvGenerando ? 'Generando...' : 'Visualizar CV' }}
       </button>
@@ -48,6 +51,10 @@
       </button>
     </div>
   </header>
+
+  <p *ngIf="edicionAviso" class="alert alert-success" role="status">{{ edicionAviso }}</p>
+  <app-admin-editar-datos *ngIf="editandoUsuarioId !== null" [usuarioId]="editandoUsuarioId"
+    (cerrar)="cerrarEdicionDatos()" (guardado)="datosBasicosGuardados()" />
 
   <section class="expedientes-panel" aria-labelledby="expedientesTitulo">
     <div class="expedientes-heading">

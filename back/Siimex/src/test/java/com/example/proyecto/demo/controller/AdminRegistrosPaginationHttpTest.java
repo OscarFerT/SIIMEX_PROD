@@ -1,6 +1,7 @@
 package com.example.proyecto.demo.controller;
 
 import com.example.proyecto.demo.Service.AdminRegistroListadoService;
+import com.example.proyecto.demo.Service.AdminDatosBasicosService;
 import com.example.proyecto.demo.Service.AdminExportacionService;
 import com.example.proyecto.demo.Service.AuditLogService;
 import com.example.proyecto.demo.exception.ApiException;
@@ -41,6 +42,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringJUnitWebConfig(AdminRegistrosPaginationHttpTest.Config.class)
@@ -50,11 +52,12 @@ class AdminRegistrosPaginationHttpTest {
     @Autowired AdminRegistroListadoService service;
     @Autowired AdminExportacionService exportaciones;
     @Autowired AuditLogService auditoria;
+    @Autowired AdminDatosBasicosService datosBasicos;
     MockMvc mvc;
 
     @BeforeEach
     void setup() {
-        reset(service, exportaciones, auditoria);
+        reset(service, exportaciones, auditoria, datosBasicos);
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     }
 
@@ -135,6 +138,65 @@ class AdminRegistrosPaginationHttpTest {
         verifyNoInteractions(service);
     }
 
+    private String cambioValido() {
+        return """
+                {"nombre":"Ana Cecilia","apellidoPaterno":"Franco","apellidoMaterno":"De la Rosa",
+                 "email":"corregido@example.test","curp":"FARA900101MMCRSN00","telefono":"7221000001",
+                 "fechaNacimiento":"1990-01-01","genero":"FEMENINO","entidadFederativa":"Estado de Mexico",
+                 "revision":"%s","motivo":"Correccion cotejada"}
+                """.formatted("a".repeat(64));
+    }
+
+    @Test void datosBasicosExclusivosDeAdministradores() throws Exception {
+        String url = "/admin/registros/1/datos-basicos";
+        mvc.perform(get(url).accept("application/json")).andExpect(status().isUnauthorized());
+        mvc.perform(patch(url).accept("application/json").contentType("application/json").content(cambioValido()))
+                .andExpect(status().isUnauthorized());
+        for (String role : List.of("USER", "EVALUADOR")) {
+            mvc.perform(get(url).with(user("2").roles(role))).andExpect(status().isForbidden());
+            mvc.perform(patch(url).with(user("2").roles(role)).contentType("application/json").content(cambioValido()))
+                    .andExpect(status().isForbidden());
+        }
+        verifyNoInteractions(datosBasicos);
+    }
+
+    @Test void adminPuedeConsultarYGuardarSinExponerDatosDeSeguridad() throws Exception {
+        var datos = new com.example.proyecto.demo.dto.AdminDatosBasicos.Datos(1L, "Ana Cecilia", "Franco", "De la Rosa",
+                "corregido@example.test", "FARA900101MMCRSN00", "7221000001", java.time.LocalDate.of(1990,1,1),
+                "FEMENINO", "Estado de Mexico", "a".repeat(64));
+        when(datosBasicos.consultar(1L)).thenReturn(datos);
+        when(datosBasicos.actualizar(eq(1L), any(), eq(10L), anyString())).thenReturn(datos);
+        mvc.perform(get("/admin/registros/1/datos-basicos").with(user("10").roles("ADMIN")))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.revision").value("a".repeat(64))).andExpect(jsonPath("$.passwordHash").doesNotExist());
+        mvc.perform(patch("/admin/registros/1/datos-basicos").with(user("10").roles("ADMIN"))
+                        .header("X-Forwarded-For", "spoofed-ip").contentType("application/json").content(cambioValido()))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.email").value("corregido@example.test"));
+        verify(datosBasicos).actualizar(eq(1L), any(), eq(10L), eq("127.0.0.1"));
+    }
+
+    @Test void validaCorreoCurpMotivoFechaYRevisionAntesDeGuardar() throws Exception {
+        for (String body : List.of(cambioValido().replace("corregido@example.test", "no-es-correo"),
+                cambioValido().replace("FARA900101MMCRSN00", "corta"),
+                cambioValido().replace("Correccion cotejada", "  "),
+                cambioValido().replace("1990-01-01", "2990-01-01"),
+                cambioValido().replace("1990-01-01", "no-es-fecha"),
+                cambioValido().replace("a".repeat(64), "sin-revision"))) {
+            mvc.perform(patch("/admin/registros/1/datos-basicos").with(user("10").roles("ADMIN"))
+                            .contentType("application/json").content(body)).andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(datosBasicos);
+    }
+
+    @Test void unaColisionConcurrenteDeBaseSeDevuelveComo409() throws Exception {
+        when(datosBasicos.actualizar(anyLong(), any(), anyLong(), anyString()))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("private SQL details"));
+        mvc.perform(patch("/admin/registros/1/datos-basicos").with(user("10").roles("ADMIN"))
+                        .contentType("application/json").content(cambioValido()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("correo o la CURP")));
+    }
+
     @Test
     void ordinaryUsersAndEvaluatorsCannotReadTheListing() throws Exception {
         mvc.perform(get("/admin/registros/paginado").with(user("normal").roles("USER")))
@@ -165,6 +227,8 @@ class AdminRegistrosPaginationHttpTest {
         @Bean AdminRegistroListadoService service() { return mock(AdminRegistroListadoService.class); }
         @Bean AdminExportacionService exportaciones() { return mock(AdminExportacionService.class); }
         @Bean AuditLogService auditoria() { return mock(AuditLogService.class); }
+        @Bean AdminDatosBasicosService datosBasicos() { return mock(AdminDatosBasicosService.class); }
+        @Bean AdminDatosBasicosController datosController(AdminDatosBasicosService service) { return new AdminDatosBasicosController(service); }
         @Bean AdminExportacionController exportacionController(AdminExportacionService exportaciones, AuditLogService auditoria) {
             return new AdminExportacionController(exportaciones, auditoria);
         }

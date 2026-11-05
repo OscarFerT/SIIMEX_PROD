@@ -12,6 +12,10 @@ import java.util.Optional;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM Usuario u WHERE u.id = :id")
+    Optional<Usuario> findForBasicEdit(@Param("id") Long id);
+
     @Query("SELECT u FROM Usuario u LEFT JOIN FETCH u.registro1 WHERE u.authUser.id = :authUserId")
     Optional<Usuario> findByAuthUserIdWithRegistro1(@Param("authUserId") Long authUserId);
     

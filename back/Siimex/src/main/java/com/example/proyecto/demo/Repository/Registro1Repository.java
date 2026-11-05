@@ -11,6 +11,7 @@ public interface Registro1Repository extends JpaRepository<Registro1, Long> {
     Optional<Registro1> findByUsuario(Usuario usuario);
 
     boolean existsByCurp(String curp);
+    boolean existsByCurpIgnoreCaseAndIdNot(String curp, Long id);
 
     boolean existsByRfc(String rfc);
 

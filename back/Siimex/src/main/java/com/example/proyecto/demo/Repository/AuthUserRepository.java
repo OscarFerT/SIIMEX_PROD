@@ -13,6 +13,8 @@ import com.example.proyecto.demo.Entity.AuthUser;
 public interface AuthUserRepository extends JpaRepository<AuthUser, Long> {
     Optional<AuthUser> findByEmail(String email);
     boolean existsByEmail(String email);
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, Long id);
+    boolean existsByUsernameIgnoreCaseAndIdNot(String username, Long id);
 
     @Transactional
     @Modifying(clearAutomatically = true, flushAutomatically = true)

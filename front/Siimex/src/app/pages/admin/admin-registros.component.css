@@ -71,6 +71,9 @@
   font-size: 0.875rem;
 }
 
+.btn-outline-borgona { color: #6a0032; border-color: #6a0032; }
+.btn-outline-borgona:hover, .btn-outline-borgona:focus-visible { color: #fff; background: #6a0032; }
+
 .registros-loading {
   text-align: center;
   padding: 4rem 1rem;
